@@ -1,0 +1,13 @@
+# Bỏ qua các file cấu hình của IntelliJ
+.idea/
+*.iml
+
+# Bỏ qua các thư mục build của Maven/Gradle
+target/
+build/
+
+# Bỏ qua các file log
+*.log
+
+# Bỏ qua các file hệ thống (macOS)
+.DS_Store
