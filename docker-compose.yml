@@ -3,7 +3,7 @@ version: '3.8'
 services:
   # 1. Service Registry (Eureka)
   registry-service:
-    build: ./registry-service
+    build: ./services/registry-service
     container_name: registry-service
     ports:
       - "8761:8761"
@@ -11,13 +11,14 @@ services:
   # 2. Database (MySQL)
   mysql-db:
     image: mysql:8.0
-    container_name: mysql-db
+    container_name: mysql
     ports:
       - "3306:3306"
     environment:
-      MYSQL_ROOT_PASSWORD: your_root_password
-      MYSQL_USER: user
-      MYSQL_PASSWORD: password
+      MYSQL_ROOT_PASSWORD: 1234
+      MYSQL_DATABASE: userservice
+#      MYSQL_USER: root
+#      MYSQL_PASSWORD: password
     volumes:
       - mysql-data:/var/lib/mysql
       - ./mysql-init:/docker-entrypoint-initdb.d # Chạy script tạo các DB
@@ -39,7 +40,7 @@ services:
 
   # 4. API Gateway (ĐÃ CẬP NHẬT)
   gateway-service:
-    build: ./gateway-service
+    build: ./services/gateway-service
     container_name: gateway-service
     ports:
       # Đây là cổng chính bạn truy cập từ bên ngoài
@@ -58,14 +59,14 @@ services:
 
   # 5. User Service
   user-service:
-    build: ./user-service
+    build: ./services/user-microservice
     container_name: user-service
     ports:
       - "8081:8081"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-db:3306/fastfooddelivery
-      SPRING_DATASOURCE_USERNAME: user
-      SPRING_DATASOURCE_PASSWORD: password
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-db:3306/userservice
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: 1234
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://registry-service:8761/eureka/
       SPRING_RABBITMQ_HOST: rabbitmq-broker
       APP_JWT_SECRETKEY: g5rhnoLF2O4S/p5wPKY9ojbK3X2g6ifB6cG9lkaLUg9quMDtO1PSI4J6biyJHZ5uAnyTbuTyaWRpHy+BADU7NQ==
@@ -79,14 +80,14 @@ services:
 
   # 6. Product Service
   product-service:
-    build: ./product-service
+    build: ./services/product-microservice
     container_name: product-service
     ports:
       - "8082:8082"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-db:3306/product-microservice
-      SPRING_DATASOURCE_USERNAME: user
-      SPRING_DATASOURCE_PASSWORD: password
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-db:3306/productmicroservice
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: 1234
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://registry-service:8761/eureka/
       APP_JWT_SECRETKEY: g5rhnoLF2O4S/p5wPKY9ojbK3X2g6ifB6cG9lkaLUg9quMDtO1PSI4J6biyJHZ5uAnyTbuTyaWRpHy+BADU7NQ==
     depends_on:
@@ -97,14 +98,14 @@ services:
 
   # 7. Order Service
   order-service:
-    build: ./order-service
+    build: ./services/order-microservice
     container_name: order-service
     ports:
       - "8083:8083"
     environment:
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql-db:3306/orderservice
-      SPRING_DATASOURCE_USERNAME: user
-      SPRING_DATASOURCE_PASSWORD: password
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: 1234
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://registry-service:8761/eureka/
     depends_on:
       registry-service:

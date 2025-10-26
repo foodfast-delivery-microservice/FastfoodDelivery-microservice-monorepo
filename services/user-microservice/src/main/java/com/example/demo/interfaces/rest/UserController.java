@@ -52,7 +52,7 @@ public class UserController {
                 null);
         return ResponseEntity.status(HttpStatus.OK).body(result);
     }
-    @PatchMapping("{id}")
+    @PatchMapping("/{id}/password")
     public ResponseEntity<ApiResponse<User>> changePassword(
             @PathVariable Long id,@RequestBody ChangePasswordRequest request) {
         User updated = changePasswordUseCase.execute(id, request);

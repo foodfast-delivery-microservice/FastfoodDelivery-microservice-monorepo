@@ -1,7 +1,0 @@
-services:
-  # 1. Service Registry (Eureka)
-  registry-service:
-    build: ./registry-service # Báo Docker build thư mục này
-    container_name: registry-service
-    ports:
-      - "8761:8761" # Mở cổng 8761

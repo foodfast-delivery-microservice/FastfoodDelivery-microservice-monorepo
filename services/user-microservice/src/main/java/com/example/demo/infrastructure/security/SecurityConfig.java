@@ -1,6 +1,7 @@
 package com.example.demo.infrastructure.security;
 
-import jakarta.ws.rs.HttpMethod;
+import org.springframework.http.HttpMethod;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
