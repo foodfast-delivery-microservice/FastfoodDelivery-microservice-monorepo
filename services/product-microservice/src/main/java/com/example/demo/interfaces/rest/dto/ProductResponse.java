@@ -12,7 +12,7 @@ import java.util.UUID;
 @Setter
 @Builder
 public class ProductResponse {
-    private UUID id;
+    private Long id;
     private String name;
     private String description;
     private BigDecimal price;

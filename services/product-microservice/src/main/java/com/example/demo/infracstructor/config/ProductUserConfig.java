@@ -1,9 +1,6 @@
 package com.example.demo.infracstructor.config;
 
-import com.example.demo.application.ProductUseCase.CreateProductUseCase;
-import com.example.demo.application.ProductUseCase.DeleteProductByNameUseCase;
-import com.example.demo.application.ProductUseCase.GetAllProductsUserCase;
-import com.example.demo.application.ProductUseCase.GetProductsByCategoryUseCase;
+import com.example.demo.application.ProductUseCase.*;
 import com.example.demo.domain.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -20,8 +17,8 @@ public class ProductUserConfig {
     }
 
     @Bean
-    public DeleteProductByNameUseCase deleteProductByNameUseCase() {
-        return new DeleteProductByNameUseCase(productRepository);
+    public DeleteProductByIdUseCase deleteProductByNameUseCase() {
+        return new DeleteProductByIdUseCase(productRepository);
     }
 
     @Bean
@@ -32,5 +29,10 @@ public class ProductUserConfig {
     @Bean
     public GetProductsByCategoryUseCase getProductsByCategoryUseCase() {
         return new GetProductsByCategoryUseCase(productRepository);
+    }
+
+    @Bean
+    public ValidateProductsUseCase validateProductsUseCase() {
+        return new ValidateProductsUseCase(productRepository);
     }
 }

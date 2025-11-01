@@ -32,15 +32,6 @@ public class Payment {
     @Builder.Default
     private String currency = "VND";
 
-    // VNPay fields
-    @Column(length = 64)
-    private String vnpTxnRef;
-
-    @Column(length = 64)
-    private String vnpTransactionNo;
-
-    @Column(length = 32)
-    private String vnpBankCode;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 16)
@@ -52,6 +43,11 @@ public class Payment {
     @Column(nullable = false)
     private LocalDateTime updatedAt;
 
+    @Column(name = "transaction_no", length = 100) // Mã giao dịch từ cổng thanh toán
+    private String transactionNo;
+
+    @Column(name = "fail_reason", length = 255) // Lý do thất bại
+    private String failReason;
     @PrePersist
     void prePersist() {
         LocalDateTime now = LocalDateTime.now();

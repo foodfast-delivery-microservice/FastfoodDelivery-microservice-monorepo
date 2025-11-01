@@ -47,7 +47,7 @@ class GetOrderDetailUseCaseTest {
 
         OrderItem orderItem = OrderItem.builder()
                 .id(1L)
-                .productId("PROD001")
+                .productId(1L)
                 .productName("Test Product")
                 .unitPrice(new BigDecimal("100000"))
                 .quantity(2)
@@ -134,7 +134,7 @@ class GetOrderDetailUseCaseTest {
         // Given
         OrderItem orderItem2 = OrderItem.builder()
                 .id(2L)
-                .productId("PROD002")
+                .productId(2L)
                 .productName("Test Product 2")
                 .unitPrice(new BigDecimal("50000"))
                 .quantity(1)

@@ -107,12 +107,35 @@ services:
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: 1234
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://registry-service:8761/eureka/
+      SPRING_RABBITMQ_HOST: rabbitmq-broker
     depends_on:
       registry-service:
         condition: service_started
       mysql-db:
         condition: service_healthy
+      rabbitmq-broker:
+        condition: service_started
 
+    # 8. Payment service
+  payment-service:
+    build: ./services/payment-microservice
+    container_name: payment-service
+    ports:
+      - "8084:8084"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-db:3306/paymentservice
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: 1234
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://registry-service:8761/eureka/
+      SPRING_RABBITMQ_HOST: rabbitmq-broker
+
+    depends_on:
+      registry-service:
+        condition: service_started
+      mysql-db:
+        condition: service_healthy
+      rabbitmq-broker: # <-- (ĐÃ THÊM)
+        condition: service_started
 volumes:
   mysql-data:
 

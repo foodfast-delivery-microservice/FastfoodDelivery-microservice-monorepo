@@ -12,7 +12,7 @@ public interface ProductRepository extends JpaRepository<Product,Long> {
 
     // kt ten ton tai khong va khong tinh viet hoa hay viet thuong
     boolean existsByNameIgnoreCase(String name);
-
+    Optional<Product> findByName(String name);
     Optional<Product> findByNameIgnoreCase(String name);
     List<Product> findByCategory(Product.Category category);
 }
