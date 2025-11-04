@@ -36,6 +36,8 @@ public class SecurityConfig {
 
                                 // 5. Yêu cầu đã đăng nhập (authenticated) để ĐẶT HÀNG
                                 .requestMatchers("/api/v1/orders/**").authenticated()
+                                .requestMatchers("/api/v1/payments/**").authenticated()
+
 
                         .anyRequest().authenticated()
                 )

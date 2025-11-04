@@ -1,7 +1,5 @@
 package com.example.payment.infrastructure.messaging;
 
-
-
 import com.example.payment.domain.model.EventStatus;
 import com.example.payment.domain.model.OutboxEvent;
 import com.example.payment.domain.repository.OutboxEventRepository;

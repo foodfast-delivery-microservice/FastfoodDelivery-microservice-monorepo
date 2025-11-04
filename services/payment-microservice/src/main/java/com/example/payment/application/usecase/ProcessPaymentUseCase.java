@@ -5,7 +5,8 @@ import com.example.payment.domain.model.OutboxEvent;
 import com.example.payment.domain.model.Payment;
 import com.example.payment.domain.repository.OutboxEventRepository;
 import com.example.payment.domain.repository.PaymentRepository;
-import com.example.payment.infrastructure.event.OrderCreatedEvent;
+
+import com.example.payment.application.dto.PaymentRequest;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -18,9 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 
 import java.time.LocalDateTime;
-;
 
-@Service
 @RequiredArgsConstructor
 @Slf4j
 public class ProcessPaymentUseCase {
@@ -31,19 +30,19 @@ public class ProcessPaymentUseCase {
     // private final PaymentGatewayService paymentGatewayService; // Bỏ qua vì ta giả lập
 
     @Transactional
-    public void execute(OrderCreatedEvent event) {
-        log.info("Processing payment for orderId: {}", event.getOrderId());
+    public boolean  execute(PaymentRequest request) {
+        log.info("Processing payment for orderId: {}", request.getOrderId());
 
-        if (paymentRepository.findByOrderId(event.getOrderId()).isPresent()) {
-            log.warn("Payment for orderId: {} already processed. Skipping.", event.getOrderId());
-            return;
+        if (paymentRepository.findByOrderId(request.getOrderId()).isPresent()) {
+            log.warn("Payment for orderId: {} already processed. Skipping.", request.getOrderId());
+            return false;
         }
 
         Payment payment = Payment.builder()
-                .orderId(event.getOrderId())
-                .userId(event.getUserId())
-                .amount(event.getGrandTotal())
-                .currency(event.getCurrency())
+                .orderId(request.getOrderId())
+                .userId(request.getUserId())
+                .amount(request.getGrandTotal())
+                .currency(request.getCurrency())
                 .status(Payment.Status.PENDING)
 
                 .build();
@@ -52,15 +51,15 @@ public class ProcessPaymentUseCase {
 
         try {
             // TODO: Giả lập gọi cổng thanh toán
-            log.info("Payment gateway processing simulation for orderId: {}", event.getOrderId());
-            Thread.sleep(1000); // Giả lập độ trễ
+            log.info("Payment gateway processing simulation for orderId: {}", request.getOrderId());
+            //Thread.sleep(1000); // Giả lập độ trễ
 
             // 4. Xử lý thành công
             payment.setStatus(Payment.Status.SUCCESS);
             payment.setTransactionNo("DUMMY_TXN_" + System.currentTimeMillis());
             paymentRepository.save(payment);
 
-            log.info("Payment SUCCESS for orderId: {}", event.getOrderId());
+            log.info("Payment SUCCESS for orderId: {}", request.getOrderId());
 
             // 5. TẠO OUTBOX EVENT (để báo lại cho order-service)
             PaymentSuccessEventPayload payload = PaymentSuccessEventPayload.builder()
@@ -68,9 +67,10 @@ public class ProcessPaymentUseCase {
                     .orderId(payment.getOrderId())
                     .build();
             createOutboxEvent(payment, "PAYMENT_SUCCESS", payload); // <-- HOÀN THIỆN
+            return true;
 
         } catch (Exception e) {
-            log.error("Payment FAILED for orderId: {}", event.getOrderId(), e);
+            log.error("Payment FAILED for orderId: {}", request.getOrderId(), e);
 
             // 6. Xử lý thất bại
             payment.setStatus(Payment.Status.FAILED);
@@ -84,6 +84,7 @@ public class ProcessPaymentUseCase {
                     .reason(e.getMessage())
                     .build();
             createOutboxEvent(payment, "PAYMENT_FAILED", payload); // <-- HOÀN THIỆN
+            return false;
         }
     }
 

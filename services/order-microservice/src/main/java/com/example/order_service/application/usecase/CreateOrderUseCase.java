@@ -204,7 +204,10 @@ public class CreateOrderUseCase {
             if (validatedProduct == null) {
                 throw new OrderValidationException("Sản phẩm " + itemRequest.getProductId() + " không tìm thấy");
             }
-
+            if (!validatedProduct.productName().equalsIgnoreCase(itemRequest.getProductName())) {
+                throw new OrderValidationException("Tên sản phẩm không khớp với dữ liệu hệ thống: "
+                        + validatedProduct.productName());
+            }
             OrderItem orderItem = OrderItem.builder()
                     .productId(itemRequest.getProductId())
                     .productName(validatedProduct.productName()) // Lấy từ Product Service
@@ -212,7 +215,7 @@ public class CreateOrderUseCase {
                     .quantity(itemRequest.getQuantity())
                     .build();
 
-            // ✅ THÊM: Tính lineTotal ngay sau khi build
+            // THÊM: Tính lineTotal ngay sau khi build
             orderItem.setLineTotal(
                     validatedProduct.unitPrice().multiply(BigDecimal.valueOf(itemRequest.getQuantity()))
             );

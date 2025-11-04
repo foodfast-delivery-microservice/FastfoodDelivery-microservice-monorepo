@@ -1,10 +1,11 @@
 package com.example.payment.infrastructure.lisener;
 
+import com.example.payment.application.usecase.ProcessPaymentUseCase;
 
-
-
+import com.example.payment.domain.repository.OutboxEventRepository;
 import com.example.payment.infrastructure.config.RabbitMQConfig;
-import com.example.payment.infrastructure.event.OrderCreatedEvent;
+import com.example.payment.application.dto.PaymentRequest;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -17,38 +18,29 @@ import org.springframework.stereotype.Component;
 @Slf4j
 public class OrderEventListener {
 
-    // Giả sử bạn có 1 service để xử lý logic thanh toán
-    // private final PaymentService paymentService;
     private final ObjectMapper objectMapper;
+    private final ProcessPaymentUseCase processPaymentUseCase;
+    private final OutboxEventRepository outboxEventRepository;
 
-    // Lắng nghe tin nhắn từ hàng đợi PAYMENT_QUEUE
     @RabbitListener(queues = RabbitMQConfig.PAYMENT_QUEUE)
     public void handleOrderCreatedEvent(String messagePayload) {
         log.info("Received new message: {}", messagePayload);
 
         try {
-            // 1. Convert chuỗi JSON ngược lại thành Object
-            OrderCreatedEvent event = objectMapper.readValue(messagePayload, OrderCreatedEvent.class);
+            PaymentRequest request = objectMapper.readValue(messagePayload, PaymentRequest.class);
+            boolean success = processPaymentUseCase.execute(request);
 
-            log.info("Processing payment for orderId: {}, amount: {} {}",
-                    event.getOrderId(), event.getGrandTotal(), event.getCurrency());
-
-            // 2. TODO: GỌI LOGIC XỬ LÝ THANH TOÁN CỦA BẠN TẠI ĐÂY
-            // paymentService.processPayment(event);
-
-            // (Giả lập xử lý thành công)
-            log.info("Payment successful for orderId: {}", event.getOrderId());
-
-            // Sau khi thanh toán xong, payment-service cũng sẽ
-            // tạo 1 OutboxEvent ("PAYMENT_SUCCESSFUL")
-            // và gửi lại cho order-service để cập nhật trạng thái order
+            if (success) {
+                log.info(" Payment successfully processed for orderId: {}", request.getOrderId());
+            } else {
+                log.warn(" Payment failed or already processed for orderId: {}", request.getOrderId());
+            }
 
         } catch (JsonProcessingException e) {
             log.error("Failed to parse OrderCreatedEvent: {}", messagePayload, e);
-            // Xử lý lỗi (ví dụ: đưa vào Dead Letter Queue)
         } catch (Exception e) {
-            log.error("Failed to process payment for message: {}", messagePayload, e);
-            // Xử lý lỗi (ví dụ: retry)
+            log.error("Unexpected error during payment processing: {}", messagePayload, e);
         }
     }
+
 }
