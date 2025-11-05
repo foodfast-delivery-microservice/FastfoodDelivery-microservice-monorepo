@@ -25,7 +25,7 @@ public class OrderItem {
     private Order order;
 
     @Column(name = "product_id", nullable = false, length = 50)
-    private String productId;
+    private Long productId;
 
     @Column(name = "product_name", nullable = false, length = 255)
     private String productName;
@@ -41,7 +41,7 @@ public class OrderItem {
 
     @PrePersist
     @PreUpdate
-    protected void calculateLineTotal() {
+    public void calculateLineTotal() {
         if (unitPrice != null && quantity != null) {
             this.lineTotal = unitPrice.multiply(BigDecimal.valueOf(quantity));
         }

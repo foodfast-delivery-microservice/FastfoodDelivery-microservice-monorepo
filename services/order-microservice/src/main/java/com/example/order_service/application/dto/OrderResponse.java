@@ -49,7 +49,7 @@ public class OrderResponse {
     @AllArgsConstructor
     public static class OrderItemResponse {
         private Long id;
-        private String productId;
+        private Long productId;
         private String productName;
         private BigDecimal unitPrice;
         private Integer quantity;

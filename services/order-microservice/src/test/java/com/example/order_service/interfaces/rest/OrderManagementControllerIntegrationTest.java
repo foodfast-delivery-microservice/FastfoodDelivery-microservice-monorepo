@@ -48,7 +48,7 @@ class OrderManagementControllerIntegrationTest {
                 .userId(1L)
                 .orderItems(Arrays.asList(
                         CreateOrderRequest.OrderItemRequest.builder()
-                                .productId("PROD001")
+                                .productId(1L)
                                 .productName("Test Product")
                                 .unitPrice(new BigDecimal("100000"))
                                 .quantity(2)

@@ -5,6 +5,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
@@ -23,18 +24,45 @@ public class SecurityConfig {
     SecurityFilterChain filter(HttpSecurity http,JwtAuthConverter jwtAuthConverter) throws Exception {
         http.csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        // Public read (tuỳ bạn, có thể siết lại)
-                        .requestMatchers(HttpMethod.GET, "/api/v1/products/**").hasRole("ADMIN")
+                        // 2. Cho phép XEM (GET) sản phẩm công khai
+                        .requestMatchers(HttpMethod.GET, "/api/v1/products/**").permitAll()
 
-                        // CRUD chỉ ADMIN
+                        // 2. Cho Order Service gọi validate (không cần ADMIN)
+                        .requestMatchers(HttpMethod.POST, "/api/v1/products/validate").permitAll()
+                        // 3. Yêu cầu ADMIN cho các hành động CUD (Tạo, Sửa, Xóa) sản phẩm
                         .requestMatchers(HttpMethod.POST, "/api/v1/products/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/api/v1/products/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.PATCH, "/api/v1/products/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/products/**").hasRole("ADMIN")
 
                         .anyRequest().authenticated()
                 )
-                .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthConverter)));
+                .oauth2ResourceServer(oauth2 -> oauth2
+                        .authenticationEntryPoint((request, response, authException) ->{
+                            response.setStatus(HttpStatus.UNAUTHORIZED.value());
+                            response.setContentType("application/json");
+                            response.getWriter().write("""
+                                    {
+                                      "status": 401,
+                                      "message": "Unauthorized",
+                                      "data": null,
+                                      "error": "TOKEN_REQUIRED_OR_INVALID"
+                                    }
+                                    """);
+                        })
+                        .accessDeniedHandler((request, response, accessDeniedException) -> {
+                            response.setStatus(HttpStatus.FORBIDDEN.value());
+                            response.setContentType("application/json");
+                            response.getWriter().write("""
+                                    {
+                                      "status": 403,
+                                      "message": "Forbidden",
+                                      "data": null,
+                                      "error": "ACCESS_DENIED"
+                                    }
+                                    """);
+
+        })
+                        .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthConverter)));
         return http.build();
     }
     @Bean

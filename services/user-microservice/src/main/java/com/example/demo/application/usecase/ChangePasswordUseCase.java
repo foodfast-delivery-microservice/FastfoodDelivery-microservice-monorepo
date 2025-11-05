@@ -22,7 +22,7 @@ public class ChangePasswordUseCase {
                 .orElseThrow(()->new InvalidId(userId));
 
         // xác thực mật khẩu cũ
-        if (passwordEncoder.matches(changePasswordRequest.getOldPassword(), user.getPassword())){
+        if (!passwordEncoder.matches(changePasswordRequest.getOldPassword(), user.getPassword())){
             throw new InvalidCredentialException();
         }
 
