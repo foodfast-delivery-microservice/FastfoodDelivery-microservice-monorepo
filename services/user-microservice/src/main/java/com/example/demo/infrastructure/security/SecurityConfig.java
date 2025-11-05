@@ -38,7 +38,7 @@ public class SecurityConfig {
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
 
-                        .requestMatchers(HttpMethod.POST,"/api/v1/users/**").permitAll()
+                        .requestMatchers(HttpMethod.POST,"/api/v1/users/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET,"/api/v1/users/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PATCH,"/api/v1/users/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE,"/api/v1/users/**").hasRole("ADMIN")
