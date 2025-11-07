@@ -1,5 +1,6 @@
 package com.example.demo.interfaces;
 
+import com.example.demo.domain.exception.AccessDeniedException;
 import com.example.demo.domain.exception.InvalidCategoryException;
 import com.example.demo.domain.exception.InvalidNameException;
 import com.example.demo.interfaces.common.ApiResponse;

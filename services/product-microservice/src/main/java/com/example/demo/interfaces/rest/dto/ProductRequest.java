@@ -1,10 +1,7 @@
 package com.example.demo.interfaces.rest.dto;
 
-import com.example.demo.domain.model.Product;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;

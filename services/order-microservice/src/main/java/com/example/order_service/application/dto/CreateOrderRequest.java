@@ -44,7 +44,7 @@ public class CreateOrderRequest {
     public static class OrderItemRequest {
 
         @NotNull(message = "Product ID is required")
-        private String productId;
+        private Long productId;
 
         @NotNull(message = "Product name is required")
         private String productName;

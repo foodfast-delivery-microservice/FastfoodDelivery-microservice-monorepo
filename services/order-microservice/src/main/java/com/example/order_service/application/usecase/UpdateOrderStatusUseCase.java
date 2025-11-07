@@ -174,4 +174,46 @@ public class UpdateOrderStatusUseCase {
                 .lineTotal(orderItem.getLineTotal())
                 .build();
     }
+    @Transactional
+    public void markAsPaid(Long orderId) {
+        log.info("Marking order {} as PAID", orderId);
+
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new OrderNotFoundException("Order not found with id: " + orderId));
+
+        // chỉ cho phép từ PENDING hoặc CONFIRMED sang PAID
+        if (order.getStatus() != OrderStatus.PENDING && order.getStatus() != OrderStatus.CONFIRMED) {
+            throw new OrderValidationException(
+                    String.format("Cannot mark order %s as PAID from status %s", orderId, order.getStatus())
+            );
+        }
+
+        order.setStatus(OrderStatus.PAID);
+        orderRepository.save(order);
+
+        // tạo outbox event nếu muốn sync sang service khác (inventory, delivery,…)
+        createStatusChangeEvent(order, OrderStatus.PAID, "Payment successful");
+    }
+
+    @Transactional
+    public void markAsPaymentFailed(Long orderId, String reason) {
+        log.info("Marking order {} as PAYMENT_FAILED. Reason: {}", orderId, reason);
+
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new OrderNotFoundException("Order not found with id: " + orderId));
+
+        // chỉ cho phép từ PENDING sang PAYMENT_FAILED
+        if (order.getStatus() != OrderStatus.PENDING && order.getStatus() != OrderStatus.CONFIRMED) {
+            throw new OrderValidationException(
+                    String.format("Cannot mark order %s as PAYMENT_FAILED from status %s", orderId, order.getStatus())
+            );
+        }
+
+        order.setStatus(OrderStatus.CANCELLED);
+        order.setNote(reason);
+        orderRepository.save(order);
+
+        createStatusChangeEvent(order, OrderStatus.CANCELLED, reason);
+    }
+
 }

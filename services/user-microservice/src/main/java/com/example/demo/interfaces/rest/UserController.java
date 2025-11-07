@@ -77,7 +77,7 @@ public class UserController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+
     public ResponseEntity<ApiResponse<CreateUserResponse>> getUserById(@PathVariable Long id){
         CreateUserResponse getUser = getUserByIdUseCase.execute(id);
 
@@ -91,7 +91,7 @@ public class UserController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+//    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<String>> deleteUser(@PathVariable Long id){
         deleteUserByIdUseCase.execute(id);
         ApiResponse<String> result = new ApiResponse<>(
@@ -103,8 +103,4 @@ public class UserController {
         return ResponseEntity.status(HttpStatus.NO_CONTENT).body(result);
     }
 
-//    @GetMapping("/ping")
-//    public String ping() {
-//        return "user-service OK";
-//    }
 }
