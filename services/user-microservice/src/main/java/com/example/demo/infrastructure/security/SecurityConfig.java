@@ -21,7 +21,7 @@ import org.springframework.security.web.SecurityFilterChain;
 @RequiredArgsConstructor
 public class SecurityConfig {
     private final AuthenticationConfiguration authenticationConfiguration;
-
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
     @Bean
     public AuthenticationManager authenticationManager() throws Exception {
         return authenticationConfiguration.getAuthenticationManager();
@@ -38,7 +38,7 @@ public class SecurityConfig {
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
 
-                        .requestMatchers(HttpMethod.POST,"/api/v1/users/**").permitAll()
+                        .requestMatchers(HttpMethod.POST,"/api/v1/users/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET,"/api/v1/users/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PATCH,"/api/v1/users/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE,"/api/v1/users/**").hasRole("ADMIN")
@@ -47,8 +47,9 @@ public class SecurityConfig {
                 )
 
                 .sessionManagement(session ->
-                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-                );
+                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .addFilterBefore(jwtAuthenticationFilter, org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class)
+        ;
 
         return http.build();
     }

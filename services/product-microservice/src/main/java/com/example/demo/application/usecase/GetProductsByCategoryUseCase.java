@@ -1,4 +1,4 @@
-package com.example.demo.application.ProductUseCase;
+package com.example.demo.application.usecase;
 
 import com.example.demo.domain.exception.InvalidCategoryException;
 import com.example.demo.domain.model.Product;

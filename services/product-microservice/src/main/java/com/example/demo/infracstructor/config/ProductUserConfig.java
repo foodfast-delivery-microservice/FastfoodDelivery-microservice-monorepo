@@ -1,6 +1,6 @@
 package com.example.demo.infracstructor.config;
 
-import com.example.demo.application.ProductUseCase.*;
+import com.example.demo.application.usecase.*;
 import com.example.demo.domain.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;

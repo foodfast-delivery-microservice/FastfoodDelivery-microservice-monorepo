@@ -1,7 +1,7 @@
 package com.example.demo.interfaces.rest;
 
 
-import com.example.demo.application.ProductUseCase.*;
+import com.example.demo.application.usecase.*;
 import com.example.demo.interfaces.common.ApiResponse;
 import com.example.demo.interfaces.rest.dto.ProductRequest;
 import com.example.demo.interfaces.rest.dto.ProductResponse;
@@ -15,7 +15,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.UUID;
 
 @RequiredArgsConstructor
 @RestController

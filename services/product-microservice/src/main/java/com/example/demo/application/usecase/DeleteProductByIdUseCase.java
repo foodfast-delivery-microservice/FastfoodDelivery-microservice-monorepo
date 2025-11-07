@@ -1,13 +1,10 @@
-package com.example.demo.application.ProductUseCase;
+package com.example.demo.application.usecase;
 
 import com.example.demo.domain.exception.InvalidIdException;
-import com.example.demo.domain.exception.InvalidNameException;
 import com.example.demo.domain.model.Product;
 import com.example.demo.domain.repository.ProductRepository;
 
 import lombok.RequiredArgsConstructor;
-
-import java.util.UUID;
 
 @RequiredArgsConstructor
 public class DeleteProductByIdUseCase {

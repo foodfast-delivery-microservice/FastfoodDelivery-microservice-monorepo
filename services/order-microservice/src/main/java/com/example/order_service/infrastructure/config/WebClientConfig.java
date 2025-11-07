@@ -9,10 +9,6 @@ import org.springframework.web.reactive.function.client.WebClient;
 @Configuration
 public class WebClientConfig {
 
-    // 2. Không cần inject giá trị này nữa
-    // @Value("${microservice.product-service.url}")
-    // private String productServiceUrl;
-
     // 3. TẠO MỘT BEAN WebClient.Builder
     @Bean
     @LoadBalanced // <-- BẮT BUỘC: Bảo Spring Cloud quản lý builder này
