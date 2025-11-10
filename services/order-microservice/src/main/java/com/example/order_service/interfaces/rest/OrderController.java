@@ -9,6 +9,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 @RestController
 @RequestMapping("/api/v1/orders")
@@ -55,7 +57,35 @@ public class OrderController {
             log.warn("DeliveryAddress is NULL!");
         }
 
-        log.info("Idempotency-Key: {}", idempotencyKey);
+        log.info("Idempotency-Key from @RequestHeader: {}", idempotencyKey);
+        
+        // Log tất cả headers để debug
+        ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+        if (attributes != null) {
+            jakarta.servlet.http.HttpServletRequest httpRequest = attributes.getRequest();
+            java.util.Enumeration<String> headerNames = httpRequest.getHeaderNames();
+            log.info("=== ALL HEADERS IN ORDER SERVICE REQUEST ===");
+            while (headerNames != null && headerNames.hasMoreElements()) {
+                String headerName = headerNames.nextElement();
+                String headerValue = httpRequest.getHeader(headerName);
+                // Log tất cả headers liên quan đến idempotency, request, trace, correlation
+                if (headerName.toLowerCase().contains("idempotency") || 
+                    headerName.toLowerCase().contains("idem") ||
+                    headerName.toLowerCase().contains("request") ||
+                    headerName.toLowerCase().contains("trace") ||
+                    headerName.toLowerCase().contains("correlation") ||
+                    headerName.toLowerCase().contains("x-")) {
+                    log.info("🔍 Header '{}': {}", headerName, headerValue);
+                }
+            }
+            // Đặc biệt log Idempotency-Key header từ HttpServletRequest
+            String idempotencyKeyFromRequest = httpRequest.getHeader("Idempotency-Key");
+            log.info("🔍 Idempotency-Key from HttpServletRequest: {}", idempotencyKeyFromRequest);
+            if (idempotencyKeyFromRequest != null && !idempotencyKeyFromRequest.equals(idempotencyKey)) {
+                log.error("❌ MISMATCH! @RequestHeader value: '{}' != HttpServletRequest value: '{}'", 
+                    idempotencyKey, idempotencyKeyFromRequest);
+            }
+        }
         log.info("=== END REQUEST ===");
         log.info("Creating order for user: {}", request.getUserId());
         OrderResponse response = createOrderUseCase.execute(request, idempotencyKey);

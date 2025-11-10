@@ -47,14 +47,23 @@ public class CreateOrderUseCase {
 
     @Transactional
     public OrderResponse execute(CreateOrderRequest request, String idempotencyKey) {
+        log.info("=== CreateOrderUseCase.execute() called ===");
         log.info("Creating order for user: {}", request.getUserId());
+        log.info("🔑 Idempotency-Key received in UseCase: '{}'", idempotencyKey);
+        if (idempotencyKey != null && !idempotencyKey.trim().isEmpty()) {
+            log.info("✅ Idempotency-Key provided: '{}' - System will check for duplicate requests", idempotencyKey);
+        } else {
+            log.info("ℹ️ No Idempotency-Key provided - New order will be created");
+        }
 
         // Validate request
         validateRequest(request);
 
         // ===== BƯỚC 2: CHECK IDEMPOTENCY (CHỐNG DUPLICATE REQUEST) =====
         if (isDuplicateRequest(request.getUserId(), idempotencyKey)) {
-            log.warn("Duplicate request detected with key: {}", idempotencyKey);
+            log.warn("⚠️ Duplicate request detected! Idempotency-Key: '{}' for userId: {}", idempotencyKey, request.getUserId());
+            log.warn("⚠️ Returning existing order instead of creating new one. To create a new order, use a different Idempotency-Key or don't send the header.");
+            log.warn("⚠️ If you changed the key in Postman but still see this error, the header may not be forwarded correctly by the gateway.");
             return getExistingOrderResponse(request.getUserId(), idempotencyKey);
         }
         // ===== BƯỚC 3: GỌI PRODUCT SERVICE ĐỂ LẤY THÔNG TIN SẢN PHẨM =====
@@ -72,7 +81,10 @@ public class CreateOrderUseCase {
         // ===== BƯỚC 6: TẠO OUTBOX EVENT CHO RABBITMQ =====
         createOutboxEventForRabbitMQ(order);
 
-        log.info("🎉 Order created successfully: {}", order.getOrderCode());
+        log.info("🎉 Order created successfully: {} for user: {}", order.getOrderCode(), request.getUserId());
+        if (idempotencyKey != null && !idempotencyKey.trim().isEmpty()) {
+            log.info("✅ Idempotency-Key saved: {} - This key can be reused to retrieve this order", idempotencyKey);
+        }
         return mapToResponse(order);
 
     }
@@ -96,9 +108,13 @@ public class CreateOrderUseCase {
      */
     private boolean isDuplicateRequest(Long userId, String idempotencyKey) {
         if (idempotencyKey == null || idempotencyKey.trim().isEmpty()) {
+            log.debug("No idempotency key provided, skipping duplicate check");
             return false; // Không có key thì không check
         }
-        return idempotencyKeyRepository.existsByUserIdAndIdemKey(userId, idempotencyKey);
+        log.debug("Checking for duplicate request: userId={}, idempotencyKey='{}'", userId, idempotencyKey);
+        boolean exists = idempotencyKeyRepository.existsByUserIdAndIdemKey(userId, idempotencyKey);
+        log.debug("Duplicate check result: {}", exists);
+        return exists;
     }
 
     /**
@@ -152,6 +168,10 @@ public class CreateOrderUseCase {
                                 vp.productId(), vp.success(), vp.productName(), vp.unitPrice())
                 );
             }
+        } catch (OrderValidationException e) {
+            // Re-throw OrderValidationException từ Circuit Breaker fallback
+            log.error("Product Service validation failed: {}", e.getMessage());
+            throw e;
         } catch (Exception e) {
             log.error("Product Service call failed", e);
             throw new OrderValidationException("Product Service không phản hồi: " + e.getMessage());

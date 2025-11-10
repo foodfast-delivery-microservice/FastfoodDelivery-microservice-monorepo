@@ -11,3 +11,6 @@ build/
 
 # Bỏ qua các file hệ thống (macOS)
 .DS_Store
+
+# Bỏ qua các file cấu hình của VS Code
+.vscode/
