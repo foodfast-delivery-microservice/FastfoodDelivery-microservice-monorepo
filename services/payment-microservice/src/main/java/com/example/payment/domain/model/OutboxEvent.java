@@ -9,7 +9,13 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "outbox_events")
+@Table(
+        name = "outbox_events",
+        indexes = {
+                @Index(name = "idx_status_created", columnList = "status,created_at"),
+                @Index(name = "idx_aggregate", columnList = "aggregate_type,aggregate_id")
+        }
+)
 @Data
 @Builder
 @NoArgsConstructor

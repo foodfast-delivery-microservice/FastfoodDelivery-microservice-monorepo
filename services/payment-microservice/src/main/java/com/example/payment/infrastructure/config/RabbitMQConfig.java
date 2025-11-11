@@ -16,9 +16,29 @@ public class RabbitMQConfig {
 
     // --- CẤU HÌNH NHẬN EVENT TỪ ORDER-SERVICE ---
     public static final String ORDER_EXCHANGE = "order_exchange";
+
+    // tạo đơn hàng
     public static final String ORDER_CREATED_ROUTING_KEY = "order.created";
     public static final String PAYMENT_QUEUE = "payment.order_created.queue";
 
+    // refund
+    public static final String REFUND_REQUEST_QUEUE = "order.refund.request.queue";
+    public static final String REFUND_REQUEST_ROUTING_KEY = "order.refund.request";
+
+    @Bean
+    public Queue refundRequestQueue() {
+        // 1. TẠO RA CÁI QUEUE ĐANG BỊ BÁO LỖI 404
+        return new Queue(REFUND_REQUEST_QUEUE, true);
+    }
+
+    @Bean
+    public Binding bindingRefundRequest(Queue refundRequestQueue, TopicExchange orderExchange) {
+        // 2. KẾT NỐI QUEUE ĐÓ VÀO CÙNG 'orderExchange'
+        return BindingBuilder
+                .bind(refundRequestQueue) // Nguồn: queue refund
+                .to(orderExchange)         // Đích: exchange của order
+                .with(REFUND_REQUEST_ROUTING_KEY); // Bằng khóa refund
+    }
     @Bean
     public TopicExchange orderExchange() {
         return new TopicExchange(ORDER_EXCHANGE);
@@ -42,6 +62,7 @@ public class RabbitMQConfig {
     public static final String PAYMENT_SUCCESS_ROUTING_KEY = "payment.success";
     public static final String PAYMENT_FAILED_ROUTING_KEY = "payment.failed";
 
+    public static final String PAYMENT_REFUNDED_ROUTING_KEY = "payment.refunded";
     @Bean
     public TopicExchange paymentExchange() {
         return new TopicExchange(PAYMENT_EXCHANGE);

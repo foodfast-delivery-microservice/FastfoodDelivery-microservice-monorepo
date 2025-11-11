@@ -6,7 +6,7 @@ import com.example.payment.domain.repository.OutboxEventRepository;
 import com.example.payment.infrastructure.config.RabbitMQConfig;
 import com.example.payment.application.dto.PaymentRequest;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,11 +23,11 @@ public class OrderEventListener {
     private final OutboxEventRepository outboxEventRepository;
 
     @RabbitListener(queues = RabbitMQConfig.PAYMENT_QUEUE)
-    public void handleOrderCreatedEvent(String messagePayload) {
-        log.info("Received new message: {}", messagePayload);
+    public void handleOrderCreatedEvent(PaymentRequest request) {
+        log.info("Received new message for orderId: {}", request.getOrderId()); // Log request trực tiếp
 
         try {
-            PaymentRequest request = objectMapper.readValue(messagePayload, PaymentRequest.class);
+
             boolean success = processPaymentUseCase.execute(request);
 
             if (success) {
@@ -36,10 +36,8 @@ public class OrderEventListener {
                 log.warn(" Payment failed or already processed for orderId: {}", request.getOrderId());
             }
 
-        } catch (JsonProcessingException e) {
-            log.error("Failed to parse OrderCreatedEvent: {}", messagePayload, e);
         } catch (Exception e) {
-            log.error("Unexpected error during payment processing: {}", messagePayload, e);
+            log.error("Failed to parse OrderCreatedEvent: {}", request.getOrderId(), e);
         }
     }
 

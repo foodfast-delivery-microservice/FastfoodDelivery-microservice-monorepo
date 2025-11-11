@@ -1,6 +1,7 @@
 package com.example.payment.infrastructure.config;
 
 import com.example.payment.application.usecase.ProcessPaymentUseCase;
+import com.example.payment.application.usecase.ProcessRefundUseCase;
 import com.example.payment.domain.repository.OutboxEventRepository;
 import com.example.payment.domain.repository.PaymentRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -19,5 +20,9 @@ public class PaymentUseCaseConfig {
     @Bean
     public ProcessPaymentUseCase processPaymentUseCase() {
         return new ProcessPaymentUseCase(paymentRepository, outboxEventRepository, objectMapper);
+    }
+    @Bean
+    public ProcessRefundUseCase processRefundUseCase() {
+        return new ProcessRefundUseCase(paymentRepository, outboxEventRepository, objectMapper);
     }
 }

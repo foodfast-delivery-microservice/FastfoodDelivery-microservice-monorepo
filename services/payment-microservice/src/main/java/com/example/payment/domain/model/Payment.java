@@ -60,7 +60,23 @@ public class Payment {
     void preUpdate() {
         this.updatedAt = LocalDateTime.now();
     }
+    public void refund(BigDecimal refundAmount) {
+        // 1. Check trạng thái
+        if (this.status != Status.SUCCESS) {
+            throw new IllegalStateException(
+                    "Cannot refund payment with status: " + this.status
+            );
+        }
 
+        // 2. Validate số tiền
+        if (refundAmount.compareTo(this.amount) > 0) {
+            throw new IllegalArgumentException(
+                    "Refund amount cannot exceed payment amount"
+            );
+        }
+        // 3. Cập nhật trạng thái
+        this.status = Status.REFUNDED;
+    }
     public enum Status {
         PENDING,
         SUCCESS,

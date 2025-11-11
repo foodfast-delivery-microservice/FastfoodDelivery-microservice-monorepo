@@ -40,6 +40,8 @@ public class OutboxEventRelay {
                     routingKey = RabbitMQConfig.PAYMENT_SUCCESS_ROUTING_KEY;
                 } else if ("PAYMENT_FAILED".equals(event.getType())) {
                     routingKey = RabbitMQConfig.PAYMENT_FAILED_ROUTING_KEY;
+                } else if ("PAYMENT_REFUND".equals(event.getType())) {
+                    routingKey = RabbitMQConfig.PAYMENT_REFUNDED_ROUTING_KEY;
                 } else {
                     log.warn("Unknown event type: {}", event.getType());
                     continue;
