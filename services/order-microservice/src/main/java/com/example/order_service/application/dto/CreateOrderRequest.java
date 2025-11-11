@@ -1,9 +1,12 @@
 package com.example.order_service.application.dto;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -18,10 +21,9 @@ import java.util.List;
 @AllArgsConstructor
 public class CreateOrderRequest {
 
-    @NotNull(message = "User ID is required")
     private Long userId;
 
-    @NotEmpty(message = "Order items cannot be empty")
+    @NotEmpty(message = "Danh sách sản phẩm không được để trống")
     @Valid
     private List<OrderItemRequest> orderItems;
 
@@ -33,7 +35,7 @@ public class CreateOrderRequest {
 
     private String note;
 
-    @NotNull(message = "Delivery address is required")
+    @NotNull(message = "Địa chỉ giao hàng là bắt buộc")
     @Valid
     private DeliveryAddressRequest deliveryAddress;
 
@@ -43,19 +45,15 @@ public class CreateOrderRequest {
     @AllArgsConstructor
     public static class OrderItemRequest {
 
-        @NotNull(message = "Product ID is required")
+        @NotNull(message = "Mã sản phẩm là bắt buộc")
         private Long productId;
 
-        @NotNull(message = "Product name is required")
-        private String productName;
-
-        @NotNull(message = "Unit price is required")
-        @Positive(message = "Unit price must be positive")
-        private BigDecimal unitPrice;
-
-        @NotNull(message = "Quantity is required")
-        @Positive(message = "Quantity must be positive")
+        @NotNull(message = "Số lượng là bắt buộc")
+        @Positive(message = "Số lượng phải lớn hơn 0")
         private Integer quantity;
+        
+        // Note: productName and unitPrice will be fetched from Product Service
+        // based on productId
     }
 
     @Data
@@ -64,22 +62,34 @@ public class CreateOrderRequest {
     @AllArgsConstructor
     public static class DeliveryAddressRequest {
 
-        @NotNull(message = "Receiver name is required")
+        @NotBlank(message = "Tên người nhận không được để trống")
+        @Size(min = 2, max = 100, message = "Tên người nhận phải có từ 2 đến 100 ký tự")
+        @Pattern(regexp = "^[\\p{L}\\p{N}\\s]+$", message = "Tên người nhận chỉ được chứa chữ cái, số và khoảng trắng")
         private String receiverName;
 
-        @NotNull(message = "Receiver phone is required")
+        @NotBlank(message = "Số điện thoại không được để trống")
+        @Size(max = 20, message = "Số điện thoại tối đa 20 ký tự")
+        @Pattern(regexp = "^0[35789][0-9]{8}$", message = "Số điện thoại không hợp lệ. Phải có 10 số, bắt đầu bằng 0")
         private String receiverPhone;
 
-        @NotNull(message = "Address line 1 is required")
+        @NotBlank(message = "Địa chỉ chi tiết không được để trống")
+        @Size(min = 5, max = 255, message = "Địa chỉ chi tiết phải có từ 5 đến 255 ký tự")
         private String addressLine1;
 
-        @NotNull(message = "Ward is required")
+        @NotBlank(message = "Phường/Xã không được để trống")
+        @Size(min = 2, max = 100, message = "Phường/Xã phải có từ 2 đến 100 ký tự")
         private String ward;
 
-        @NotNull(message = "District is required")
+        @NotBlank(message = "Quận/Huyện không được để trống")
+        @Size(min = 2, max = 100, message = "Quận/Huyện phải có từ 2 đến 100 ký tự")
         private String district;
 
-        @NotNull(message = "City is required")
+        @NotBlank(message = "Thành phố/Tỉnh không được để trống")
+        @Size(min = 2, max = 100, message = "Thành phố/Tỉnh phải có từ 2 đến 100 ký tự")
         private String city;
+
+        // Optional: Latitude and Longitude for GPS coordinates
+        private BigDecimal lat;
+        private BigDecimal lng;
     }
 }

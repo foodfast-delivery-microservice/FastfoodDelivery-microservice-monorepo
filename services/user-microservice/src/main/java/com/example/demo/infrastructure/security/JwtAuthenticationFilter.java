@@ -36,15 +36,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                     FilterChain filterChain) throws ServletException, IOException {
 
         String authHeader = request.getHeader("Authorization");
+
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
         }
 
         String token = authHeader.substring(7);
+
         try {
             byte[] keyBytes = Base64.from(jwtKey).decode();
             SecretKey secretKey = new SecretKeySpec(keyBytes, 0, keyBytes.length, MacAlgorithm.HS512.getName());
+
             NimbusJwtDecoder decoder = NimbusJwtDecoder.withSecretKey(secretKey)
                     .macAlgorithm(MacAlgorithm.HS512)
                     .build();
@@ -52,13 +55,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             Jwt jwt = decoder.decode(token);
 
             String username = jwt.getSubject();
+
             if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                 UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+
                 UsernamePasswordAuthenticationToken authToken =
                         new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+
                 authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+
                 SecurityContextHolder.getContext().setAuthentication(authToken);
             }
+
         } catch (JwtException e) {
             // Nếu token sai hoặc hết hạn thì bỏ qua
             System.out.println("Invalid JWT: " + e.getMessage());
@@ -67,3 +75,4 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 }
+

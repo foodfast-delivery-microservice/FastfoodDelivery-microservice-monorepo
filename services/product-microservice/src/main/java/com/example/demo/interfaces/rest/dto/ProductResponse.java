@@ -4,7 +4,6 @@ import com.example.demo.domain.model.Product;
 import lombok.*;
 
 import java.math.BigDecimal;
-import java.util.UUID;
 
 @AllArgsConstructor
 @NoArgsConstructor
@@ -22,6 +21,7 @@ public class ProductResponse {
 
     public static ProductResponse fromEntity(Product product) {
         ProductResponse productResponse = new ProductResponse();
+        productResponse.setId(product.getId());
         productResponse.setName(product.getName());
         productResponse.setDescription(product.getDescription());
         productResponse.setPrice(product.getPrice());

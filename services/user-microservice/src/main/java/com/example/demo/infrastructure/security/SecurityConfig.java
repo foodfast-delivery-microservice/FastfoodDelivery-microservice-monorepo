@@ -15,6 +15,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
 @EnableWebSecurity
@@ -22,6 +23,7 @@ import org.springframework.security.web.SecurityFilterChain;
 public class SecurityConfig {
     private final AuthenticationConfiguration authenticationConfiguration;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+
     @Bean
     public AuthenticationManager authenticationManager() throws Exception {
         return authenticationConfiguration.getAuthenticationManager();
@@ -37,7 +39,10 @@ public class SecurityConfig {
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
-
+                        // Validation endpoint cho phép USER role (cho Order Service)
+                        // Pattern: /api/v1/users/{id}/validate - chỉ match 1 level path variable
+                        .requestMatchers(HttpMethod.GET,"/api/v1/users/*/validate").hasAnyRole("USER", "ADMIN")
+                        // Các endpoint khác yêu cầu ADMIN
                         .requestMatchers(HttpMethod.POST,"/api/v1/users/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET,"/api/v1/users/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PATCH,"/api/v1/users/**").hasRole("ADMIN")
@@ -47,9 +52,9 @@ public class SecurityConfig {
                 )
 
                 .sessionManagement(session ->
-                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .addFilterBefore(jwtAuthenticationFilter, org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class)
-        ;
+                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                )
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
