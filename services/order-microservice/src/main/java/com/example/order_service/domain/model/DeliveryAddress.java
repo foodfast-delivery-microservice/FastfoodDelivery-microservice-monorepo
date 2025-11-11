@@ -32,6 +32,12 @@ public class DeliveryAddress {
     @Column(name = "city", nullable = false, length = 100)
     private String city;
 
+    @Column(name = "lat", precision = 10, scale = 7)
+    private java.math.BigDecimal lat;
+
+    @Column(name = "lng", precision = 10, scale = 7)
+    private java.math.BigDecimal lng;
+
     public String getFullAddress() {
         return String.format("%s, %s, %s, %s", addressLine1, ward, district, city);
     }

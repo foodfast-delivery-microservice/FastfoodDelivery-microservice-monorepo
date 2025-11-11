@@ -39,7 +39,10 @@ public class SecurityConfig {
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
-
+                        // Validation endpoint cho phép USER role (cho Order Service)
+                        // Pattern: /api/v1/users/{id}/validate - chỉ match 1 level path variable
+                        .requestMatchers(HttpMethod.GET,"/api/v1/users/*/validate").hasAnyRole("USER", "ADMIN")
+                        // Các endpoint khác yêu cầu ADMIN
                         .requestMatchers(HttpMethod.POST,"/api/v1/users/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET,"/api/v1/users/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PATCH,"/api/v1/users/**").hasRole("ADMIN")

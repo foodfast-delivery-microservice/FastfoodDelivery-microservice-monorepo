@@ -1,11 +1,8 @@
 package com.example.demo.infrastructure.security;
 
 import com.example.demo.domain.model.User;
-import com.nimbusds.jose.jwk.source.ImmutableSecret;
-import com.nimbusds.jose.util.Base64;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Bean;
 import org.springframework.security.oauth2.jwt.JwsHeader;
 import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
 import org.springframework.stereotype.Service;
@@ -28,6 +25,7 @@ public class SecurityUtil {
     private long jwtRefreshExpiration;
 
     public static final String ROLE_KEY = "role";
+    public static final String USER_ID_KEY = "userId";
     public static final String REFRESH_TOKEN = "refresh_token";
 
     // Hash Algorithm
@@ -42,6 +40,7 @@ public class SecurityUtil {
                 .expiresAt(validity)
                 .subject(user.getUsername())
                 .claim(ROLE_KEY, user.getRole().name())
+                .claim(USER_ID_KEY, user.getId()) // Thêm userId vào JWT token claims
                 .build();
         JwsHeader jwsHeader = JwsHeader.with(JWT_ALGORITHM).build();
         return jwtEncoder.encode(JwtEncoderParameters.from(jwsHeader, claims)).getTokenValue();

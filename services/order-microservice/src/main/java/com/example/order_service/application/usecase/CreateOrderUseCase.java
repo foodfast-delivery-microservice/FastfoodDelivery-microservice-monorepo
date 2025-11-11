@@ -4,7 +4,9 @@ import com.example.order_service.application.dto.CreateOrderRequest;
 import com.example.order_service.application.dto.OrderResponse;
 import com.example.order_service.application.dto.ProductValidationRequest;
 import com.example.order_service.application.dto.ProductValidationResponse;
+import com.example.order_service.application.dto.UserValidationResponse;
 import com.example.order_service.domain.repository.ProductServicePort;
+import com.example.order_service.domain.repository.UserServicePort;
 import com.example.order_service.infrastructure.event.OrderCreatedEventPayload;
 import com.example.order_service.domain.exception.OrderValidationException;
 import com.example.order_service.domain.model.*;
@@ -15,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.beans.factory.annotation.Value;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -39,6 +42,9 @@ public class CreateOrderUseCase {
     private final OutboxEventRepository outboxEventRepository;
     private final ObjectMapper objectMapper;
     private final ProductServicePort productServicePort;// Port để gọi sang Product Service
+    private final UserServicePort userServicePort;// Port để gọi sang User Service
+    @Value("${app.user.validation.enabled:true}")
+    private boolean userValidationEnabled;
 
     /**
      * MAIN METHOD - TẠO ORDER
@@ -46,10 +52,11 @@ public class CreateOrderUseCase {
      */
 
     @Transactional
-    public OrderResponse execute(CreateOrderRequest request, String idempotencyKey) {
+    public OrderResponse execute(CreateOrderRequest request, String idempotencyKey, String jti) {
         log.info("=== CreateOrderUseCase.execute() called ===");
         log.info("Creating order for user: {}", request.getUserId());
         log.info("🔑 Idempotency-Key received in UseCase: '{}'", idempotencyKey);
+        log.info("🔐 JWT jti (audit): {}", jti);
         if (idempotencyKey != null && !idempotencyKey.trim().isEmpty()) {
             log.info("✅ Idempotency-Key provided: '{}' - System will check for duplicate requests", idempotencyKey);
         } else {
@@ -101,6 +108,87 @@ public class CreateOrderUseCase {
         if (request.getDeliveryAddress() == null) {
             throw new OrderValidationException("Dia chi giao hang la bat buoc");
         }
+
+        // Validate delivery address format and business rules
+        validateDeliveryAddress(request.getDeliveryAddress());
+
+        // ===== PHASE 2: USER SERVICE VALIDATION (sau khi validate dữ liệu đầu vào) =====
+        if (userValidationEnabled) {
+            validateUser(request.getUserId());
+        }
+    }
+
+    /**
+     * Validate user exists and is active
+     * Calls User Service to check if user exists and is active
+     */
+    private void validateUser(Long userId) {
+        log.debug("Validating user: {}", userId);
+        
+        try {
+            UserValidationResponse user = userServicePort.validateUser(userId);
+            
+            if (!user.exists()) {
+                log.error("User {} does not exist", userId);
+                throw new OrderValidationException("User không tồn tại: " + userId);
+            }
+            
+            if (!user.active()) {
+                log.error("User {} is not active", userId);
+                throw new OrderValidationException("User không active: " + userId);
+            }
+            
+            log.debug("✓ User {} validated successfully (exists: {}, active: {})", 
+                    userId, user.exists(), user.active());
+        } catch (OrderValidationException e) {
+            // Re-throw OrderValidationException
+            throw e;
+        } catch (Exception e) {
+            log.error("User Service call failed for userId: {}", userId, e);
+            throw new OrderValidationException("User Service không phản hồi: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Validate delivery address business rules
+     * Note: Basic validation (not null, not blank, size, pattern) is handled by Bean Validation annotations.
+     * This method only validates business rules that cannot be expressed via annotations:
+     * - Receiver name must contain at least one letter (business rule)
+     * - Lat/Lng validation (both must be provided together, valid ranges)
+     */
+    private void validateDeliveryAddress(CreateOrderRequest.DeliveryAddressRequest address) {
+        if (address == null) {
+            throw new OrderValidationException("Dia chi giao hang la bat buoc");
+        }
+
+        // ===== BUSINESS RULE: Receiver name must contain at least one letter =====
+        // Bean Validation @Pattern only checks format, not business rule
+        String receiverName = address.getReceiverName() != null ? address.getReceiverName().trim() : "";
+        if (!receiverName.isEmpty() && !receiverName.matches(".*[\\p{L}].*")) {
+            throw new OrderValidationException("Tên người nhận phải chứa ít nhất một chữ cái");
+        }
+
+        // ===== BUSINESS RULE: Validate Lat/Lng (Optional) =====
+        if (address.getLat() != null || address.getLng() != null) {
+            // If either lat or lng is provided, both must be provided
+            if (address.getLat() == null || address.getLng() == null) {
+                throw new OrderValidationException("Tọa độ không hợp lệ: phải cung cấp cả lat và lng");
+            }
+            
+            // Validate lat range: -90 to 90
+            BigDecimal lat = address.getLat();
+            if (lat.compareTo(new BigDecimal("-90")) < 0 || lat.compareTo(new BigDecimal("90")) > 0) {
+                throw new OrderValidationException("Tọa độ không hợp lệ: lat phải trong khoảng -90 đến 90");
+            }
+            
+            // Validate lng range: -180 to 180
+            BigDecimal lng = address.getLng();
+            if (lng.compareTo(new BigDecimal("-180")) < 0 || lng.compareTo(new BigDecimal("180")) > 0) {
+                throw new OrderValidationException("Tọa độ không hợp lệ: lng phải trong khoảng -180 đến 180");
+            }
+        }
+
+        log.debug("✓ Delivery address business rules validated successfully");
     }
 
     /**
@@ -137,13 +225,11 @@ public class CreateOrderUseCase {
     private List<ProductValidationResponse> callProductServiceForValidation(CreateOrderRequest request) {
         log.debug("Calling Product Service to validate {} items...", request.getOrderItems().size());
 
-        //  THÊM LOGGING ĐỂ DEBUG
+        // Logging để debug
         request.getOrderItems().forEach(item -> {
-            log.debug("Item: productId={}, productName={}, quantity={}, unitPrice={}",
+            log.debug("Item: productId={}, quantity={}",
                     item.getProductId(),
-                    item.getProductName(),
-                    item.getQuantity(),
-                    item.getUnitPrice());
+                    item.getQuantity());
         });
 
         // Chuẩn bị danh sách cần validate (productId + quantity)
@@ -217,28 +303,37 @@ public class CreateOrderUseCase {
                 .createdAt(LocalDateTime.now())
                 .build();
 
-        // Thêm OrderItems (DÙNG GIÁ VÀ TÊN TỪ PRODUCT SERVICE)
+        // Thêm OrderItems (LẤY TẤT CẢ THÔNG TIN TỪ PRODUCT SERVICE)
         for (CreateOrderRequest.OrderItemRequest itemRequest : request.getOrderItems()) {
             ProductValidationResponse validatedProduct = productMap.get(itemRequest.getProductId());
 
             if (validatedProduct == null) {
-                throw new OrderValidationException("Sản phẩm " + itemRequest.getProductId() + " không tìm thấy");
+                throw new OrderValidationException("Sản phẩm " + itemRequest.getProductId() + " không tìm thấy trong Product Service");
             }
-            if (!validatedProduct.productName().equalsIgnoreCase(itemRequest.getProductName())) {
-                throw new OrderValidationException("Tên sản phẩm không khớp với dữ liệu hệ thống: "
-                        + validatedProduct.productName());
+            
+            if (!validatedProduct.success()) {
+                throw new OrderValidationException("Sản phẩm " + itemRequest.getProductId() + " không hợp lệ hoặc hết hàng");
             }
+            
+            // Lấy tất cả thông tin từ Product Service
             OrderItem orderItem = OrderItem.builder()
                     .productId(itemRequest.getProductId())
                     .productName(validatedProduct.productName()) // Lấy từ Product Service
-                    .unitPrice(validatedProduct.unitPrice())     // Lấy từ Product Service (QUAN TRỌNG!)
+                    .unitPrice(validatedProduct.unitPrice())     // Lấy từ Product Service
                     .quantity(itemRequest.getQuantity())
                     .build();
 
-            // THÊM: Tính lineTotal ngay sau khi build
+            // Tính lineTotal ngay sau khi build
             orderItem.setLineTotal(
                     validatedProduct.unitPrice().multiply(BigDecimal.valueOf(itemRequest.getQuantity()))
             );
+
+            log.debug("Created order item: productId={}, productName={}, unitPrice={}, quantity={}, lineTotal={}",
+                    orderItem.getProductId(),
+                    orderItem.getProductName(),
+                    orderItem.getUnitPrice(),
+                    orderItem.getQuantity(),
+                    orderItem.getLineTotal());
 
             order.addOrderItem(orderItem);
         }
@@ -312,6 +407,8 @@ public class CreateOrderUseCase {
                 .ward(request.getWard())
                 .district(request.getDistrict())
                 .city(request.getCity())
+                .lat(request.getLat())
+                .lng(request.getLng())
                 .build();
     }
 
@@ -368,6 +465,8 @@ public class CreateOrderUseCase {
                 .ward(deliveryAddress.getWard())
                 .district(deliveryAddress.getDistrict())
                 .city(deliveryAddress.getCity())
+                .lat(deliveryAddress.getLat())
+                .lng(deliveryAddress.getLng())
                 .fullAddress(deliveryAddress.getFullAddress())
                 .build();
     }

@@ -1,5 +1,6 @@
 package com.example.order_service.interfaces.rest;
 
+import com.example.order_service.domain.exception.InvalidJwtTokenException;
 import com.example.order_service.domain.exception.InvalidOrderStatusException;
 import com.example.order_service.domain.exception.OrderNotFoundException;
 import com.example.order_service.domain.exception.OrderValidationException;
@@ -43,6 +44,19 @@ public class GlobalExceptionHandler {
                 .path(getCurrentPath())
                 .build();
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+    }
+
+    @ExceptionHandler(InvalidJwtTokenException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidJwtTokenException(InvalidJwtTokenException ex) {
+        log.error("Invalid JWT token error: {}", ex.getMessage());
+        ErrorResponse error = ErrorResponse.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.UNAUTHORIZED.value())
+                .error("Invalid JWT Token")
+                .message(ex.getMessage())
+                .path(getCurrentPath())
+                .build();
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
     }
 
     @ExceptionHandler(InvalidOrderStatusException.class)

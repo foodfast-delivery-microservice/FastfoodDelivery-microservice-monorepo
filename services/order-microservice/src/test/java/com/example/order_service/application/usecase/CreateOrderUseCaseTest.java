@@ -2,7 +2,6 @@ package com.example.order_service.application.usecase;
 
 import com.example.order_service.application.dto.CreateOrderRequest;
 import com.example.order_service.application.dto.OrderResponse;
-import com.example.order_service.application.dto.ProductValidationRequest;
 import com.example.order_service.application.dto.ProductValidationResponse;
 import com.example.order_service.domain.exception.OrderValidationException;
 import com.example.order_service.domain.model.*;
@@ -65,8 +64,6 @@ class CreateOrderUseCaseTest {
                 .orderItems(List.of(
                         CreateOrderRequest.OrderItemRequest.builder()
                                 .productId(1L)
-                                .productName("iPhone 15") // Client gửi lên (KHÔNG TIN)
-                                .unitPrice(BigDecimal.valueOf(25000000)) // Client gửi lên (KHÔNG TIN)
                                 .quantity(2)
                                 .build()
                 ))
@@ -109,7 +106,7 @@ class CreateOrderUseCaseTest {
         when(objectMapper.writeValueAsString(any())).thenReturn("{\"orderId\":1}");
 
         // When: Execute
-        OrderResponse response = createOrderUseCase.execute(validRequest, "IDEM-KEY-123");
+        OrderResponse response = createOrderUseCase.execute(validRequest, "IDEM-KEY-123", "test-jti-123");
 
         // Then: Verify
         assertThat(response).isNotNull();
@@ -159,7 +156,7 @@ class CreateOrderUseCaseTest {
         when(orderRepository.findById(orderId)).thenReturn(Optional.of(existingOrder));
 
         // When: Execute
-        OrderResponse response = createOrderUseCase.execute(validRequest, idempotencyKey);
+        OrderResponse response = createOrderUseCase.execute(validRequest, idempotencyKey, "test-jti-123");
 
         // Then: Verify
         assertThat(response).isNotNull();
@@ -183,7 +180,7 @@ class CreateOrderUseCaseTest {
         validRequest.setUserId(null);
 
         // When & Then
-        assertThatThrownBy(() -> createOrderUseCase.execute(validRequest, null))
+        assertThatThrownBy(() -> createOrderUseCase.execute(validRequest, null, "test-jti-123"))
                 .isInstanceOf(OrderValidationException.class)
                 .hasMessageContaining("User ID"); // Chỉ check chứa "User ID", không care tiếng Việt hay Anh
 
@@ -198,7 +195,7 @@ class CreateOrderUseCaseTest {
         validRequest.setOrderItems(List.of());
 
         // When & Then
-        assertThatThrownBy(() -> createOrderUseCase.execute(validRequest, null))
+        assertThatThrownBy(() -> createOrderUseCase.execute(validRequest, null, "test-jti-123"))
                 .isInstanceOf(OrderValidationException.class)
                 .hasMessageContaining("Order"); // Chỉ check chứa "Order"
     }
@@ -210,9 +207,183 @@ class CreateOrderUseCaseTest {
         validRequest.setDeliveryAddress(null);
 
         // When & Then
-        assertThatThrownBy(() -> createOrderUseCase.execute(validRequest, null))
+        assertThatThrownBy(() -> createOrderUseCase.execute(validRequest, null, "test-jti-123"))
                 .isInstanceOf(OrderValidationException.class)
                 .hasMessageContaining("address"); // Chỉ check chứa "address"
+    }
+
+    // =====================================================================
+    // TEST CASES: DELIVERY ADDRESS VALIDATION
+    // =====================================================================
+
+    @Test
+    @DisplayName("✅ Should accept valid delivery address")
+    void testCreateOrder_ValidDeliveryAddress() throws Exception {
+        // Given: Valid address
+        CreateOrderRequest.DeliveryAddressRequest validAddress = CreateOrderRequest.DeliveryAddressRequest.builder()
+                .receiverName("Nguyen Van A")
+                .receiverPhone("0901234567")
+                .addressLine1("123 Le Loi Street")
+                .ward("Ward 1")
+                .district("District 1")
+                .city("Ho Chi Minh")
+                .build();
+        validRequest.setDeliveryAddress(validAddress);
+
+        when(idempotencyKeyRepository.existsByUserIdAndIdemKey(anyLong(), anyString())).thenReturn(false);
+        when(productServicePort.validateProducts(any())).thenReturn(validatedProducts);
+        Order savedOrder = createMockOrder();
+        when(orderRepository.save(any(Order.class))).thenReturn(savedOrder);
+        when(objectMapper.writeValueAsString(any())).thenReturn("{\"orderId\":1}");
+
+        // When & Then: Should not throw exception
+        assertThatCode(() -> createOrderUseCase.execute(validRequest, "IDEM-KEY-123", "test-jti-123"))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("❌ Should throw exception when receiver name is empty")
+    void testCreateOrder_EmptyReceiverName() {
+        // Given
+        validRequest.getDeliveryAddress().setReceiverName("");
+
+        // When & Then
+        assertThatThrownBy(() -> createOrderUseCase.execute(validRequest, null, "test-jti-123"))
+                .isInstanceOf(OrderValidationException.class)
+                .hasMessageContaining("Tên người nhận");
+    }
+
+    @Test
+    @DisplayName("❌ Should throw exception when receiver name is too short")
+    void testCreateOrder_ReceiverNameTooShort() {
+        // Given
+        validRequest.getDeliveryAddress().setReceiverName("A");
+
+        // When & Then
+        assertThatThrownBy(() -> createOrderUseCase.execute(validRequest, null, "test-jti-123"))
+                .isInstanceOf(OrderValidationException.class)
+                .hasMessageContaining("Tên người nhận");
+    }
+
+    @Test
+    @DisplayName("❌ Should throw exception when receiver name contains only numbers")
+    void testCreateOrder_ReceiverNameOnlyNumbers() {
+        // Given
+        validRequest.getDeliveryAddress().setReceiverName("123456");
+
+        // When & Then
+        assertThatThrownBy(() -> createOrderUseCase.execute(validRequest, null, "test-jti-123"))
+                .isInstanceOf(OrderValidationException.class)
+                .hasMessageContaining("Tên người nhận phải chứa ít nhất một chữ cái");
+    }
+
+    @Test
+    @DisplayName("❌ Should throw exception when phone number is invalid format")
+    void testCreateOrder_InvalidPhoneFormat() {
+        // Given: Phone without leading 0
+        validRequest.getDeliveryAddress().setReceiverPhone("901234567");
+
+        // When & Then
+        assertThatThrownBy(() -> createOrderUseCase.execute(validRequest, null, "test-jti-123"))
+                .isInstanceOf(OrderValidationException.class)
+                .hasMessageContaining("Số điện thoại");
+    }
+
+    @Test
+    @DisplayName("❌ Should throw exception when phone number has wrong length")
+    void testCreateOrder_InvalidPhoneLength() {
+        // Given: Phone with 9 digits
+        validRequest.getDeliveryAddress().setReceiverPhone("09012345");
+
+        // When & Then
+        assertThatThrownBy(() -> createOrderUseCase.execute(validRequest, null, "test-jti-123"))
+                .isInstanceOf(OrderValidationException.class)
+                .hasMessageContaining("Số điện thoại");
+    }
+
+    @Test
+    @DisplayName("❌ Should throw exception when phone number has 11 digits")
+    void testCreateOrder_PhoneTooLong() {
+        // Given: Phone with 11 digits
+        validRequest.getDeliveryAddress().setReceiverPhone("09012345678");
+
+        // When & Then
+        assertThatThrownBy(() -> createOrderUseCase.execute(validRequest, null, "test-jti-123"))
+                .isInstanceOf(OrderValidationException.class)
+                .hasMessageContaining("Số điện thoại");
+    }
+
+    @Test
+    @DisplayName("❌ Should throw exception when address line 1 is too short")
+    void testCreateOrder_AddressLine1TooShort() {
+        // Given
+        validRequest.getDeliveryAddress().setAddressLine1("123");
+
+        // When & Then
+        assertThatThrownBy(() -> createOrderUseCase.execute(validRequest, null, "test-jti-123"))
+                .isInstanceOf(OrderValidationException.class)
+                .hasMessageContaining("Địa chỉ chi tiết");
+    }
+
+    @Test
+    @DisplayName("❌ Should throw exception when ward is too short")
+    void testCreateOrder_WardTooShort() {
+        // Given
+        validRequest.getDeliveryAddress().setWard("W");
+
+        // When & Then
+        assertThatThrownBy(() -> createOrderUseCase.execute(validRequest, null, "test-jti-123"))
+                .isInstanceOf(OrderValidationException.class)
+                .hasMessageContaining("Phường/Xã");
+    }
+
+    @Test
+    @DisplayName("❌ Should throw exception when district is too short")
+    void testCreateOrder_DistrictTooShort() {
+        // Given
+        validRequest.getDeliveryAddress().setDistrict("D");
+
+        // When & Then
+        assertThatThrownBy(() -> createOrderUseCase.execute(validRequest, null, "test-jti-123"))
+                .isInstanceOf(OrderValidationException.class)
+                .hasMessageContaining("Quận/Huyện");
+    }
+
+    @Test
+    @DisplayName("❌ Should throw exception when city is too short")
+    void testCreateOrder_CityTooShort() {
+        // Given
+        validRequest.getDeliveryAddress().setCity("H");
+
+        // When & Then
+        assertThatThrownBy(() -> createOrderUseCase.execute(validRequest, null, "test-jti-123"))
+                .isInstanceOf(OrderValidationException.class)
+                .hasMessageContaining("Thành phố/Tỉnh");
+    }
+
+    @Test
+    @DisplayName("✅ Should accept address with whitespace (should trim)")
+    void testCreateOrder_AddressWithWhitespace() throws Exception {
+        // Given: Address with leading/trailing whitespace
+        CreateOrderRequest.DeliveryAddressRequest addressWithWhitespace = CreateOrderRequest.DeliveryAddressRequest.builder()
+                .receiverName("  Nguyen Van A  ")
+                .receiverPhone("  0901234567  ")
+                .addressLine1("  123 Le Loi Street  ")
+                .ward("  Ward 1  ")
+                .district("  District 1  ")
+                .city("  Ho Chi Minh  ")
+                .build();
+        validRequest.setDeliveryAddress(addressWithWhitespace);
+
+        when(idempotencyKeyRepository.existsByUserIdAndIdemKey(anyLong(), anyString())).thenReturn(false);
+        when(productServicePort.validateProducts(any())).thenReturn(validatedProducts);
+        Order savedOrder = createMockOrder();
+        when(orderRepository.save(any(Order.class))).thenReturn(savedOrder);
+        when(objectMapper.writeValueAsString(any())).thenReturn("{\"orderId\":1}");
+
+        // When & Then: Should not throw exception (whitespace should be trimmed)
+        assertThatCode(() -> createOrderUseCase.execute(validRequest, "IDEM-KEY-123", "test-jti-123"))
+                .doesNotThrowAnyException();
     }
 
     // =====================================================================
@@ -228,7 +399,7 @@ class CreateOrderUseCaseTest {
                 .thenThrow(new RuntimeException("Connection timeout"));
 
         // When & Then
-        assertThatThrownBy(() -> createOrderUseCase.execute(validRequest, "IDEM-KEY-123"))
+        assertThatThrownBy(() -> createOrderUseCase.execute(validRequest, "IDEM-KEY-123", "test-jti-123"))
                 .isInstanceOf(OrderValidationException.class)
                 .hasMessageContaining("Product Service"); // Chỉ check chứa "Product Service"
 
@@ -253,7 +424,7 @@ class CreateOrderUseCaseTest {
         when(productServicePort.validateProducts(any())).thenReturn(outOfStockProducts);
 
         // When & Then
-        assertThatThrownBy(() -> createOrderUseCase.execute(validRequest, "IDEM-KEY-123"))
+        assertThatThrownBy(() -> createOrderUseCase.execute(validRequest, "IDEM-KEY-123", "test-jti-123"))
                 .isInstanceOf(OrderValidationException.class)
                 .hasMessageContaining("PROD-001"); // Chỉ check chứa product ID
 
@@ -276,7 +447,7 @@ class CreateOrderUseCaseTest {
         when(objectMapper.writeValueAsString(any())).thenReturn("{\"orderId\":1}");
 
         // When: Execute KHÔNG CÓ idempotency key
-        OrderResponse response = createOrderUseCase.execute(validRequest, null);
+        OrderResponse response = createOrderUseCase.execute(validRequest, null, "test-jti-123");
 
         // Then
         assertThat(response).isNotNull();
@@ -305,7 +476,7 @@ class CreateOrderUseCaseTest {
         when(objectMapper.writeValueAsString(any())).thenReturn("{\"orderId\":1}");
 
         // When
-        OrderResponse response = createOrderUseCase.execute(validRequest, "IDEM-KEY-123");
+        OrderResponse response = createOrderUseCase.execute(validRequest, "IDEM-KEY-123", "test-jti-123");
 
         // Then
         assertThat(response.getSubtotal()).isEqualByComparingTo(BigDecimal.valueOf(60000000));
