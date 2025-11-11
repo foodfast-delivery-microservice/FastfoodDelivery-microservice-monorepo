@@ -40,6 +40,8 @@ public class OrderResponse {
         private String ward;
         private String district;
         private String city;
+        private BigDecimal lat;
+        private BigDecimal lng;
         private String fullAddress;
     }
 

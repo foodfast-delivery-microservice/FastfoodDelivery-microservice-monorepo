@@ -12,7 +12,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class UpdateOrderStatusRequest {
 
-    @NotBlank(message = "Status is required")
+    @NotBlank(message = "Trạng thái là bắt buộc")
     private String status;
 
     private String note;

@@ -47,4 +47,38 @@ public class WebClientConfig {
                 .clientConnector(new ReactorClientHttpConnector(httpClient))
                 .build();
     }
+
+    @Bean
+    public WebClient userWebClient(WebClient.Builder builder) {
+        // Cấu hình HttpClient với timeout
+        HttpClient httpClient = HttpClient.create()
+                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 500) // Connect timeout: 500ms
+                .responseTimeout(Duration.ofSeconds(1)) // Response timeout: 1s
+                .doOnConnected(conn ->
+                        conn.addHandlerLast(new ReadTimeoutHandler(1, TimeUnit.SECONDS))
+                                .addHandlerLast(new WriteTimeoutHandler(1, TimeUnit.SECONDS))
+                );
+
+        return builder
+                .baseUrl("http://user-service/api/v1/users")
+                .clientConnector(new ReactorClientHttpConnector(httpClient))
+                .build();
+    }
+
+    @Bean
+    public WebClient paymentWebClient(WebClient.Builder builder) {
+        // Cấu hình HttpClient với timeout
+        HttpClient httpClient = HttpClient.create()
+                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 500) // Connect timeout: 500ms
+                .responseTimeout(Duration.ofSeconds(1)) // Response timeout: 1s
+                .doOnConnected(conn ->
+                        conn.addHandlerLast(new ReadTimeoutHandler(1, TimeUnit.SECONDS))
+                                .addHandlerLast(new WriteTimeoutHandler(1, TimeUnit.SECONDS))
+                );
+
+        return builder
+                .baseUrl("http://payment-service/api/v1/payments")
+                .clientConnector(new ReactorClientHttpConnector(httpClient))
+                .build();
+    }
 }

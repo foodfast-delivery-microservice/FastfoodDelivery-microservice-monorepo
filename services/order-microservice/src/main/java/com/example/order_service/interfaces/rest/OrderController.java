@@ -3,14 +3,19 @@ package com.example.order_service.interfaces.rest;
 import com.example.order_service.application.dto.CreateOrderRequest;
 import com.example.order_service.application.dto.OrderResponse;
 import com.example.order_service.application.usecase.CreateOrderUseCase;
+import com.example.order_service.domain.exception.InvalidJwtTokenException;
+import com.example.order_service.infrastructure.security.JwtTokenService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
+import org.springframework.web.server.ResponseStatusException;
 
 @RestController
 @RequestMapping("/api/v1/orders")
@@ -19,6 +24,7 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 public class OrderController {
 
     private final CreateOrderUseCase createOrderUseCase;
+    private final JwtTokenService jwtTokenService;
 
     /**
      * Tạo đơn hàng mới
@@ -26,11 +32,53 @@ public class OrderController {
      */
     @PostMapping
     public ResponseEntity<OrderResponse> createOrder(
+            @AuthenticationPrincipal Jwt jwt,
             @Valid @RequestBody CreateOrderRequest request,
             @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey) {
+        
+        // ===== PHASE 1: SECURITY - Extract userId from JWT token =====
+        Long userIdFromToken;
+        try {
+            // Validate token first
+            jwtTokenService.validateToken(jwt);
+            // Extract userId from token
+            userIdFromToken = jwtTokenService.extractUserId(jwt);
+            log.info("✓ Successfully extracted userId {} from JWT token", userIdFromToken);
+        } catch (InvalidJwtTokenException e) {
+            log.error("Failed to extract userId from JWT token: {}", e.getMessage());
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, e.getMessage());
+        } catch (Exception e) {
+            log.error("Unexpected error while processing JWT token: {}", e.getMessage(), e);
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, 
+                    "Token không hợp lệ: " + e.getMessage());
+        }
+
+        // Always override the userId in the request to prevent spoofing
+        request.setUserId(userIdFromToken);
+        log.debug("UserId {} set in request (from JWT token)", userIdFromToken);
+        
+        // 4. Validate scope/role
+        var scopes = jwt.getClaimAsStringList("scope");
+        String roleClaim = jwt.getClaimAsString("role");
+        boolean hasScope = scopes != null && scopes.contains("order:create");
+        boolean hasRolePermission = roleClaim != null &&
+                (roleClaim.equalsIgnoreCase("USER") ||
+                 roleClaim.equalsIgnoreCase("ADMIN") ||
+                 roleClaim.equalsIgnoreCase("ORDER_CREATE"));
+
+        if (!hasScope && !hasRolePermission) {
+            log.error("Missing required scope 'order:create'. Available scopes: {}, roleClaim: {}", scopes, roleClaim);
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Thiếu quyền order:create");
+        }
+        
+        // 5. Extract jti for audit logging
+        String jti = jwt.getId();
+        log.info("JWT jti (audit): {}", jti);
+        
 //  THÊM LOGGING ĐỂ DEBUG
         log.info("=== CREATE ORDER REQUEST ===");
-        log.info("UserId: {}", request.getUserId());
+        log.info("UserId from token: {}", request.getUserId());
         log.info("Discount: {}", request.getDiscount());
         log.info("ShippingFee: {}", request.getShippingFee());
         log.info("Note: {}", request.getNote());
@@ -38,10 +86,8 @@ public class OrderController {
 
         if (request.getOrderItems() != null) {
             request.getOrderItems().forEach(item ->
-                    log.info("OrderItem: productId={}, name={}, price={}, qty={}",
+                    log.info("OrderItem: productId={}, quantity={} (productName and unitPrice will be fetched from Product Service)",
                             item.getProductId(),
-                            item.getProductName(),
-                            item.getUnitPrice(),
                             item.getQuantity())
             );
         } else {
@@ -87,8 +133,19 @@ public class OrderController {
             }
         }
         log.info("=== END REQUEST ===");
-        log.info("Creating order for user: {}", request.getUserId());
-        OrderResponse response = createOrderUseCase.execute(request, idempotencyKey);
+        log.info("Creating order for user: {} (jti: {})", request.getUserId(), jti);
+        
+        // Execute use case to create order
+        OrderResponse response = createOrderUseCase.execute(request, idempotencyKey, jti);
+        
+        // Verify userId is correctly set in response
+        if (response.getUserId() == null || !response.getUserId().equals(userIdFromToken)) {
+            log.warn("⚠️ UserId mismatch: expected {}, got {}", userIdFromToken, response.getUserId());
+            // Override to ensure consistency
+            response.setUserId(userIdFromToken);
+        }
+        
+        log.info("✓ Order created successfully with userId: {}", response.getUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 

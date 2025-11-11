@@ -65,6 +65,17 @@ public class GlobalExceptionHandler {
         return  ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
     }
 
+    @ExceptionHandler(InvalidId.class)
+    public ResponseEntity<ApiResponse<Void>> handleInvalidIdException(InvalidId ex){
+        ApiResponse<Void> response = new ApiResponse<>(
+                HttpStatus.NOT_FOUND,
+                ex.getMessage(),
+                null,
+                "INVALID_ID"
+        );
+        return  ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+    }
+
     @ExceptionHandler
     public ResponseEntity<ApiResponse<Void>> handleInvalidCredentialException(InvalidCredentialException ex){
         ApiResponse<Void> response = new ApiResponse<>(

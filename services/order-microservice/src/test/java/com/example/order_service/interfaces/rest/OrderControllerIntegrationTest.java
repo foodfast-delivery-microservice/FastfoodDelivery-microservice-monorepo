@@ -42,14 +42,12 @@ class OrderControllerIntegrationTest {
                 .orderItems(List.of(
                         CreateOrderRequest.OrderItemRequest.builder()
                                 .productId(1L)
-                                .productName("Test Product")
-                                .unitPrice(new BigDecimal("100000"))
                                 .quantity(2)
                                 .build()
                 ))
                 .deliveryAddress(CreateOrderRequest.DeliveryAddressRequest.builder()
                         .receiverName("John Doe")
-                        .receiverPhone("0123456789")
+                        .receiverPhone("0901234567")
                         .addressLine1("123 Test Street")
                         .ward("Test Ward")
                         .district("Test District")
@@ -71,5 +69,165 @@ class OrderControllerIntegrationTest {
         mockMvc.perform(get("/api/orders/health"))
                 .andExpect(status().isOk())
                 .andExpect(content().string("Order Service is running"));
+    }
+
+    // =====================================================================
+    // INTEGRATION TESTS: DELIVERY ADDRESS VALIDATION
+    // =====================================================================
+
+    @Test
+    void testCreateOrder_InvalidPhoneFormat() throws Exception {
+        CreateOrderRequest request = CreateOrderRequest.builder()
+                .userId(1L)
+                .orderItems(List.of(
+                        CreateOrderRequest.OrderItemRequest.builder()
+                                .productId(1L)
+                                .quantity(2)
+                                .build()
+                ))
+                .deliveryAddress(CreateOrderRequest.DeliveryAddressRequest.builder()
+                        .receiverName("John Doe")
+                        .receiverPhone("123456789") // Invalid: missing leading 0
+                        .addressLine1("123 Test Street")
+                        .ward("Test Ward")
+                        .district("Test District")
+                        .city("Test City")
+                        .build())
+                .build();
+
+        mockMvc.perform(post("/api/orders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void testCreateOrder_InvalidPhoneLength() throws Exception {
+        CreateOrderRequest request = CreateOrderRequest.builder()
+                .userId(1L)
+                .orderItems(List.of(
+                        CreateOrderRequest.OrderItemRequest.builder()
+                                .productId(1L)
+                                .quantity(2)
+                                .build()
+                ))
+                .deliveryAddress(CreateOrderRequest.DeliveryAddressRequest.builder()
+                        .receiverName("John Doe")
+                        .receiverPhone("09012345") // Invalid: only 9 digits
+                        .addressLine1("123 Test Street")
+                        .ward("Test Ward")
+                        .district("Test District")
+                        .city("Test City")
+                        .build())
+                .build();
+
+        mockMvc.perform(post("/api/orders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void testCreateOrder_EmptyReceiverName() throws Exception {
+        CreateOrderRequest request = CreateOrderRequest.builder()
+                .userId(1L)
+                .orderItems(List.of(
+                        CreateOrderRequest.OrderItemRequest.builder()
+                                .productId(1L)
+                                .quantity(2)
+                                .build()
+                ))
+                .deliveryAddress(CreateOrderRequest.DeliveryAddressRequest.builder()
+                        .receiverName("") // Invalid: empty
+                        .receiverPhone("0901234567")
+                        .addressLine1("123 Test Street")
+                        .ward("Test Ward")
+                        .district("Test District")
+                        .city("Test City")
+                        .build())
+                .build();
+
+        mockMvc.perform(post("/api/orders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void testCreateOrder_ReceiverNameTooShort() throws Exception {
+        CreateOrderRequest request = CreateOrderRequest.builder()
+                .userId(1L)
+                .orderItems(List.of(
+                        CreateOrderRequest.OrderItemRequest.builder()
+                                .productId(1L)
+                                .quantity(2)
+                                .build()
+                ))
+                .deliveryAddress(CreateOrderRequest.DeliveryAddressRequest.builder()
+                        .receiverName("A") // Invalid: too short
+                        .receiverPhone("0901234567")
+                        .addressLine1("123 Test Street")
+                        .ward("Test Ward")
+                        .district("Test District")
+                        .city("Test City")
+                        .build())
+                .build();
+
+        mockMvc.perform(post("/api/orders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void testCreateOrder_AddressLine1TooShort() throws Exception {
+        CreateOrderRequest request = CreateOrderRequest.builder()
+                .userId(1L)
+                .orderItems(List.of(
+                        CreateOrderRequest.OrderItemRequest.builder()
+                                .productId(1L)
+                                .quantity(2)
+                                .build()
+                ))
+                .deliveryAddress(CreateOrderRequest.DeliveryAddressRequest.builder()
+                        .receiverName("John Doe")
+                        .receiverPhone("0901234567")
+                        .addressLine1("123") // Invalid: too short
+                        .ward("Test Ward")
+                        .district("Test District")
+                        .city("Test City")
+                        .build())
+                .build();
+
+        mockMvc.perform(post("/api/orders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void testCreateOrder_WardTooShort() throws Exception {
+        CreateOrderRequest request = CreateOrderRequest.builder()
+                .userId(1L)
+                .orderItems(List.of(
+                        CreateOrderRequest.OrderItemRequest.builder()
+                                .productId(1L)
+                                .quantity(2)
+                                .build()
+                ))
+                .deliveryAddress(CreateOrderRequest.DeliveryAddressRequest.builder()
+                        .receiverName("John Doe")
+                        .receiverPhone("0901234567")
+                        .addressLine1("123 Test Street")
+                        .ward("W") // Invalid: too short
+                        .district("Test District")
+                        .city("Test City")
+                        .build())
+                .build();
+
+        mockMvc.perform(post("/api/orders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
     }
 }

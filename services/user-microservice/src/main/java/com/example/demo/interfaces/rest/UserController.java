@@ -10,7 +10,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import com.example.demo.domain.model.User;
@@ -77,7 +76,6 @@ public class UserController {
     }
 
     @GetMapping("/{id}")
-
     public ResponseEntity<ApiResponse<CreateUserResponse>> getUserById(@PathVariable Long id){
         CreateUserResponse getUser = getUserByIdUseCase.execute(id);
 
@@ -88,6 +86,44 @@ public class UserController {
                 null
         );
         return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Validate user endpoint for Order Service
+     * Allows USER role to validate if user exists and is active
+     * GET /api/v1/users/{id}/validate
+     */
+    @GetMapping("/{id}/validate")
+    public ResponseEntity<ApiResponse<CreateUserResponse>> validateUser(@PathVariable Long id){
+        try {
+            CreateUserResponse getUser = getUserByIdUseCase.execute(id);
+
+            ApiResponse<CreateUserResponse> result = new ApiResponse<>(
+                    HttpStatus.OK,
+                    "user validated",
+                    getUser,
+                    null
+            );
+            return ResponseEntity.ok(result);
+        } catch (com.example.demo.domain.exception.InvalidId ex) {
+            // User not found - return 404
+            ApiResponse<CreateUserResponse> result = new ApiResponse<>(
+                    HttpStatus.NOT_FOUND,
+                    ex.getMessage(),
+                    null,
+                    "INVALID_ID"
+            );
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(result);
+        } catch (Exception ex) {
+            // Other errors - return 500
+            ApiResponse<CreateUserResponse> result = new ApiResponse<>(
+                    HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Error validating user: " + ex.getMessage(),
+                    null,
+                    "INTERNAL_SERVER_ERROR"
+            );
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(result);
+        }
     }
 
     @DeleteMapping("/{id}")

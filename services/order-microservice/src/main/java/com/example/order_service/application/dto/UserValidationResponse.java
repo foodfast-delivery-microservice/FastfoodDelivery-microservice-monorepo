@@ -1,0 +1,22 @@
+package com.example.order_service.application.dto;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+/**
+ * DTO for User Service validation response
+ */
+public record UserValidationResponse(
+        @JsonProperty("userId")
+        Long userId,
+        
+        @JsonProperty("exists")
+        boolean exists,
+        
+        @JsonProperty("active")
+        boolean active,
+        
+        @JsonProperty("username")
+        String username
+) {
+}
+
