@@ -1,18 +1,28 @@
 package com.example.demo.application.usecase;
 
-import com.example.demo.domain.exception.InvalidNameException;
+import com.example.demo.domain.exception.InvalidIdException;
 import com.example.demo.domain.model.Product;
 import com.example.demo.domain.repository.ProductRepository;
 import com.example.demo.interfaces.rest.dto.ProductPatch;
+import com.example.demo.interfaces.rest.dto.ProductResponse;
 import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
 public class UpdateProductUseCase {
     private final ProductRepository productRepository;
 
-    public Product updateProduct(String name, ProductPatch productPatch) {
-        Product existingProduct = productRepository.findByNameIgnoreCase(name)
-                .orElseThrow(() -> new InvalidNameException());
+    public ProductResponse updateProduct(Long productId, ProductPatch productPatch, Long merchantId, boolean isAdmin) {
+        Product existingProduct;
+        if (isAdmin) {
+            existingProduct = productRepository.findById(productId)
+                    .orElseThrow(() -> new InvalidIdException("Invalid ID"));
+        } else {
+            if (merchantId == null) {
+                throw new IllegalArgumentException("merchantId is required");
+            }
+            existingProduct = productRepository.findByIdAndMerchantId(productId, merchantId)
+                    .orElseThrow(() -> new InvalidIdException("Invalid ID or no permission"));
+        }
 
         // only update when field was sent (not null)
         if (productPatch.getName() != null) {
@@ -30,9 +40,10 @@ public class UpdateProductUseCase {
         if (productPatch.getCategory() != null) {
             existingProduct.setCategory(productPatch.getCategory());
         }
-        if (productPatch.isActive()) {
-            existingProduct.setActive(productPatch.isActive());
+        if (productPatch.getActive() != null) {
+            existingProduct.setActive(productPatch.getActive());
         }
-        return productRepository.save(existingProduct);
+        Product saved = productRepository.save(existingProduct);
+        return ProductResponse.fromEntity(saved);
     }
 }

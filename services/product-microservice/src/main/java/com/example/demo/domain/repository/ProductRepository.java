@@ -15,4 +15,10 @@ public interface ProductRepository extends JpaRepository<Product,Long> {
     Optional<Product> findByName(String name);
     Optional<Product> findByNameIgnoreCase(String name);
     List<Product> findByCategory(Product.Category category);
+    Optional<Product> findByNameIgnoreCaseAndMerchantId(String name, Long merchantId);
+    Optional<Product> findByIdAndMerchantId(Long id, Long merchantId);
+    List<Product> findByMerchantId(Long merchantId);
+    List<Product> findByMerchantIdAndActiveTrue(Long merchantId);
+    List<Product> findByActiveTrue();
+    List<Product> findByCategoryAndActiveTrue(Product.Category category);
 }

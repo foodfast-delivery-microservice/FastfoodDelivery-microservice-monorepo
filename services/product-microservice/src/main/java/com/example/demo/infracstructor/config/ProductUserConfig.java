@@ -35,4 +35,14 @@ public class ProductUserConfig {
     public ValidateProductsUseCase validateProductsUseCase() {
         return new ValidateProductsUseCase(productRepository);
     }
+
+    @Bean
+    public UpdateProductUseCase updateProductUseCase() {
+        return new UpdateProductUseCase(productRepository);
+    }
+
+    @Bean
+    public GetMerchantProductsUseCase getMerchantProductsUseCase() {
+        return new GetMerchantProductsUseCase(productRepository);
+    }
 }

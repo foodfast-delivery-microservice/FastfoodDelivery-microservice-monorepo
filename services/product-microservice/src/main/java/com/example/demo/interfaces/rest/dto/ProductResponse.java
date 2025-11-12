@@ -18,6 +18,7 @@ public class ProductResponse {
     private Integer stock;
     private String category;
     private boolean active;
+    private Long merchantId;
 
     public static ProductResponse fromEntity(Product product) {
         ProductResponse productResponse = new ProductResponse();
@@ -28,6 +29,7 @@ public class ProductResponse {
         productResponse.setStock(product.getStock());
         productResponse.setCategory(product.getCategory().name());
         productResponse.setActive(product.isActive());
+        productResponse.setMerchantId(product.getMerchantId());
         return productResponse;
     }
 }

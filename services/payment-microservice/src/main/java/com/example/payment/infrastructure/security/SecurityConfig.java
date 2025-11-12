@@ -35,6 +35,7 @@ public class SecurityConfig {
 
         http.authorizeHttpRequests(auth -> auth
                         .requestMatchers("/actuator/**").permitAll()
+                        .requestMatchers("/api/v1/payments/merchants/**").hasAnyRole("MERCHANT", "ADMIN")
                         .requestMatchers("/api/v1/payments/**").authenticated()
                         .anyRequest().authenticated()
                 )

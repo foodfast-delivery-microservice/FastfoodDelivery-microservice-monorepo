@@ -29,7 +29,7 @@ public class  CreateUserUseCase {
         try {
             role = createUserRequest.getRole() == null
                     ? User.UserRole.USER
-                    : User.UserRole.valueOf(createUserRequest.getRole());
+                    : User.UserRole.valueOf(createUserRequest.getRole().toUpperCase());
         }catch (IllegalArgumentException e){
             throw new InvalidRoleException(createUserRequest.getRole());
         }
@@ -39,9 +39,17 @@ public class  CreateUserUseCase {
         user.setEmail(createUserRequest.getEmail());
         user.setPassword(passwordEncoder.encode(createUserRequest.getPassword()));
         user.setRole(role);
+        boolean approved = createUserRequest.getApproved() != null ? createUserRequest.getApproved() : true;
+        user.setApproved(approved);
 
         User saved =  userRepository.save(user);
 
-        return new CreateUserResponse(saved.getId(),saved.getUsername(),saved.getEmail(),saved.getRole().name());
+        return new CreateUserResponse(
+                saved.getId(),
+                saved.getUsername(),
+                saved.getEmail(),
+                saved.getRole().name(),
+                saved.isApproved()
+        );
     }
 }

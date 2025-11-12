@@ -1,21 +1,27 @@
 package com.example.payment.interfaces.rest;
 
+import com.example.payment.application.dto.PageResponse;
+import com.example.payment.application.dto.PaymentListRequest;
 import com.example.payment.application.dto.PaymentRequest;
+import com.example.payment.application.dto.PaymentResponse;
+import com.example.payment.application.dto.PaymentStatisticsResponse;
+import com.example.payment.application.usecase.GetMerchantPaymentStatisticsUseCase;
+import com.example.payment.application.usecase.GetMerchantPaymentsUseCase;
 import com.example.payment.application.usecase.ProcessPaymentUseCase;
 import com.example.payment.domain.exception.InvalidJwtTokenException;
 import com.example.payment.infrastructure.security.JwtTokenService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
+
+import java.time.LocalDateTime;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -25,6 +31,8 @@ public class PaymentController {
 
     private final ProcessPaymentUseCase processPaymentUseCase;
     private final JwtTokenService jwtTokenService;
+    private final GetMerchantPaymentsUseCase getMerchantPaymentsUseCase;
+    private final GetMerchantPaymentStatisticsUseCase getMerchantPaymentStatisticsUseCase;
 
     @PostMapping
     public ResponseEntity<?> processPayment(
@@ -81,5 +89,64 @@ public class PaymentController {
                     request.getOrderId(), request.getUserId());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Payment failed");
         }
+    }
+
+    // ========== MERCHANT ENDPOINTS ==========
+
+    /**
+     * MERCHANT: Lấy danh sách payments của merchant
+     * GET /api/v1/payments/merchants/me
+     */
+    @GetMapping("/merchants/me")
+    public ResponseEntity<PageResponse<PaymentResponse>> getMyMerchantPayments(
+            @AuthenticationPrincipal Jwt jwt,
+            @RequestParam(value = "page", defaultValue = "0") Integer page,
+            @RequestParam(value = "size", defaultValue = "20") Integer size,
+            @RequestParam(value = "sortBy", defaultValue = "createdAt") String sortBy,
+            @RequestParam(value = "sortDirection", defaultValue = "DESC") String sortDirection,
+            @RequestParam(value = "status", required = false) String status,
+            @RequestParam(value = "fromDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fromDate,
+            @RequestParam(value = "toDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime toDate) {
+
+        Long merchantId = jwtTokenService.extractUserId(jwt);
+        if (merchantId == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Cannot extract merchantId from token");
+        }
+
+        log.info("Merchant {} getting payments list", merchantId);
+
+        PaymentListRequest request = PaymentListRequest.builder()
+                .page(page)
+                .size(size)
+                .sortBy(sortBy)
+                .sortDirection(sortDirection)
+                .status(status)
+                .fromDate(fromDate)
+                .toDate(toDate)
+                .build();
+
+        PageResponse<PaymentResponse> response = getMerchantPaymentsUseCase.execute(merchantId, request);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * MERCHANT: Lấy thống kê doanh thu
+     * GET /api/v1/payments/merchants/me/statistics
+     */
+    @GetMapping("/merchants/me/statistics")
+    public ResponseEntity<PaymentStatisticsResponse> getMyMerchantPaymentStatistics(
+            @AuthenticationPrincipal Jwt jwt,
+            @RequestParam(value = "fromDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fromDate,
+            @RequestParam(value = "toDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime toDate) {
+
+        Long merchantId = jwtTokenService.extractUserId(jwt);
+        if (merchantId == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Cannot extract merchantId from token");
+        }
+
+        log.info("Merchant {} getting payment statistics", merchantId);
+
+        PaymentStatisticsResponse response = getMerchantPaymentStatisticsUseCase.execute(merchantId, fromDate, toDate);
+        return ResponseEntity.ok(response);
     }
 }

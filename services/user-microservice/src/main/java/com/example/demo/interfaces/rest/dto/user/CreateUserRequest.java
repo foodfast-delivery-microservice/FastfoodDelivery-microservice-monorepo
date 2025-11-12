@@ -14,4 +14,5 @@ public class CreateUserRequest {
     private String email;
     @NotBlank
     private String role; // admin or user
+    private Boolean approved;
 }

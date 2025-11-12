@@ -17,4 +17,6 @@ public class ProductValidationResponse {
     private boolean isSuccess;
     private String productName;
     private BigDecimal unitPrice;
+    private Long merchantId;
+    private String message;
 }

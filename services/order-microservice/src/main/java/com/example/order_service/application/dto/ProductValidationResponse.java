@@ -15,6 +15,9 @@ public record ProductValidationResponse(
         String productName,
 
         @JsonProperty("unitPrice")
-        BigDecimal unitPrice
+        BigDecimal unitPrice,
+
+        @JsonProperty("merchantId")
+        Long merchantId
 ) {
 }

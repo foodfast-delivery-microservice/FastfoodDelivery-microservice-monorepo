@@ -57,17 +57,30 @@ public class ProcessPaymentUseCase {
             return;
         }
 
+        // Try to get merchantId from order service
+        Long merchantId = 0L; // Default to 0 for system/admin orders
+        try {
+            OrderDetailResponse orderDetail = orderServicePort.getOrderDetail(request.getOrderId());
+            if (orderDetail.getMerchantId() != null) {
+                merchantId = orderDetail.getMerchantId();
+            }
+        } catch (Exception e) {
+            log.warn("Could not get merchantId from order service for orderId: {}. Using default merchantId=0. Error: {}", 
+                    request.getOrderId(), e.getMessage());
+        }
+
         // Create payment with PENDING status
         Payment payment = Payment.builder()
                 .orderId(request.getOrderId())
                 .userId(request.getUserId())
+                .merchantId(merchantId)
                 .amount(request.getGrandTotal())
                 .currency(request.getCurrency())
                 .status(Payment.Status.PENDING)
                 .build();
 
         paymentRepository.save(payment);
-        log.info("Payment created with PENDING status for orderId: {}", request.getOrderId());
+        log.info("Payment created with PENDING status for orderId: {}, merchantId: {}", request.getOrderId(), merchantId);
     }
 
     /**
@@ -97,6 +110,9 @@ public class ProcessPaymentUseCase {
         // ===== BƯỚC 4: CHECK IF PAYMENT ALREADY EXISTS =====
         Payment existingPayment = paymentRepository.findByOrderId(request.getOrderId())
                 .orElse(null);
+
+        // Get merchantId from order detail
+        Long merchantId = orderDetail.getMerchantId() != null ? orderDetail.getMerchantId() : 0L;
 
         Payment payment;
         if (existingPayment != null) {
@@ -128,15 +144,24 @@ public class ProcessPaymentUseCase {
                 payment = existingPayment;
                 // Reset status to PENDING for retry
                 payment.setStatus(Payment.Status.PENDING);
+                // Update merchantId if it was not set before
+                if (payment.getMerchantId() == null || payment.getMerchantId() == 0) {
+                    payment.setMerchantId(merchantId);
+                }
             } else {
                 // Payment is still PENDING, update it
                 payment = existingPayment;
+                // Update merchantId if it was not set before
+                if (payment.getMerchantId() == null || payment.getMerchantId() == 0) {
+                    payment.setMerchantId(merchantId);
+                }
             }
         } else {
             // Create new payment
             payment = Payment.builder()
                     .orderId(request.getOrderId())
                     .userId(request.getUserId())
+                    .merchantId(merchantId)
                     .amount(request.getGrandTotal())
                     .currency(request.getCurrency())
                     .status(Payment.Status.PENDING)

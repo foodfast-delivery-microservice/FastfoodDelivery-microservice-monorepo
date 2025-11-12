@@ -27,6 +27,9 @@ public class OrderItem {
     @Column(name = "product_id", nullable = false, length = 50)
     private Long productId;
 
+    @Column(name = "merchant_id", nullable = false)
+    private Long merchantId;
+
     @Column(name = "product_name", nullable = false, length = 255)
     private String productName;
 

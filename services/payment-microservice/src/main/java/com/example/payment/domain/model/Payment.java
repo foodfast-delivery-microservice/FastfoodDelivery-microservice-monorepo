@@ -25,6 +25,9 @@ public class Payment {
     @Column(nullable = false)
     private Long userId;
 
+    @Column(name = "merchant_id", nullable = false)
+    private Long merchantId;
+
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal amount;
 

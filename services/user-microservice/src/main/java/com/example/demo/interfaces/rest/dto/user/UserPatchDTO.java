@@ -7,6 +7,7 @@ public class UserPatchDTO {
     private String username;
     private String email;
     private String role;
+    private Boolean approved;
 
 
 }

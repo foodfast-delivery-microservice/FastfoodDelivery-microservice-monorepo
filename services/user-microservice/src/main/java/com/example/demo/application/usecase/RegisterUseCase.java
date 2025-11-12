@@ -1,6 +1,7 @@
 package com.example.demo.application.usecase;
 
 import com.example.demo.domain.exception.EmailAlreadyExistException;
+import com.example.demo.domain.exception.InvalidRoleException;
 import com.example.demo.domain.model.User;
 import com.example.demo.domain.repository.UserRepository;
 import com.example.demo.interfaces.rest.dto.auth.RegisterRequest;
@@ -22,13 +23,39 @@ public class RegisterUseCase {
             throw  new EmailAlreadyExistException(registerRequest.getEmail());
         }
 
+        User.UserRole role = resolveRole(registerRequest.getRole());
+        boolean approved = role != User.UserRole.MERCHANT;
+
         User user = new User();
         user.setUsername(registerRequest.getUsername());
         user.setEmail(registerRequest.getEmail());
         user.setPassword(passwordEncoder.encode(registerRequest.getPassword()));
-        user.setRole(User.UserRole.USER);
+        user.setRole(role);
+        user.setApproved(approved);
 
         User saved = userRepository.save(user);
-        return new CreateUserResponse(saved.getId(), saved.getUsername(), saved.getEmail(), saved.getRole().name());
+        return new CreateUserResponse(
+                saved.getId(),
+                saved.getUsername(),
+                saved.getEmail(),
+                saved.getRole().name(),
+                saved.isApproved()
+        );
+    }
+
+    private User.UserRole resolveRole(String requestedRole) {
+        if (requestedRole == null || requestedRole.trim().isEmpty()) {
+            return User.UserRole.USER;
+        }
+
+        try {
+            User.UserRole role = User.UserRole.valueOf(requestedRole.trim().toUpperCase());
+            if (role == User.UserRole.ADMIN) {
+                throw new InvalidRoleException(requestedRole);
+            }
+            return role;
+        } catch (IllegalArgumentException ex) {
+            throw new InvalidRoleException(requestedRole);
+        }
     }
 }

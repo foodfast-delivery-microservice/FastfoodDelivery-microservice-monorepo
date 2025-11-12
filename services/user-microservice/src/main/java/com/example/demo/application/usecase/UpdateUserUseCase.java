@@ -32,6 +32,9 @@ public class UpdateUserUseCase {
         if (userPatchDTO.getEmail()!= null){
             existingUser.setEmail(userPatchDTO.getEmail());
         }
+        if (userPatchDTO.getApproved() != null) {
+            existingUser.setApproved(userPatchDTO.getApproved());
+        }
 
         User updatedUser = userRepository.save(existingUser);
 
@@ -61,7 +64,7 @@ public class UpdateUserUseCase {
         }
         User targetUser = userRepository.findById(id)
                 .orElseThrow(()-> new InvalidId(id));
-        Set<String> allowedRole = Set.of("ADMIN", "USER");
+        Set<String> allowedRole = Set.of("ADMIN", "USER", "MERCHANT");
         String roleUpper = newRole.toUpperCase();
         if (!allowedRole.contains(roleUpper)){
             throw new InvalidRoleException(roleUpper);

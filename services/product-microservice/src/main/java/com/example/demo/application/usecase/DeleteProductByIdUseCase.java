@@ -10,9 +10,18 @@ import lombok.RequiredArgsConstructor;
 public class DeleteProductByIdUseCase {
     private final ProductRepository productRepository;
 
-    public void deleteProductByName(Long id) {
-        Product product = productRepository.findById(id)
-                .orElseThrow(()-> new InvalidIdException("Invalid ID"));
+    public void deleteProduct(Long id, Long merchantId, boolean isAdmin) {
+        Product product;
+        if (isAdmin) {
+            product = productRepository.findById(id)
+                    .orElseThrow(() -> new InvalidIdException("Invalid ID"));
+        } else {
+            if (merchantId == null) {
+                throw new IllegalArgumentException("merchantId is required");
+            }
+            product = productRepository.findByIdAndMerchantId(id, merchantId)
+                    .orElseThrow(() -> new InvalidIdException("Invalid ID or no permission"));
+        }
         productRepository.delete(product);
 
 

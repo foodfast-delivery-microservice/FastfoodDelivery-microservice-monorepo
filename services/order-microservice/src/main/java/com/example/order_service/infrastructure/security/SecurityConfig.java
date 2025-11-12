@@ -39,7 +39,8 @@ public class SecurityConfig {
         http.authorizeHttpRequests(auth -> auth
                         .requestMatchers("/actuator/**").permitAll()
                         .requestMatchers("/api/internal/**").permitAll() // Internal API for service-to-service calls
-                        .requestMatchers("/api/v1/orders/**").authenticated()
+                        .requestMatchers("/api/v1/orders/merchants/**").hasAnyRole("MERCHANT", "ADMIN") // Merchant endpoints require MERCHANT or ADMIN role
+                        .requestMatchers("/api/v1/orders/**").authenticated() // Other order endpoints require authentication
                         .anyRequest().authenticated()
                 )
                 .oauth2ResourceServer(oauth2 ->

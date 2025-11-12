@@ -22,42 +22,47 @@ public class ValidateProductsUseCase {
         List<ProductValidationResponse> results = new ArrayList<>();
 
         for (ProductValidationRequest item : requests) {
+            ProductValidationResponse response = new ProductValidationResponse();
+            Long productId = item.getProductId();
+
+            if (productId == null) {
+                response.setSuccess(false);
+                response.setMessage("ProductId is required");
+                results.add(response);
+                continue;
+            }
+
             // tìm sản phẩm trong dtb
-            Optional<Product> productOpt = productRepository.findById(item.getProductId());
+            Optional<Product> productOpt = productRepository.findById(productId);
 
             if(productOpt.isEmpty()){
                 // sản phẩm không tồn tại
-                results.add(new ProductValidationResponse(
-                        item.getProductId(),
-                        false, // isSuccess = false
-                        "Product not found",
-                        null
-                ));
+                response.setProductId(productId);
+                response.setSuccess(false);
+                response.setMessage("Product not found");
             } else {
                 // sản phẩm tồn tại
                 Product product = productOpt.get();
+                response.setProductId(product.getId());
+                response.setProductName(product.getName());
+                response.setUnitPrice(product.getPrice());
+                response.setMerchantId(product.getMerchantId());
 
-                // kiem tra so luong ton kho
-
-                if (product.getStock() >= item.getQuantity()){
+                if (!product.isActive()) {
+                    response.setSuccess(false);
+                    response.setMessage("Product inactive");
+                } else if (product.getStock() >= item.getQuantity()){
                     // du hang
-                    results.add(new ProductValidationResponse(
-                            product.getId(),
-                            true, // isSuccess
-                            product.getName(),
-                            product.getPrice()
-                    ));
+                    response.setSuccess(true);
+                    response.setMessage(null);
                 }else{
                     // khong du hang
-                    results.add(new ProductValidationResponse(
-                            product.getId(),
-                            false, // isSuccess
-                            "not enough stock",
-                            product.getPrice()
-
-                    ));
+                    response.setSuccess(false);
+                    response.setMessage("Not enough stock");
                 }
             }
+
+            results.add(response);
 
         }
         return results;

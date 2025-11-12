@@ -30,9 +30,10 @@ public class SecurityConfig {
                         // 2. Cho Order Service gọi validate (không cần ADMIN)
                         .requestMatchers(HttpMethod.POST, "/api/v1/products/validate").permitAll()
                         // 3. Yêu cầu ADMIN cho các hành động CUD (Tạo, Sửa, Xóa) sản phẩm
-                        .requestMatchers(HttpMethod.POST, "/api/v1/products/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.PUT, "/api/v1/products/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.DELETE, "/api/v1/products/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/products/merchants/**").hasAnyRole("ADMIN","MERCHANT")
+                        .requestMatchers(HttpMethod.POST, "/api/v1/products/**").hasAnyRole("ADMIN","MERCHANT")
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/products/**").hasAnyRole("ADMIN","MERCHANT")
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/products/**").hasAnyRole("ADMIN","MERCHANT")
 
                         .anyRequest().authenticated()
                 )

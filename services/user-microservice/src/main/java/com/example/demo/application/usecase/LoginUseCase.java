@@ -1,5 +1,6 @@
 package com.example.demo.application.usecase;
 
+import com.example.demo.domain.exception.AccountNotApprovedException;
 import com.example.demo.domain.exception.InvalidCredentialException;
 import com.example.demo.domain.exception.UserNotFoundException;
 import com.example.demo.domain.model.User;
@@ -24,6 +25,10 @@ public class LoginUseCase {
         // 2. Kiểm tra password
         if  (!passwordEncoder.matches(loginRequest.getPassword(), user.getPassword())) {
             throw new InvalidCredentialException();
+        }
+
+        if (user.getRole() == User.UserRole.MERCHANT && !user.isApproved()) {
+            throw new AccountNotApprovedException(user.getId());
         }
 
         // 3. Sinh token

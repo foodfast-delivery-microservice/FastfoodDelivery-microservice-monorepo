@@ -33,16 +33,24 @@ public class SecurityConfig {
                                 .requestMatchers(HttpMethod.DELETE,"/api/v1/users/**").hasRole("ADMIN")
 
 //                                  -- PRODUCT --
+                                // Merchant endpoints require MERCHANT or ADMIN role
+                                .requestMatchers("/api/v1/products/merchants/**").hasAnyRole("MERCHANT", "ADMIN")
                                 // 2. Cho phép XEM (GET) sản phẩm công khai
                                 .requestMatchers(HttpMethod.GET, "/api/v1/products/**").permitAll()
 
-                                // 3. Yêu cầu ADMIN cho các hành động CUD (Tạo, Sửa, Xóa) sản phẩm
-                                .requestMatchers(HttpMethod.POST, "/api/v1/products/**").hasRole("ADMIN")
-                                .requestMatchers(HttpMethod.PUT, "/api/v1/products/**").hasRole("ADMIN")
-                                .requestMatchers(HttpMethod.DELETE, "/api/v1/products/**").hasRole("ADMIN")
+                                // 3. Yêu cầu ADMIN hoặc MERCHANT cho các hành động CUD (Tạo, Sửa, Xóa) sản phẩm
+                                .requestMatchers(HttpMethod.POST, "/api/v1/products/**").hasAnyRole("ADMIN", "MERCHANT")
+                                .requestMatchers(HttpMethod.PUT, "/api/v1/products/**").hasAnyRole("ADMIN", "MERCHANT")
+                                .requestMatchers(HttpMethod.DELETE, "/api/v1/products/**").hasAnyRole("ADMIN", "MERCHANT")
 
                                 // 5. Yêu cầu đã đăng nhập (authenticated) để ĐẶT HÀNG
+                                // Merchant endpoints require MERCHANT or ADMIN role
+                                .requestMatchers("/api/v1/orders/merchants/**").hasAnyRole("MERCHANT", "ADMIN")
+                                // Other order endpoints require authentication (for USER to create orders)
                                 .requestMatchers("/api/v1/orders/**").authenticated()
+                                // Merchant endpoints require MERCHANT or ADMIN role
+                                .requestMatchers("/api/v1/payments/merchants/**").hasAnyRole("MERCHANT", "ADMIN")
+                                // Other payment endpoints require authentication
                                 .requestMatchers("/api/v1/payments/**").authenticated()
 
 

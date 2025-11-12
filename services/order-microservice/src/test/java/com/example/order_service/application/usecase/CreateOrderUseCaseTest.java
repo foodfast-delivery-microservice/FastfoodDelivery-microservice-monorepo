@@ -82,10 +82,11 @@ class CreateOrderUseCaseTest {
         // Response từ Product Service (GIÁ THẬT)
         validatedProducts = List.of(
                 new ProductValidationResponse(
-                        2L,
+                        1L,
                         true,
                         "iPhone 15 Pro Max", // Tên từ Product Service
-                        BigDecimal.valueOf(30000000) // Giá từ Product Service (KHÁC VỚI CLIENT!)
+                        BigDecimal.valueOf(30000000), // Giá từ Product Service (KHÁC VỚI CLIENT!)
+                        10L // Merchant ID từ Product Service
                 )
         );
     }
@@ -413,10 +414,11 @@ class CreateOrderUseCaseTest {
         // Given: Product Service trả về sản phẩm hết hàng
         List<ProductValidationResponse> outOfStockProducts = List.of(
                 new ProductValidationResponse(
-                        2L,
+                        1L,
                         false, // ← Không hợp lệ
                         "iPhone 15 Pro Max",
-                        BigDecimal.valueOf(30000000)
+                        BigDecimal.valueOf(30000000),
+                        10L
                 )
         );
 
@@ -505,6 +507,7 @@ class CreateOrderUseCaseTest {
                 .id(1L)
                 .orderCode("ORD-123456")
                 .userId(1L)
+                .merchantId(10L)
                 .status(OrderStatus.PENDING)
                 .currency("VND")
                 .subtotal(BigDecimal.valueOf(60000000))
@@ -518,6 +521,7 @@ class CreateOrderUseCaseTest {
         OrderItem item = OrderItem.builder()
                 .id(1L)
                 .productId(1L)
+                .merchantId(10L)
                 .productName("iPhone 15 Pro Max")
                 .unitPrice(BigDecimal.valueOf(30000000))
                 .quantity(2)

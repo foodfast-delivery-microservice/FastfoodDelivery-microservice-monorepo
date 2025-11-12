@@ -43,7 +43,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/internal/**").permitAll()
                         // Validation endpoint cho phép USER role (cho Order Service)
                         // Pattern: /api/v1/users/{id}/validate - chỉ match 1 level path variable
-                        .requestMatchers(HttpMethod.GET,"/api/v1/users/*/validate").hasAnyRole("USER", "ADMIN")
+                        .requestMatchers(HttpMethod.GET,"/api/v1/users/*/validate").hasAnyRole("USER", "ADMIN", "MERCHANT")
                         // Các endpoint khác yêu cầu ADMIN
                         .requestMatchers(HttpMethod.POST,"/api/v1/users/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET,"/api/v1/users/**").hasRole("ADMIN")

@@ -17,6 +17,7 @@ public class OrderListResponse {
     private Long id;
     private String orderCode;
     private Long userId;
+    private Long merchantId;
     private String status;
     private String currency;
     private BigDecimal subtotal;

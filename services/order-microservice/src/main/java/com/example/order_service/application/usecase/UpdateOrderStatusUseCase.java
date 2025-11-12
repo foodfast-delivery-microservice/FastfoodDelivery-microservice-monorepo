@@ -4,6 +4,7 @@ import com.example.order_service.application.dto.DeliveryAddressResponse;
 import com.example.order_service.application.dto.OrderDetailResponse;
 import com.example.order_service.application.dto.OrderItemResponse;
 import com.example.order_service.application.dto.UpdateOrderStatusRequest;
+import com.example.order_service.domain.exception.MerchantOrderAccessDeniedException;
 import com.example.order_service.domain.exception.OrderNotFoundException;
 import com.example.order_service.domain.exception.OrderValidationException;
 import com.example.order_service.domain.model.EventStatus;
@@ -37,6 +38,44 @@ public class UpdateOrderStatusUseCase {
 
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new OrderNotFoundException("Order not found with id: " + orderId));
+
+        // Validate status transition
+        OrderStatus newStatus = validateAndParseStatus(request.getStatus());
+        validateStatusTransition(order.getStatus(), newStatus);
+
+        // Update order status
+        updateOrderStatus(order, newStatus);
+        order = orderRepository.save(order);
+
+        // Create outbox event
+        createStatusChangeEvent(order, newStatus, request.getNote());
+
+        return mapToOrderDetailResponse(order);
+    }
+
+    /**
+     * Update order status with merchant ownership validation
+     * @param orderId Order ID
+     * @param merchantId Merchant ID from JWT token
+     * @param request Update status request
+     * @return Updated order detail
+     * @throws OrderValidationException if order does not belong to merchant
+     */
+    @Transactional
+    public OrderDetailResponse executeForMerchant(Long orderId, Long merchantId, UpdateOrderStatusRequest request) {
+        log.info("Merchant {} updating order status for orderId: {}, request: {}", merchantId, orderId, request);
+
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new OrderNotFoundException("Order not found with id: " + orderId));
+
+        // Validate merchant ownership
+        if (!order.getMerchantId().equals(merchantId)) {
+            log.warn("Merchant {} attempted to update order {} which belongs to merchant {}", 
+                    merchantId, orderId, order.getMerchantId());
+            throw new MerchantOrderAccessDeniedException(
+                    String.format("Order %d does not belong to merchant %d", orderId, merchantId)
+            );
+        }
 
         // Validate status transition
         OrderStatus newStatus = validateAndParseStatus(request.getStatus());
@@ -136,6 +175,7 @@ public class UpdateOrderStatusUseCase {
                 .id(order.getId())
                 .orderCode(order.getOrderCode())
                 .userId(order.getUserId())
+                .merchantId(order.getMerchantId())
                 .status(order.getStatus().name())
                 .currency(order.getCurrency())
                 .subtotal(order.getSubtotal())
@@ -169,6 +209,7 @@ public class UpdateOrderStatusUseCase {
         return OrderItemResponse.builder()
                 .id(orderItem.getId())
                 .productId(orderItem.getProductId())
+                .merchantId(orderItem.getMerchantId())
                 .productName(orderItem.getProductName())
                 .unitPrice(orderItem.getUnitPrice())
                 .quantity(orderItem.getQuantity())

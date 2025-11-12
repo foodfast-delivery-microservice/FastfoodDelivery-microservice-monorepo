@@ -8,14 +8,16 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
-public class GetAllProductsUserCase {
+public class GetMerchantProductsUseCase {
+
     private final ProductRepository productRepository;
 
-    public List<ProductResponse> getAllProducts(){
-        return productRepository.findByActiveTrue()
+    public List<ProductResponse> execute(Long merchantId, boolean includeInactive) {
+        return productRepository.findByMerchantId(merchantId)
                 .stream()
-                .map(ProductResponse :: fromEntity)
+                .filter(product -> includeInactive || product.isActive())
+                .map(ProductResponse::fromEntity)
                 .collect(Collectors.toList());
-
     }
 }
+

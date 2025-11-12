@@ -18,6 +18,7 @@ public class OrderResponse {
     private Long id;
     private String orderCode;
     private Long userId;
+    private Long merchantId;
     private String status;
     private String currency;
     private BigDecimal subtotal;
@@ -52,6 +53,7 @@ public class OrderResponse {
     public static class OrderItemResponse {
         private Long id;
         private Long productId;
+        private Long merchantId;
         private String productName;
         private BigDecimal unitPrice;
         private Integer quantity;

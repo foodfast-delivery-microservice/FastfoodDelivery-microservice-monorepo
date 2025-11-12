@@ -22,16 +22,16 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class GetOrderListUseCase {
+public class GetMerchantOrdersUseCase {
 
     private final OrderRepository orderRepository;
 
     @Transactional(readOnly = true)
-    public PageResponse<OrderListResponse> execute(OrderListRequest request) {
-        log.info("Getting order list with request: {}", request);
+    public PageResponse<OrderListResponse> execute(Long merchantId, OrderListRequest request) {
+        log.info("Getting orders for merchant: {} with request: {}", merchantId, request);
 
-        // Build specification for filtering
-        Specification<Order> spec = buildSpecification(request);
+        // Build specification for filtering (always include merchantId filter)
+        Specification<Order> spec = buildSpecification(merchantId, request);
 
         // Build pageable for pagination and sorting
         Pageable pageable = buildPageable(request);
@@ -57,14 +57,12 @@ public class GetOrderListUseCase {
                 .build();
     }
 
-    private Specification<Order> buildSpecification(OrderListRequest request) {
+    private Specification<Order> buildSpecification(Long merchantId, OrderListRequest request) {
         return (root, query, criteriaBuilder) -> {
             var predicates = new java.util.ArrayList<jakarta.persistence.criteria.Predicate>();
 
-            // Filter by userId
-            if (request.getUserId() != null) {
-                predicates.add(criteriaBuilder.equal(root.get("userId"), request.getUserId()));
-            }
+            // Always filter by merchantId
+            predicates.add(criteriaBuilder.equal(root.get("merchantId"), merchantId));
 
             // Filter by status
             if (request.getStatus() != null && !request.getStatus().trim().isEmpty()) {
@@ -128,3 +126,4 @@ public class GetOrderListUseCase {
                 .build();
     }
 }
+

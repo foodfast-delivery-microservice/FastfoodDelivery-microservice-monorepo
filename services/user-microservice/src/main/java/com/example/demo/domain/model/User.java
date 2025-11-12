@@ -34,9 +34,13 @@ public class User {
   @Column(nullable = false)
   private UserRole role;
 
+  @Column(nullable = false)
+  private boolean approved = true;
+
   public enum UserRole {
       ADMIN,
-      USER
+      USER,
+      MERCHANT
   }
 
   public void changePassword(String newPassword, PasswordEncoder passwordEncoder) {

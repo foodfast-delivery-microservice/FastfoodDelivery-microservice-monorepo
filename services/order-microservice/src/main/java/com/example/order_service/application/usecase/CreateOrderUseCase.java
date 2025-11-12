@@ -290,10 +290,14 @@ public class CreateOrderUseCase {
         Map<Long, ProductValidationResponse> productMap = validatedProducts.stream()
                 .collect(Collectors.toMap(ProductValidationResponse::productId, p -> p));
 
+        // Validate all products belong to the same merchant
+        Long merchantId = validateSingleMerchant(validatedProducts);
+
         // Tạo Order
         Order order = Order.builder()
                 .orderCode(generateOrderCode())
                 .userId(request.getUserId())
+                .merchantId(merchantId)
                 .status(OrderStatus.PENDING)
                 .currency("VND")
                 .discount(request.getDiscount() != null ? request.getDiscount() : BigDecimal.ZERO)
@@ -318,6 +322,7 @@ public class CreateOrderUseCase {
             // Lấy tất cả thông tin từ Product Service
             OrderItem orderItem = OrderItem.builder()
                     .productId(itemRequest.getProductId())
+                    .merchantId(validatedProduct.merchantId()) // Set merchantId from product
                     .productName(validatedProduct.productName()) // Lấy từ Product Service
                     .unitPrice(validatedProduct.unitPrice())     // Lấy từ Product Service
                     .quantity(itemRequest.getQuantity())
@@ -328,8 +333,9 @@ public class CreateOrderUseCase {
                     validatedProduct.unitPrice().multiply(BigDecimal.valueOf(itemRequest.getQuantity()))
             );
 
-            log.debug("Created order item: productId={}, productName={}, unitPrice={}, quantity={}, lineTotal={}",
+            log.debug("Created order item: productId={}, merchantId={}, productName={}, unitPrice={}, quantity={}, lineTotal={}",
                     orderItem.getProductId(),
+                    orderItem.getMerchantId(),
                     orderItem.getProductName(),
                     orderItem.getUnitPrice(),
                     orderItem.getQuantity(),
@@ -342,6 +348,36 @@ public class CreateOrderUseCase {
         order.calculateTotals();
 
         return order;
+    }
+
+    /**
+     * Validate that all products belong to the same merchant
+     * @param validatedProducts List of validated products
+     * @return The merchantId that all products belong to
+     * @throws OrderValidationException if products belong to different merchants
+     */
+    private Long validateSingleMerchant(List<ProductValidationResponse> validatedProducts) {
+        if (validatedProducts == null || validatedProducts.isEmpty()) {
+            throw new OrderValidationException("Order must contain at least one product");
+        }
+
+        Long firstMerchantId = validatedProducts.get(0).merchantId();
+        if (firstMerchantId == null) {
+            throw new OrderValidationException("Product merchantId cannot be null");
+        }
+
+        // Check all products have the same merchantId
+        for (ProductValidationResponse product : validatedProducts) {
+            if (product.merchantId() == null || !product.merchantId().equals(firstMerchantId)) {
+                throw new OrderValidationException(
+                    "All products in an order must belong to the same merchant. " +
+                    "Found products from different merchants."
+                );
+            }
+        }
+
+        log.debug("All products validated to belong to merchant: {}", firstMerchantId);
+        return firstMerchantId;
     }
     /**
      * Lưu idempotency key để chống duplicate request
@@ -442,6 +478,7 @@ public class CreateOrderUseCase {
                 .id(order.getId())
                 .orderCode(order.getOrderCode())
                 .userId(order.getUserId())
+                .merchantId(order.getMerchantId())
                 .status(order.getStatus().name())
                 .currency(order.getCurrency())
                 .subtotal(order.getSubtotal())
@@ -475,6 +512,7 @@ public class CreateOrderUseCase {
         return OrderResponse.OrderItemResponse.builder()
                 .id(orderItem.getId())
                 .productId(orderItem.getProductId())
+                .merchantId(orderItem.getMerchantId())
                 .productName(orderItem.getProductName())
                 .unitPrice(orderItem.getUnitPrice())
                 .quantity(orderItem.getQuantity())

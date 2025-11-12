@@ -1,12 +1,10 @@
 package com.example.demo.domain.model;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import lombok.*;
 
 import java.math.BigDecimal;
-import java.util.UUID;
 
 @Getter
 @Setter
@@ -53,8 +51,12 @@ public class Product {
 
     private Category category;
 
+    @Column(name = "merchant_id", nullable = false)
+    private Long merchantId;
+
+    @Builder.Default
     @Column(nullable = false)
-    private boolean active;
+    private boolean active = true;
 
     public enum Category {
         DRINK,

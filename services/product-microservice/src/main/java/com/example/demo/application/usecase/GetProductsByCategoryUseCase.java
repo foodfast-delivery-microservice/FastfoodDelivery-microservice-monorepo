@@ -21,7 +21,7 @@ public class GetProductsByCategoryUseCase {
         }catch(IllegalArgumentException e){
             throw new InvalidCategoryException(category);
         }
-        return productRepository.findByCategory(categoryEnum)
+        return productRepository.findByCategoryAndActiveTrue(categoryEnum)
                 .stream()
                 .map(ProductResponse::fromEntity)
                 .collect(Collectors.toList());

@@ -17,5 +17,5 @@ public class ProductPatch {
     private BigDecimal price;
     private Integer stock;
     private Product.Category category;
-    private boolean active;
+    private Boolean active;
 }

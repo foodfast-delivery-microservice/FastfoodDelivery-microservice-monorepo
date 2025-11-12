@@ -13,6 +13,7 @@ public class CreateUserResponse {
     private String username;
     private String email;
     private String role;
+    private boolean approved;
 
 
     public static CreateUserResponse fromEntity(User user){
@@ -21,6 +22,7 @@ public class CreateUserResponse {
         response.setUsername(user.getUsername());
         response.setEmail(user.getEmail());
         response.setRole(user.getRole().name());
+        response.setApproved(user.isApproved());
         return response;
     }
 

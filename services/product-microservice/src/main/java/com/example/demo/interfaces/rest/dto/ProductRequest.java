@@ -27,4 +27,5 @@ public class ProductRequest {
 
     private Boolean active;
 
+    private Long merchantId;
 }
