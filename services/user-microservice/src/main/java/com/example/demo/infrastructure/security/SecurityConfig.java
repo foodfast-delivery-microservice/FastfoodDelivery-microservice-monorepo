@@ -39,6 +39,8 @@ public class SecurityConfig {
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
+                        // Internal API for service-to-service calls (no authentication required)
+                        .requestMatchers("/api/internal/**").permitAll()
                         // Validation endpoint cho phép USER role (cho Order Service)
                         // Pattern: /api/v1/users/{id}/validate - chỉ match 1 level path variable
                         .requestMatchers(HttpMethod.GET,"/api/v1/users/*/validate").hasAnyRole("USER", "ADMIN")

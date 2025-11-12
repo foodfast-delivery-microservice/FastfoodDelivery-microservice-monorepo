@@ -1,12 +1,9 @@
-package com.example.order_service.infrastructure.security;
-
-
+package com.example.payment.infrastructure.security;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -18,10 +15,10 @@ import org.springframework.security.web.SecurityFilterChain;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 
-
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
+    
     @Bean
     SecurityFilterChain filter(
             HttpSecurity http,
@@ -38,8 +35,7 @@ public class SecurityConfig {
 
         http.authorizeHttpRequests(auth -> auth
                         .requestMatchers("/actuator/**").permitAll()
-                        .requestMatchers("/api/internal/**").permitAll() // Internal API for service-to-service calls
-                        .requestMatchers("/api/v1/orders/**").authenticated()
+                        .requestMatchers("/api/v1/payments/**").authenticated()
                         .anyRequest().authenticated()
                 )
                 .oauth2ResourceServer(oauth2 ->
@@ -48,10 +44,12 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
         return http.build();
     }
+    
     @Bean
     JwtAuthConverter jwtAuthConverter(JwtGrantedAuthoritiesConverter grantedConverter) {
         return new JwtAuthConverter(grantedConverter);
     }
+    
     @Bean
     JwtGrantedAuthoritiesConverter grantedAuthoritiesConverter() {
         return new JwtGrantedAuthoritiesConverter("role"); // hoặc "roles"

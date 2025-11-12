@@ -16,7 +16,9 @@ public class PaymentRequest {
     @NotNull(message = "OrderId is required")
     private Long orderId;
 
-    @NotNull(message = "UserId is required")
+    // userId is optional in request body
+    // - For REST API: userId will be extracted from JWT token in PaymentController
+    // - For Event Listener: userId comes from order service event
     private Long userId;
 
     @NotNull(message = "GrandTotal is required")

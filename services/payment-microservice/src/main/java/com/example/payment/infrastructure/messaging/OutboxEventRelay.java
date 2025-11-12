@@ -4,6 +4,9 @@ import com.example.payment.domain.model.EventStatus;
 import com.example.payment.domain.model.OutboxEvent;
 import com.example.payment.domain.repository.OutboxEventRepository;
 import com.example.payment.infrastructure.config.RabbitMQConfig;
+import com.example.payment.infrastructure.event.PaymentFailedEventPayload;
+import com.example.payment.infrastructure.event.PaymentSuccessEventPayload;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
@@ -20,6 +23,7 @@ public class OutboxEventRelay {
 
     private final OutboxEventRepository outboxEventRepository;
     private final RabbitTemplate rabbitTemplate;
+    private final ObjectMapper objectMapper;
 
     @Scheduled(fixedRate = 5000)
     @Transactional
@@ -47,10 +51,29 @@ public class OutboxEventRelay {
                     continue;
                 }
 
+                // Parse JSON string payload to Object before sending
+                // This prevents double-encoding when using Jackson2JsonMessageConverter
+                Object payloadObject;
+                try {
+                    if ("PAYMENT_SUCCESS".equals(event.getType())) {
+                        // Parse JSON string to PaymentSuccessEventPayload object
+                        payloadObject = objectMapper.readValue(event.getPayload(), PaymentSuccessEventPayload.class);
+                    } else if ("PAYMENT_FAILED".equals(event.getType())) {
+                        // Parse JSON string to PaymentFailedEventPayload object
+                        payloadObject = objectMapper.readValue(event.getPayload(), PaymentFailedEventPayload.class);
+                    } else {
+                        // For other event types, send as-is (JSON string)
+                        payloadObject = event.getPayload();
+                    }
+                } catch (Exception e) {
+                    log.warn("Failed to parse payload as object, sending as JSON string: {}", e.getMessage());
+                    payloadObject = event.getPayload();
+                }
+
                 rabbitTemplate.convertAndSend(
                         RabbitMQConfig.PAYMENT_EXCHANGE, // Gửi ra exchange của payment
                         routingKey,
-                        event.getPayload()
+                        payloadObject
                 );
 
                 event.setStatus(EventStatus.PROCESSED);

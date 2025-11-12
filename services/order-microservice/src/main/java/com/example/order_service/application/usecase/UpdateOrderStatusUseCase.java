@@ -112,7 +112,8 @@ public class UpdateOrderStatusUseCase {
             eventData.put("oldStatus", order.getStatus().name());
             eventData.put("newStatus", newStatus.name());
             eventData.put("note", note);
-            eventData.put("timestamp", LocalDateTime.now());
+            // Format LocalDateTime as String to avoid Jackson JSR310 module requirement
+            eventData.put("timestamp", LocalDateTime.now().toString());
 
             OutboxEvent event = OutboxEvent.builder()
                     .aggregateType("Order")
