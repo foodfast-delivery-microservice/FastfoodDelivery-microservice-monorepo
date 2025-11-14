@@ -64,6 +64,7 @@ public class OrderController {
         boolean hasRolePermission = roleClaim != null &&
                 (roleClaim.equalsIgnoreCase("USER") ||
                  roleClaim.equalsIgnoreCase("ADMIN") ||
+                 roleClaim.equalsIgnoreCase("MERCHANT") ||
                  roleClaim.equalsIgnoreCase("ORDER_CREATE"));
 
         if (!hasScope && !hasRolePermission) {

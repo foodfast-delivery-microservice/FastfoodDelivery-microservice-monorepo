@@ -43,12 +43,13 @@ class OrderEventListenerTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        // Setup valid order created event
-        validOrderCreatedJson = "{\"orderId\":1,\"userId\":1,\"grandTotal\":100000,\"currency\":\"VND\"}";
+        // Setup valid order created event (includes merchantId from OrderCreatedEventPayload)
+        validOrderCreatedJson = "{\"orderId\":1,\"userId\":1,\"merchantId\":10,\"grandTotal\":100000,\"currency\":\"VND\"}";
         
         validPaymentRequest = new PaymentRequest(
                 1L,  // orderId
                 1L,  // userId
+                10L,  // merchantId (from event payload)
                 new BigDecimal("100000"),  // grandTotal
                 "VND"  // currency
         );
@@ -127,7 +128,7 @@ class OrderEventListenerTest {
         // Given: Empty message
         String emptyJson = "{}";
         when(objectMapper.readValue(emptyJson, PaymentRequest.class))
-                .thenReturn(new PaymentRequest(null, null, null, null));
+                .thenReturn(new PaymentRequest(null, null, null, null, null));
         doNothing().when(processPaymentUseCase).createPayment(any(PaymentRequest.class));
 
         // When: Receive empty event
