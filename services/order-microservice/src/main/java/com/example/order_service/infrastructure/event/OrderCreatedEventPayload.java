@@ -1,6 +1,5 @@
 package com.example.order_service.infrastructure.event;
 
-import com.example.order_service.domain.model.Order;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -15,14 +14,7 @@ import java.math.BigDecimal;
 public class OrderCreatedEventPayload {
     private Long orderId;
     private Long userId;
+    private Long merchantId; // Thêm merchantId để payment service không cần gọi lại order service
     private BigDecimal grandTotal;
     private String currency;
-    private OrderCreatedEventPayload createPayloadFromOrder(Order order) {
-        return OrderCreatedEventPayload.builder()
-                .orderId(order.getId())
-                .userId(order.getUserId())
-                .grandTotal(order.getGrandTotal()) // Lấy tổng tiền sau khi đã calculateTotals()
-                .currency(order.getCurrency())
-                .build();
-    }
 }

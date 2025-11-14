@@ -57,16 +57,28 @@ public class ProcessPaymentUseCase {
             return;
         }
 
-        // Try to get merchantId from order service
+        // Get merchantId: 1) from request (event payload), 2) from order service, 3) default to 0
         Long merchantId = 0L; // Default to 0 for system/admin orders
-        try {
-            OrderDetailResponse orderDetail = orderServicePort.getOrderDetail(request.getOrderId());
-            if (orderDetail.getMerchantId() != null) {
-                merchantId = orderDetail.getMerchantId();
+        
+        // Priority 1: Use merchantId from request (from event payload)
+        if (request.getMerchantId() != null && request.getMerchantId() > 0) {
+            merchantId = request.getMerchantId();
+            log.debug("Using merchantId from request (event payload): {}", merchantId);
+        } else {
+            // Priority 2: Try to get merchantId from order service (fallback)
+            try {
+                OrderDetailResponse orderDetail = orderServicePort.getOrderDetail(request.getOrderId());
+                if (orderDetail.getMerchantId() != null && orderDetail.getMerchantId() > 0) {
+                    merchantId = orderDetail.getMerchantId();
+                    log.debug("Retrieved merchantId from order service: {}", merchantId);
+                } else {
+                    log.warn("Order {} has null or invalid merchantId ({}). Using default merchantId=0", 
+                            request.getOrderId(), orderDetail.getMerchantId());
+                }
+            } catch (Exception e) {
+                log.warn("Could not get merchantId from order service for orderId: {}. Using default merchantId=0. Error: {}", 
+                        request.getOrderId(), e.getMessage());
             }
-        } catch (Exception e) {
-            log.warn("Could not get merchantId from order service for orderId: {}. Using default merchantId=0. Error: {}", 
-                    request.getOrderId(), e.getMessage());
         }
 
         // Create payment with PENDING status

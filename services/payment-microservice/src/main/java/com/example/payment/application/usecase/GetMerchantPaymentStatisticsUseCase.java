@@ -22,7 +22,13 @@ public class GetMerchantPaymentStatisticsUseCase {
     public PaymentStatisticsResponse execute(Long merchantId, LocalDateTime fromDate, LocalDateTime toDate) {
         log.info("Getting payment statistics for merchant: {} from {} to {}", merchantId, fromDate, toDate);
 
-        // ===== BƯỚC 1: VALIDATE VÀ SET DEFAULT DATE RANGE =====
+        // ===== BƯỚC 1: VALIDATE INPUT =====
+        if (merchantId == null || merchantId <= 0) {
+            log.warn("Invalid merchantId: {}", merchantId);
+            throw new IllegalArgumentException("merchantId must be a positive number");
+        }
+        
+        // ===== BƯỚC 2: VALIDATE VÀ SET DEFAULT DATE RANGE =====
         if (fromDate == null) {
             fromDate = LocalDateTime.now().minusDays(30);
             log.debug("fromDate not provided, using default: last 30 days");
@@ -38,10 +44,17 @@ public class GetMerchantPaymentStatisticsUseCase {
             throw new IllegalArgumentException("fromDate cannot be after toDate");
         }
         
+        // Validate date range không quá lớn (ví dụ: tối đa 1 năm)
+        long daysBetween = java.time.temporal.ChronoUnit.DAYS.between(fromDate, toDate);
+        if (daysBetween > 365) {
+            log.warn("Date range too large: {} days. Maximum allowed is 365 days.", daysBetween);
+            throw new IllegalArgumentException("Date range cannot exceed 365 days");
+        }
+        
         log.info("Calculating statistics for merchant {} in date range: {} to {}", merchantId, fromDate, toDate);
 
-        // ===== BƯỚC 2: ĐẾM SỐ LƯỢNG PAYMENTS THEO TỪNG STATUS =====
-        log.debug("Step 1: Counting payments by status for merchant {}", merchantId);
+        // ===== BƯỚC 3: ĐẾM SỐ LƯỢNG PAYMENTS THEO TỪNG STATUS =====
+        log.debug("Step 3: Counting payments by status for merchant {}", merchantId);
         
         Long successfulPayments = paymentRepository.countByMerchantIdAndStatusAndCreatedAtBetween(
                 merchantId, Payment.Status.SUCCESS, fromDate, toDate);
@@ -74,8 +87,8 @@ public class GetMerchantPaymentStatisticsUseCase {
         Long totalOrders = successfulPayments + failedPayments + pendingPayments + refundedPayments;
         log.debug("Total orders count: {}", totalOrders);
 
-        // ===== BƯỚC 3: TÍNH TỔNG DOANH THU =====
-        log.debug("Step 2: Calculating total revenue for merchant {}", merchantId);
+        // ===== BƯỚC 4: TÍNH TỔNG DOANH THU =====
+        log.debug("Step 4: Calculating total revenue for merchant {}", merchantId);
         
         // Bước 3.1: Tính tổng doanh thu từ các payment SUCCESS
         BigDecimal totalSuccessRevenue = paymentRepository.sumAmountByMerchantIdAndStatusAndCreatedAtBetween(
@@ -105,7 +118,11 @@ public class GetMerchantPaymentStatisticsUseCase {
         log.info("Final total revenue for merchant {}: {} (SUCCESS: {}, REFUNDED: {})", 
                 merchantId, totalRevenue, totalSuccessRevenue, totalRefundedAmount);
 
-        // ===== BƯỚC 4: BUILD RESPONSE =====
+        // ===== BƯỚC 5: XÁC ĐỊNH PERIOD =====
+        // Xác định period dựa trên date range
+        String period = determinePeriod(fromDate, toDate);
+        
+        // ===== BƯỚC 6: BUILD RESPONSE =====
         PaymentStatisticsResponse response = PaymentStatisticsResponse.builder()
                 .totalRevenue(totalRevenue)
                 .totalOrders(totalOrders)
@@ -113,12 +130,35 @@ public class GetMerchantPaymentStatisticsUseCase {
                 .failedPayments(failedPayments)
                 .pendingPayments(pendingPayments)
                 .refundedPayments(refundedPayments)
+                .period(period)
                 .build();
         
         log.info("Statistics calculated successfully for merchant {}: totalRevenue={}, totalOrders={}", 
                 merchantId, totalRevenue, totalOrders);
         
         return response;
+    }
+    
+    /**
+     * Xác định period dựa trên khoảng thời gian
+     * @param fromDate ngày bắt đầu
+     * @param toDate ngày kết thúc
+     * @return "day", "week", "month", "year", hoặc "custom"
+     */
+    private String determinePeriod(LocalDateTime fromDate, LocalDateTime toDate) {
+        long daysBetween = java.time.temporal.ChronoUnit.DAYS.between(fromDate, toDate);
+        
+        if (daysBetween <= 1) {
+            return "day";
+        } else if (daysBetween <= 7) {
+            return "week";
+        } else if (daysBetween <= 31) {
+            return "month";
+        } else if (daysBetween <= 365) {
+            return "year";
+        } else {
+            return "custom";
+        }
     }
 }
 

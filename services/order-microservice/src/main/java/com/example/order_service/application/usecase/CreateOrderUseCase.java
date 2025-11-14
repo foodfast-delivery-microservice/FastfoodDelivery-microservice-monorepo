@@ -407,6 +407,7 @@ public class CreateOrderUseCase {
         OrderCreatedEventPayload payload = OrderCreatedEventPayload.builder()
                 .orderId(order.getId())
                 .userId(order.getUserId())
+                .merchantId(order.getMerchantId()) // Include merchantId in event payload
                 .grandTotal(order.getGrandTotal())
                 .currency(order.getCurrency())
                 .build();

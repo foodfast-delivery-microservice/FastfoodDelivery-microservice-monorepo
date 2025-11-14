@@ -21,6 +21,11 @@ public class PaymentRequest {
     // - For Event Listener: userId comes from order service event
     private Long userId;
 
+    // merchantId is optional in request body
+    // - For Event Listener: merchantId comes from order service event (OrderCreatedEventPayload)
+    // - For REST API: merchantId will be retrieved from order service if not provided
+    private Long merchantId;
+
     @NotNull(message = "GrandTotal is required")
     @DecimalMin(value = "0.01", message = "Amount must be greater than 0")
     private BigDecimal grandTotal;
