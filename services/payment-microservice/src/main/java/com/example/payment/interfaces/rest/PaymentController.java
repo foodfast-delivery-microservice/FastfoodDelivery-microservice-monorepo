@@ -33,6 +33,7 @@ public class PaymentController {
     private final JwtTokenService jwtTokenService;
     private final GetMerchantPaymentsUseCase getMerchantPaymentsUseCase;
     private final GetMerchantPaymentStatisticsUseCase getMerchantPaymentStatisticsUseCase;
+    private final com.example.payment.domain.repository.PaymentRepository paymentRepository;
 
     @PostMapping
     public ResponseEntity<?> processPayment(
@@ -148,5 +149,32 @@ public class PaymentController {
 
         PaymentStatisticsResponse response = getMerchantPaymentStatisticsUseCase.execute(merchantId, fromDate, toDate);
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Get payment by orderId (for internal use by Order Service)
+     * GET /api/v1/payments/order/{orderId}
+     */
+    @GetMapping("/order/{orderId}")
+    public ResponseEntity<PaymentResponse> getPaymentByOrderId(@PathVariable Long orderId) {
+        log.info("Getting payment for orderId: {}", orderId);
+        
+        return paymentRepository.findByOrderId(orderId)
+                .map(payment -> {
+                    PaymentResponse response = PaymentResponse.builder()
+                            .id(payment.getId())
+                            .orderId(payment.getOrderId())
+                            .userId(payment.getUserId())
+                            .merchantId(payment.getMerchantId())
+                            .amount(payment.getAmount())
+                            .currency(payment.getCurrency())
+                            .status(payment.getStatus().toString())
+                            .transactionNo(payment.getTransactionNo())
+                            .failReason(payment.getFailReason())
+                            .timestamp(payment.getCreatedAt())
+                            .build();
+                    return ResponseEntity.ok(response);
+                })
+                .orElse(ResponseEntity.notFound().build());
     }
 }
