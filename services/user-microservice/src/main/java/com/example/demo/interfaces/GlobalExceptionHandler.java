@@ -11,90 +11,82 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
     @ExceptionHandler(EmailAlreadyExistException.class)
-    public ResponseEntity<ApiResponse<Void>>  handleEmailAlreadyExistException(EmailAlreadyExistException ex){
+    public ResponseEntity<ApiResponse<Void>> handleEmailAlreadyExistException(EmailAlreadyExistException ex) {
         ApiResponse<Void> response = new ApiResponse<>(
                 HttpStatus.CONFLICT,
                 ex.getMessage(),
                 null,
-                "EMAIL_ALREADY_EXISTS"
-        );
+                "EMAIL_ALREADY_EXISTS");
         return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
     }
 
     @ExceptionHandler(ResourceNotFoundException.class)
-    public ResponseEntity<ApiResponse<Void>> handleResourceNotFoundException(ResourceNotFoundException ex){
+    public ResponseEntity<ApiResponse<Void>> handleResourceNotFoundException(ResourceNotFoundException ex) {
         ApiResponse<Void> response = new ApiResponse<>(
                 HttpStatus.NOT_FOUND,
                 ex.getMessage(),
                 null,
-                "NOT_FOUND"
-        );
-        return  ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+                "NOT_FOUND");
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ApiResponse<Void>> handleException(Exception ex){
+    public ResponseEntity<ApiResponse<Void>> handleException(Exception ex) {
         ApiResponse<Void> response = new ApiResponse<>(
                 HttpStatus.INTERNAL_SERVER_ERROR,
                 ex.getMessage(),
                 null,
-                "INTERNAL_SERVER_ERROR"
-        );
-        return  ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+                "INTERNAL_SERVER_ERROR");
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
     }
 
     @ExceptionHandler(AdminAccessDeniedException.class)
-    public ResponseEntity<ApiResponse<Void>> handleAccessDeniedException(AdminAccessDeniedException ex){
+    public ResponseEntity<ApiResponse<Void>> handleAccessDeniedException(AdminAccessDeniedException ex) {
         ApiResponse<Void> response = new ApiResponse<>(
                 HttpStatus.FORBIDDEN,
                 ex.getMessage(),
                 null,
-                "FORBIDDEN"
-        );
-        return  ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
+                "FORBIDDEN");
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
     }
 
     @ExceptionHandler(UserNotFoundException.class)
-    public ResponseEntity<ApiResponse<Void>> handleUserNotFoundException(UserNotFoundException ex){
+    public ResponseEntity<ApiResponse<Void>> handleUserNotFoundException(UserNotFoundException ex) {
         ApiResponse<Void> response = new ApiResponse<>(
                 HttpStatus.NOT_FOUND,
                 ex.getMessage(),
                 null,
-                "NOT_FOUND"
-        );
-        return  ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+                "NOT_FOUND");
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
     }
 
     @ExceptionHandler(InvalidId.class)
-    public ResponseEntity<ApiResponse<Void>> handleInvalidIdException(InvalidId ex){
+    public ResponseEntity<ApiResponse<Void>> handleInvalidIdException(InvalidId ex) {
         ApiResponse<Void> response = new ApiResponse<>(
                 HttpStatus.NOT_FOUND,
                 ex.getMessage(),
                 null,
-                "INVALID_ID"
-        );
-        return  ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+                "INVALID_ID");
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
     }
 
     @ExceptionHandler
-    public ResponseEntity<ApiResponse<Void>> handleInvalidCredentialException(InvalidCredentialException ex){
+    public ResponseEntity<ApiResponse<Void>> handleInvalidCredentialException(InvalidCredentialException ex) {
         ApiResponse<Void> response = new ApiResponse<>(
                 HttpStatus.UNAUTHORIZED,
                 ex.getMessage(),
                 null,
-                "UNAUTHORIZED"
-        );
-        return  ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
+                "UNAUTHORIZED");
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
     }
 
     @ExceptionHandler
-    public ResponseEntity<ApiResponse<Void>> handleUsernameAlreadyExistException(UsernameAlreadyExistException ex){
+    public ResponseEntity<ApiResponse<Void>> handleUsernameAlreadyExistException(UsernameAlreadyExistException ex) {
         ApiResponse<Void> response = new ApiResponse<>(
                 HttpStatus.CONFLICT,
                 ex.getMessage(),
                 null,
-                "USER_ALREADY_EXISTS"
-        );
-        return  ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+                "USER_ALREADY_EXISTS");
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
     }
 }

@@ -28,10 +28,12 @@ public class SecurityConfig {
     public AuthenticationManager authenticationManager() throws Exception {
         return authenticationConfiguration.getAuthenticationManager();
     }
+
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
@@ -45,19 +47,17 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/auth/**").permitAll()
                         // Validation endpoint cho phép USER role (cho Order Service)
                         // Pattern: /api/v1/users/{id}/validate - chỉ match 1 level path variable
-                        .requestMatchers(HttpMethod.GET,"/api/v1/users/*/validate").hasAnyRole("USER", "ADMIN", "MERCHANT")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/users/*/validate")
+                        .hasAnyRole("USER", "ADMIN", "MERCHANT")
                         // Các endpoint khác yêu cầu ADMIN
-                        .requestMatchers(HttpMethod.POST,"/api/v1/users/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.GET,"/api/v1/users/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.PATCH,"/api/v1/users/**").authenticated()
-                        .requestMatchers(HttpMethod.DELETE,"/api/v1/users/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/v1/users/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/users/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PATCH, "/api/v1/users/**").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/users/**").hasRole("ADMIN")
 
-                        .anyRequest().authenticated()
-                )
+                        .anyRequest().authenticated())
 
-                .sessionManagement(session ->
-                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-                )
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

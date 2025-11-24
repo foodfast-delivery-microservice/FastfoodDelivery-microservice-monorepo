@@ -1,7 +1,9 @@
 package com.example.demo.interfaces.rest;
 
-
 import com.example.demo.application.usecase.*;
+import com.example.demo.domain.exception.AccessDeniedException;
+import com.example.demo.domain.exception.InvalidIdException;
+import com.example.demo.domain.exception.MissingMerchantIdException;
 import com.example.demo.interfaces.common.ApiResponse;
 import com.example.demo.interfaces.rest.dto.ProductPatch;
 import com.example.demo.interfaces.rest.dto.ProductRequest;
@@ -36,8 +38,7 @@ public class ProductController {
     @PostMapping
     public ResponseEntity<ApiResponse<ProductResponse>> createProduct(
             @AuthenticationPrincipal Jwt jwt,
-            @Valid @RequestBody ProductRequest productRequest
-    ) {
+            @Valid @RequestBody ProductRequest productRequest) {
         String role = extractRole(jwt);
         Long userId = extractUserId(jwt);
 
@@ -48,19 +49,19 @@ public class ProductController {
             productRequest.setMerchantId(userId);
         } else if (isAdmin(role)) {
             if (productRequest.getMerchantId() == null) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "merchantId is required for admin-created products");
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "merchantId is required for admin-created products");
             }
         } else {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Unsupported role");
         }
 
         ProductResponse created = createProductUseCase.create(productRequest);
-        ApiResponse<ProductResponse> result =new ApiResponse<>(
+        ApiResponse<ProductResponse> result = new ApiResponse<>(
                 HttpStatus.CREATED,
                 "created product",
                 created,
-                null
-        );
+                null);
         return ResponseEntity.status(HttpStatus.CREATED).body(result);
     }
 
@@ -68,8 +69,7 @@ public class ProductController {
     public ResponseEntity<ApiResponse<ProductResponse>> updateProduct(
             @AuthenticationPrincipal Jwt jwt,
             @PathVariable Long id,
-            @RequestBody ProductPatch productPatch
-    ) {
+            @RequestBody ProductPatch productPatch) {
         String role = extractRole(jwt);
         Long userId = extractUserId(jwt);
         boolean admin = isAdmin(role);
@@ -84,16 +84,14 @@ public class ProductController {
                 HttpStatus.OK,
                 "updated product",
                 updated,
-                null
-        );
+                null);
         return ResponseEntity.ok(result);
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<String>> deleteProduct(
             @AuthenticationPrincipal Jwt jwt,
-            @PathVariable Long id
-    ) {
+            @PathVariable Long id) {
         String role = extractRole(jwt);
         Long userId = extractUserId(jwt);
         boolean admin = isAdmin(role);
@@ -103,34 +101,33 @@ public class ProductController {
         }
 
         deleteProductByIdUseCase.deleteProduct(id, admin ? null : userId, admin);
-        ApiResponse<String> result =new ApiResponse<>(
+        ApiResponse<String> result = new ApiResponse<>(
                 HttpStatus.ACCEPTED,
                 "deleted product",
                 null,
-                null
-        );
+                null);
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(result);
 
     }
+
     @GetMapping
     public ResponseEntity<ApiResponse<List<ProductResponse>>> getAllProducts() {
 
-        ApiResponse<List<ProductResponse>> result =new ApiResponse<>(
+        ApiResponse<List<ProductResponse>> result = new ApiResponse<>(
                 HttpStatus.OK,
                 "get all products",
                 getAllProductsUserCase.getAllProducts(),
-                null
-        );
+                null);
         return ResponseEntity.status(HttpStatus.OK).body(result);
     }
+
     @GetMapping("/{category}")
     public ResponseEntity<ApiResponse<List<ProductResponse>>> getProductsByCategory(@PathVariable String category) {
-        ApiResponse<List<ProductResponse>> result =new ApiResponse<>(
+        ApiResponse<List<ProductResponse>> result = new ApiResponse<>(
                 HttpStatus.OK,
                 "get products",
                 getProductsByCategoryUseCase.getProductsByCategory(category),
-                null
-        );
+                null);
         return ResponseEntity.status(HttpStatus.OK).body(result);
     }
 
@@ -138,24 +135,23 @@ public class ProductController {
     public ResponseEntity<ApiResponse<List<ProductResponse>>> getMerchantProducts(
             @AuthenticationPrincipal Jwt jwt,
             @RequestParam(value = "merchantId", required = false) Long merchantIdParam,
-            @RequestParam(value = "includeInactive", defaultValue = "false") boolean includeInactive
-    ) {
+            @RequestParam(value = "includeInactive", defaultValue = "false") boolean includeInactive) {
         String role = extractRole(jwt);
         Long userId = extractUserId(jwt);
         Long targetMerchantId;
 
         if (isMerchant(role)) {
             if (userId == null) {
-                throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Missing userId claim in token");
+                throw new InvalidIdException("Missing userId claim in token");
             }
             targetMerchantId = userId;
         } else if (isAdmin(role)) {
             if (merchantIdParam == null) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "merchantId parameter is required for admin");
+                throw new MissingMerchantIdException();
             }
             targetMerchantId = merchantIdParam;
         } else {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Unsupported role");
+            throw new AccessDeniedException();
         }
 
         List<ProductResponse> responses = getMerchantProductsUseCase.execute(targetMerchantId, includeInactive);
@@ -164,24 +160,22 @@ public class ProductController {
                 HttpStatus.OK,
                 "get merchant products",
                 responses,
-                null
-        );
+                null);
         return ResponseEntity.ok(result);
     }
 
     @PostMapping("/validate")
     public ResponseEntity<ApiResponse<List<ProductValidationResponse>>> validateProducts(
-            @Valid @RequestBody List<ProductValidationRequest> validationRequestList
-    ){
+            @Valid @RequestBody List<ProductValidationRequest> validationRequestList) {
         List<ProductValidationResponse> responseList = validateProductsUseCase.validate(validationRequestList);
-        ApiResponse<List<ProductValidationResponse>> result =new ApiResponse<>(
+        ApiResponse<List<ProductValidationResponse>> result = new ApiResponse<>(
                 HttpStatus.OK,
                 "validate products",
                 responseList,
-                null
-        );
+                null);
         return ResponseEntity.status(HttpStatus.OK).body(result);
     }
+
     @GetMapping("/ping")
     public String ping() {
         return "product-service OK";
