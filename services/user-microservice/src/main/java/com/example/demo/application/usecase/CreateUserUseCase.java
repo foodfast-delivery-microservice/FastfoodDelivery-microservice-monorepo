@@ -17,7 +17,7 @@ public class  CreateUserUseCase {
         this.passwordEncoder = passwordEncoder;
     }
 
-    // cho user tự đăng kí
+    // chỉ có role admin mới làm được
     public CreateUserResponse execute(CreateUserRequest createUserRequest) {
         if (userRepository.existsByEmail(createUserRequest.getEmail())) {
             throw  new EmailAlreadyExistException(createUserRequest.getEmail());

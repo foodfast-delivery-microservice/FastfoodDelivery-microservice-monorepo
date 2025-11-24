@@ -86,4 +86,15 @@ public class GlobalExceptionHandler {
         );
         return  ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
     }
+
+    @ExceptionHandler
+    public ResponseEntity<ApiResponse<Void>> handleUsernameAlreadyExistException(UsernameAlreadyExistException ex){
+        ApiResponse<Void> response = new ApiResponse<>(
+                HttpStatus.CONFLICT,
+                ex.getMessage(),
+                null,
+                "USER_ALREADY_EXISTS"
+        );
+        return  ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    }
 }

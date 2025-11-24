@@ -41,15 +41,17 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // Internal API for service-to-service calls (no authentication required)
                         .requestMatchers("/api/internal/**").permitAll()
+
+                        .requestMatchers("/api/v1/auth/**").permitAll()
                         // Validation endpoint cho phép USER role (cho Order Service)
                         // Pattern: /api/v1/users/{id}/validate - chỉ match 1 level path variable
                         .requestMatchers(HttpMethod.GET,"/api/v1/users/*/validate").hasAnyRole("USER", "ADMIN", "MERCHANT")
                         // Các endpoint khác yêu cầu ADMIN
                         .requestMatchers(HttpMethod.POST,"/api/v1/users/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET,"/api/v1/users/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.PATCH,"/api/v1/users/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PATCH,"/api/v1/users/**").authenticated()
                         .requestMatchers(HttpMethod.DELETE,"/api/v1/users/**").hasRole("ADMIN")
-                        .requestMatchers("/api/v1/auth/**").permitAll()
+
                         .anyRequest().authenticated()
                 )
 

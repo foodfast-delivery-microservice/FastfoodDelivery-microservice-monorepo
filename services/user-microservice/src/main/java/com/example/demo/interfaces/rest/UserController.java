@@ -10,18 +10,18 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import com.example.demo.domain.model.User;
 
 import java.util.List;
 
-
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/users")
 @RestController
 public class UserController {
-	//private final UserService userService;
+    // private final UserService userService;
 
     private final CreateUserUseCase createUserUseCase;
     private final UpdateUserUseCase updateUserUseCase;
@@ -29,8 +29,8 @@ public class UserController {
     private final GetAllUsersUseCase getAllUserUseCase;
     private final GetUserByIdUseCase getUserByIdUseCase;
     private final ChangePasswordUseCase changePasswordUseCase;
-	@PostMapping
-	public ResponseEntity<ApiResponse<CreateUserResponse>> createUser(@Valid @RequestBody CreateUserRequest request) {
+    @PostMapping
+    public ResponseEntity<ApiResponse<CreateUserResponse>> createUser(@Valid @RequestBody CreateUserRequest request) {
         CreateUserResponse created = createUserUseCase.execute(request);
         ApiResponse<CreateUserResponse> result = new ApiResponse<>(
                 HttpStatus.CREATED,
@@ -38,11 +38,15 @@ public class UserController {
                 created,
                 null);
         return ResponseEntity.status(HttpStatus.CREATED).body(result);
-	}
+    }
 
     @PatchMapping("/{id}")
-    public ResponseEntity<ApiResponse<User>> updateUser(@PathVariable Long id,@RequestBody UserPatchDTO dto){
-        User updated = updateUserUseCase.updateUser(id,dto);
+    public ResponseEntity<ApiResponse<User>> updateUser(
+            @PathVariable Long id,
+            @RequestBody UserPatchDTO dto,
+            Authentication authentication) {
+        // Authorization is handled in UpdateUserUseCase
+        User updated = updateUserUseCase.updateUser(id, dto, authentication);
 
         ApiResponse<User> result = new ApiResponse<>(
                 HttpStatus.OK,
@@ -51,10 +55,14 @@ public class UserController {
                 null);
         return ResponseEntity.status(HttpStatus.OK).body(result);
     }
+
     @PatchMapping("/{id}/password")
     public ResponseEntity<ApiResponse<User>> changePassword(
-            @PathVariable Long id,@RequestBody ChangePasswordRequest request) {
-        User updated = changePasswordUseCase.execute(id, request);
+            @PathVariable Long id,
+            @RequestBody ChangePasswordRequest request,
+            Authentication authentication) {
+        // Authorization is handled in ChangePasswordUseCase
+        User updated = changePasswordUseCase.execute(id, request, authentication);
         ApiResponse<User> result = new ApiResponse<>(
                 HttpStatus.OK,
                 "changed password",
@@ -127,8 +135,8 @@ public class UserController {
     }
 
     @DeleteMapping("/{id}")
-//    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<String>> deleteUser(@PathVariable Long id){
+    // @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<String>> deleteUser(@PathVariable Long id) {
         deleteUserByIdUseCase.execute(id);
         ApiResponse<String> result = new ApiResponse<>(
                 HttpStatus.NO_CONTENT,

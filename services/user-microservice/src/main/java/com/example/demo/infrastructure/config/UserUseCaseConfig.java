@@ -24,29 +24,32 @@ public class UserUseCaseConfig {
     }
 
     @Bean
-    public GetAllUsersUseCase getAllUserUseCase ()
-    {
+    public GetAllUsersUseCase getAllUserUseCase() {
         return new GetAllUsersUseCase(userRepository);
     }
 
     @Bean
-    public CreateUserUseCase createUserUseCase (UserRepository userRepository, PasswordEncoder passwordEncoder){
+    public CreateUserUseCase createUserUseCase(UserRepository userRepository, PasswordEncoder passwordEncoder) {
         return new CreateUserUseCase(userRepository, passwordEncoder);
     }
 
     @Bean
-    public UpdateUserUseCase updateUserUseCase (){
-
-        return new UpdateUserUseCase(userRepository,eventPublisher);
+    public ValidateUserAccessUseCase validateUserAccessUseCase() {
+        return new ValidateUserAccessUseCase();
     }
 
     @Bean
-    public DeleteUserByIdUseCase deleteUserByIdUseCase (){
+    public UpdateUserUseCase updateUserUseCase() {
+        return new UpdateUserUseCase(userRepository, eventPublisher, validateUserAccessUseCase());
+    }
+
+    @Bean
+    public DeleteUserByIdUseCase deleteUserByIdUseCase() {
         return new DeleteUserByIdUseCase(userRepository);
     }
 
     @Bean
-    public ChangePasswordUseCase changePasswordUseCase (){
-        return new ChangePasswordUseCase(userRepository,passwordEncoder);
+    public ChangePasswordUseCase changePasswordUseCase() {
+        return new ChangePasswordUseCase(userRepository, passwordEncoder, validateUserAccessUseCase());
     }
 }

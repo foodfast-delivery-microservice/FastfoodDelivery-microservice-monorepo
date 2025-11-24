@@ -7,6 +7,7 @@ import com.example.demo.domain.repository.UserRepository;
 import com.example.demo.interfaces.rest.dto.user.ChangePasswordRequest;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -15,14 +16,18 @@ import org.springframework.stereotype.Service;
 public class ChangePasswordUseCase {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final ValidateUserAccessUseCase validateUserAccessUseCase;
 
     @Transactional
-    public User execute(Long userId, ChangePasswordRequest changePasswordRequest){
+    public User execute(Long userId, ChangePasswordRequest changePasswordRequest, Authentication authentication) {
+        // Validate: User can only change their own password (unless ADMIN)
+        validateUserAccessUseCase.execute(userId, authentication);
+
         User user = userRepository.findById(userId)
                 .orElseThrow(()->new InvalidId(userId));
 
         // xác thực mật khẩu cũ
-        if (!passwordEncoder.matches(changePasswordRequest.getOldPassword(), user.getPassword())){
+        if (!passwordEncoder.matches(changePasswordRequest.getOldPassword(), user.getPassword())) {
             throw new InvalidCredentialException();
         }
 

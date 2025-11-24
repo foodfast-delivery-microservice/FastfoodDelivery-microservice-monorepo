@@ -26,19 +26,10 @@ public class JwtConfig {
     public static final MacAlgorithm JWT_ALGORITHM = MacAlgorithm.HS512;
     @Bean
     public JwtDecoder jwtDecoder() {
-        NimbusJwtDecoder jwtDecoder = NimbusJwtDecoder
+        return NimbusJwtDecoder
                 .withSecretKey(getSecretKey())
                 .macAlgorithm(JWT_ALGORITHM)
                 .build();
-
-        return token -> {
-            try {
-                return jwtDecoder.decode(token);
-            } catch (Exception e) {
-                System.out.println("JWT error: " + e.getMessage());
-                throw new RuntimeException(); // đó ném lỗi sau
-            }
-        };
     }
     private SecretKey getSecretKey() {
         byte[] keyBytes = Base64.from(jwtKey).decode();

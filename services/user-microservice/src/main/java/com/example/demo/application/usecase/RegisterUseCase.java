@@ -2,6 +2,7 @@ package com.example.demo.application.usecase;
 
 import com.example.demo.domain.exception.EmailAlreadyExistException;
 import com.example.demo.domain.exception.InvalidRoleException;
+import com.example.demo.domain.exception.UsernameAlreadyExistException;
 import com.example.demo.domain.model.User;
 import com.example.demo.domain.repository.UserRepository;
 import com.example.demo.interfaces.rest.dto.auth.RegisterRequest;
@@ -19,6 +20,9 @@ public class RegisterUseCase {
     }
     // cho user tự đăng kí
     public CreateUserResponse register(RegisterRequest registerRequest) {
+        if (userRepository.existsByUsername(registerRequest.getUsername())) {
+            throw new UsernameAlreadyExistException(registerRequest.getUsername());
+        }
         if (userRepository.existsByEmail(registerRequest.getEmail())) {
             throw  new EmailAlreadyExistException(registerRequest.getEmail());
         }
