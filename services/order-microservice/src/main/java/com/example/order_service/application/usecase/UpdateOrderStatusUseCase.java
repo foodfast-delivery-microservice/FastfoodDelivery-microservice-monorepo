@@ -7,12 +7,16 @@ import com.example.order_service.application.dto.UpdateOrderStatusRequest;
 import com.example.order_service.domain.exception.MerchantOrderAccessDeniedException;
 import com.example.order_service.domain.exception.OrderNotFoundException;
 import com.example.order_service.domain.exception.OrderValidationException;
+import com.example.order_service.application.dto.PaymentInfo;
 import com.example.order_service.domain.model.EventStatus;
 import com.example.order_service.domain.model.Order;
 import com.example.order_service.domain.model.OrderStatus;
 import com.example.order_service.domain.model.OutboxEvent;
 import com.example.order_service.domain.repository.OrderRepository;
 import com.example.order_service.domain.repository.OutboxEventRepository;
+import com.example.order_service.domain.repository.PaymentServicePort;
+import com.example.order_service.infrastructure.event.OrderRefundRequestEvent;
+import com.example.order_service.infrastructure.event.OrderPaidEvent;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -31,6 +35,7 @@ public class UpdateOrderStatusUseCase {
 
     private final OrderRepository orderRepository;
     private final OutboxEventRepository outboxEventRepository;
+    private final PaymentServicePort paymentServicePort;
 
     @Transactional
     public OrderDetailResponse execute(Long orderId, UpdateOrderStatusRequest request) {
@@ -106,8 +111,9 @@ public class UpdateOrderStatusUseCase {
     private void validateStatusTransition(OrderStatus currentStatus, OrderStatus newStatus) {
         Map<OrderStatus, OrderStatus[]> validTransitions = new HashMap<>();
         validTransitions.put(OrderStatus.PENDING, new OrderStatus[]{OrderStatus.CONFIRMED, OrderStatus.CANCELLED});
-        validTransitions.put(OrderStatus.CONFIRMED, new OrderStatus[]{OrderStatus.SHIPPED, OrderStatus.CANCELLED});
-        validTransitions.put(OrderStatus.SHIPPED, new OrderStatus[]{OrderStatus.DELIVERED});
+        validTransitions.put(OrderStatus.CONFIRMED, new OrderStatus[]{OrderStatus.PAID, OrderStatus.SHIPPED, OrderStatus.CANCELLED});
+        validTransitions.put(OrderStatus.PAID, new OrderStatus[]{OrderStatus.SHIPPED, OrderStatus.CANCELLED});
+        validTransitions.put(OrderStatus.SHIPPED, new OrderStatus[]{OrderStatus.DELIVERED, OrderStatus.CANCELLED});
         validTransitions.put(OrderStatus.DELIVERED, new OrderStatus[]{OrderStatus.REFUNDED});
         validTransitions.put(OrderStatus.CANCELLED, new OrderStatus[]{});
         validTransitions.put(OrderStatus.REFUNDED, new OrderStatus[]{});
@@ -136,6 +142,14 @@ public class UpdateOrderStatusUseCase {
                 break;
             case REFUNDED:
                 order.setStatus(OrderStatus.REFUNDED);
+                // Publish OrderRefundRequestEvent to payment service
+                try {
+                    PaymentInfo paymentInfo = paymentServicePort.getPaymentByOrderId(order.getId());
+                    createRefundRequestEvent(order, paymentInfo.getPaymentId(), order.getGrandTotal(), null);
+                } catch (Exception e) {
+                    log.error("Failed to create refund request event for order {}: {}", order.getId(), e.getMessage());
+                    // Don't throw exception to avoid rolling back the order status update
+                }
                 break;
             default:
                 throw new OrderValidationException("Unsupported status: " + newStatus);
@@ -235,6 +249,9 @@ public class UpdateOrderStatusUseCase {
 
         // tạo outbox event nếu muốn sync sang service khác (inventory, delivery,…)
         createStatusChangeEvent(order, OrderStatus.PAID, "Payment successful");
+        
+        // Create OrderPaidEvent for stock deduction
+        createOrderPaidEvent(order);
     }
 
     @Transactional
@@ -256,6 +273,75 @@ public class UpdateOrderStatusUseCase {
         orderRepository.save(order);
 
         createStatusChangeEvent(order, OrderStatus.CANCELLED, reason);
+    }
+
+    private void createRefundRequestEvent(Order order, Long paymentId, java.math.BigDecimal refundAmount, String reason) {
+        try {
+            OrderRefundRequestEvent eventPayload = new OrderRefundRequestEvent(
+                    order.getId(),
+                    paymentId,
+                    refundAmount,
+                    reason
+            );
+
+            String payloadJson = new ObjectMapper().writeValueAsString(eventPayload);
+
+            OutboxEvent event = OutboxEvent.builder()
+                    .aggregateType("Order")
+                    .aggregateId(order.getId().toString())
+                    .type("OrderRefundRequest")
+                    .payload(payloadJson)
+                    .status(EventStatus.NEW)
+                    .createdAt(LocalDateTime.now())
+                    .build();
+
+            outboxEventRepository.save(event);
+            log.info("Created OrderRefundRequest event for orderId: {}, paymentId: {}", order.getId(), paymentId);
+
+        } catch (Exception e) {
+            log.error("Failed to create refund request event for order {}: {}", order.getId(), e.getMessage());
+            // Don't throw exception to avoid rolling back the order status update
+        }
+    }
+
+    private void createOrderPaidEvent(Order order) {
+        try {
+            // Map orderItems to OrderItemDeduction
+            java.util.List<OrderPaidEvent.OrderItemDeduction> orderItemDeductions = order.getOrderItems().stream()
+                    .map(item -> OrderPaidEvent.OrderItemDeduction.builder()
+                            .productId(item.getProductId())
+                            .quantity(item.getQuantity())
+                            .merchantId(item.getMerchantId())
+                            .build())
+                    .collect(Collectors.toList());
+
+            OrderPaidEvent eventPayload = OrderPaidEvent.builder()
+                    .orderId(order.getId())
+                    .userId(order.getUserId())
+                    .merchantId(order.getMerchantId())
+                    .orderItems(orderItemDeductions)
+                    .build();
+
+            String payloadJson = new ObjectMapper().writeValueAsString(eventPayload);
+
+            OutboxEvent event = OutboxEvent.builder()
+                    .aggregateType("Order")
+                    .aggregateId(order.getId().toString())
+                    .type("OrderPaid")
+                    .payload(payloadJson)
+                    .status(EventStatus.NEW)
+                    .createdAt(LocalDateTime.now())
+                    .build();
+
+            outboxEventRepository.save(event);
+            log.info("[STOCK_DEDUCTION] Created OrderPaid event for orderId: {}, items count: {}", 
+                    order.getId(), orderItemDeductions.size());
+
+        } catch (Exception e) {
+            log.error("Failed to create OrderPaid event for order {}: {}", order.getId(), e.getMessage());
+            // Don't throw exception to avoid rolling back the order status update
+            // Event will be retried later via outbox pattern
+        }
     }
 
 }

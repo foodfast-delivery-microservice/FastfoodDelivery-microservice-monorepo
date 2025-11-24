@@ -45,4 +45,14 @@ public class ProductUserConfig {
     public GetMerchantProductsUseCase getMerchantProductsUseCase() {
         return new GetMerchantProductsUseCase(productRepository);
     }
+
+    @Bean
+    public RestoreStockUseCase restoreStockUseCase() {
+        return new RestoreStockUseCase(productRepository);
+    }
+
+    @Bean
+    public DeductStockUseCase deductStockUseCase() {
+        return new DeductStockUseCase(productRepository);
+    }
 }
