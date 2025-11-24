@@ -19,9 +19,16 @@ public class RabbitMQConfig {
 
     public static final String PAYMENT_SUCCESS_QUEUE = "payment.success.queue";
     public static final String PAYMENT_FAILED_QUEUE = "payment.failed.queue";
+    public static final String PAYMENT_REFUNDED_QUEUE = "payment.refunded.queue";
 
     public static final String PAYMENT_SUCCESS_ROUTING_KEY = "payment.success";
     public static final String PAYMENT_FAILED_ROUTING_KEY = "payment.failed";
+    public static final String PAYMENT_REFUNDED_ROUTING_KEY = "payment.refunded";
+
+    public static final String ORDER_REFUNDED_QUEUE = "order.refunded.queue";
+    public static final String ORDER_REFUNDED_ROUTING_KEY = "order.refunded";
+    public static final String ORDER_PAID_QUEUE = "order.paid.queue";
+    public static final String ORDER_PAID_ROUTING_KEY = "order.paid";
 
 
     @Bean
@@ -44,6 +51,21 @@ public class RabbitMQConfig {
     }
 
     @Bean
+    public Queue paymentRefundedQueue() {
+        return new Queue(PAYMENT_REFUNDED_QUEUE, true);
+    }
+
+    @Bean
+    public Queue orderRefundedQueue() {
+        return new Queue(ORDER_REFUNDED_QUEUE, true);
+    }
+
+    @Bean
+    public Queue orderPaidQueue() {
+        return new Queue(ORDER_PAID_QUEUE, true);
+    }
+
+    @Bean
     public Binding paymentSuccessBinding() {
         return BindingBuilder.bind(paymentSuccessQueue())
                 .to(paymentExchange())
@@ -55,6 +77,27 @@ public class RabbitMQConfig {
         return BindingBuilder.bind(paymentFailedQueue())
                 .to(paymentExchange())
                 .with(PAYMENT_FAILED_ROUTING_KEY);
+    }
+
+    @Bean
+    public Binding paymentRefundedBinding() {
+        return BindingBuilder.bind(paymentRefundedQueue())
+                .to(paymentExchange())
+                .with(PAYMENT_REFUNDED_ROUTING_KEY);
+    }
+
+    @Bean
+    public Binding orderRefundedBinding() {
+        return BindingBuilder.bind(orderRefundedQueue())
+                .to(orderExchange())
+                .with(ORDER_REFUNDED_ROUTING_KEY);
+    }
+
+    @Bean
+    public Binding orderPaidBinding() {
+        return BindingBuilder.bind(orderPaidQueue())
+                .to(orderExchange())
+                .with(ORDER_PAID_ROUTING_KEY);
     }
 
     @Bean
