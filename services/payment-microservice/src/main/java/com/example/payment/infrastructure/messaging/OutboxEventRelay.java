@@ -5,6 +5,7 @@ import com.example.payment.domain.model.OutboxEvent;
 import com.example.payment.domain.repository.OutboxEventRepository;
 import com.example.payment.infrastructure.config.RabbitMQConfig;
 import com.example.payment.infrastructure.event.PaymentFailedEventPayload;
+import com.example.payment.infrastructure.event.PaymentRefundedEvent;
 import com.example.payment.infrastructure.event.PaymentSuccessEventPayload;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -44,7 +45,7 @@ public class OutboxEventRelay {
                     routingKey = RabbitMQConfig.PAYMENT_SUCCESS_ROUTING_KEY;
                 } else if ("PAYMENT_FAILED".equals(event.getType())) {
                     routingKey = RabbitMQConfig.PAYMENT_FAILED_ROUTING_KEY;
-                } else if ("PAYMENT_REFUND".equals(event.getType())) {
+                } else if ("PAYMENT_REFUNDED".equals(event.getType())) {
                     routingKey = RabbitMQConfig.PAYMENT_REFUNDED_ROUTING_KEY;
                 } else {
                     log.warn("Unknown event type: {}", event.getType());
@@ -61,6 +62,9 @@ public class OutboxEventRelay {
                     } else if ("PAYMENT_FAILED".equals(event.getType())) {
                         // Parse JSON string to PaymentFailedEventPayload object
                         payloadObject = objectMapper.readValue(event.getPayload(), PaymentFailedEventPayload.class);
+                    } else if ("PAYMENT_REFUNDED".equals(event.getType())) {
+                        // Parse JSON string to PaymentRefundedEvent object
+                        payloadObject = objectMapper.readValue(event.getPayload(), PaymentRefundedEvent.class);
                     } else {
                         // For other event types, send as-is (JSON string)
                         payloadObject = event.getPayload();

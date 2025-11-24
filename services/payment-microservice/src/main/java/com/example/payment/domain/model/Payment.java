@@ -51,6 +51,9 @@ public class Payment {
 
     @Column(name = "fail_reason", length = 255) // Lý do thất bại
     private String failReason;
+
+    @Column(name = "refund_amount", precision = 12, scale = 2) // Số tiền đã hoàn
+    private BigDecimal refundAmount;
     @PrePersist
     void prePersist() {
         LocalDateTime now = LocalDateTime.now();
@@ -77,9 +80,23 @@ public class Payment {
                     "Refund amount cannot exceed payment amount"
             );
         }
-        // 3. Cập nhật trạng thái
+        // 3. Lưu số tiền refund
+        this.refundAmount = refundAmount;
+        // 4. Cập nhật trạng thái
         this.status = Status.REFUNDED;
     }
+
+    public void retry() {
+        if (this.status != Status.FAILED) {
+            throw new IllegalStateException(
+                "Cannot retry payment with status: " + this.status + 
+                ". Only FAILED payments can be retried."
+            );
+        }
+        this.status = Status.PENDING;
+        this.failReason = null; // Clear previous failure reason
+    }
+
     public enum Status {
         PENDING,
         SUCCESS,

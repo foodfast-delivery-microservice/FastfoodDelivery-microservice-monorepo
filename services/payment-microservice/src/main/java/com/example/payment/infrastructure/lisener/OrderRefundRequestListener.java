@@ -1,15 +1,18 @@
 package com.example.payment.infrastructure.lisener;
 
 import com.example.payment.application.usecase.ProcessRefundUseCase;
+import com.example.payment.domain.exception.InvalidRefundAmountException;
+import com.example.payment.domain.exception.PaymentNotFoundException;
 import com.example.payment.domain.model.IdempotencyKey;
 import com.example.payment.domain.repository.IdempotencyKeyRepository;
 import com.example.payment.infrastructure.event.OrderRefundRequestEvent;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.AmqpRejectAndDontRequeueException;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional; // 2. CẦN TRANSACTIONAL
+import org.springframework.transaction.annotation.Transactional;
 
 @Component
 @RequiredArgsConstructor
@@ -17,11 +20,20 @@ import org.springframework.transaction.annotation.Transactional; // 2. CẦN TRA
 public class OrderRefundRequestListener {
 
     private final ProcessRefundUseCase processRefundUseCase;
-    private final IdempotencyKeyRepository idempotencyKeyRepository; // 4. INJECT REPO
+    private final IdempotencyKeyRepository idempotencyKeyRepository;
+    private final ObjectMapper objectMapper;
 
     @RabbitListener(queues = "order.refund.request.queue")
-    @Transactional // 5. BỌC HÀM NÀY TRONG 1 TRANSACTION
-    public void handleOrderRefundRequest(OrderRefundRequestEvent event) {
+    @Transactional
+    public void handleOrderRefundRequest(String jsonPayload) {
+        OrderRefundRequestEvent event;
+        try {
+            // Parse JSON string thành OrderRefundRequestEvent object
+            event = objectMapper.readValue(jsonPayload, OrderRefundRequestEvent.class);
+        } catch (Exception e) {
+            log.error("[REFUND_REQUEST] Failed to parse OrderRefundRequestEvent JSON: {}", jsonPayload, e);
+            throw new AmqpRejectAndDontRequeueException("Failed to parse event payload", e);
+        }
 
         Long orderIdKey = event.getOrderId();
         // 1. KIỂM TRA BẰNG 'existsByOrderId'
@@ -40,7 +52,8 @@ public class OrderRefundRequestListener {
             log.info("Processing refund for order: {}", event.getOrderId());
             processRefundUseCase.execute(event);
 
-        } catch (IllegalStateException | IllegalArgumentException e) {
+        } catch (IllegalStateException | IllegalArgumentException | 
+                 PaymentNotFoundException | InvalidRefundAmountException e) {
             // LỖI NGHIỆP VỤ - KHÔNG RETRY
             log.error("Business error for order {}: {}", orderIdKey, e.getMessage());
             // Lưu vào Dead Letter Queue hoặc error table

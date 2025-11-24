@@ -26,6 +26,9 @@ public class OutboxEventRelay {
     public static final String ORDER_EXCHANGE = "order_exchange";
     // Tên routing key (định tuyến)
     public static final String ORDER_CREATED_ROUTING_KEY = "order.created";
+    public static final String ORDER_REFUND_REQUEST_ROUTING_KEY = "order.refund.request";
+    public static final String ORDER_REFUNDED_ROUTING_KEY = "order.refunded";
+    public static final String ORDER_PAID_ROUTING_KEY = "order.paid";
 
     // Chạy định kỳ mỗi 5 giây
     @Scheduled(fixedRate = 5000)
@@ -42,14 +45,29 @@ public class OutboxEventRelay {
 
         for (OutboxEvent event : pendingEvents) {
             try {
-                // 2. Gửi event lên RabbitMQ
+                // 2. Xác định routing key dựa trên loại event
+                String routingKey;
+                if ("OrderCreated".equals(event.getType())) {
+                    routingKey = ORDER_CREATED_ROUTING_KEY;
+                } else if ("OrderRefundRequest".equals(event.getType())) {
+                    routingKey = ORDER_REFUND_REQUEST_ROUTING_KEY;
+                } else if ("OrderRefunded".equals(event.getType())) {
+                    routingKey = ORDER_REFUNDED_ROUTING_KEY;
+                } else if ("OrderPaid".equals(event.getType())) {
+                    routingKey = ORDER_PAID_ROUTING_KEY;
+                } else {
+                    log.warn("Unknown event type: {}, skipping...", event.getType());
+                    continue;
+                }
+
+                // 3. Gửi event lên RabbitMQ
                 rabbitTemplate.convertAndSend(
                         ORDER_EXCHANGE,
-                        ORDER_CREATED_ROUTING_KEY,
+                        routingKey,
                         event.getPayload() // Gửi nội dung JSON đi
                 );
 
-                // 3. Gửi thành công, cập nhật trạng thái
+                // 4. Gửi thành công, cập nhật trạng thái
                 event.setStatus(EventStatus.PROCESSED);
                 outboxEventRepository.save(event);
 
