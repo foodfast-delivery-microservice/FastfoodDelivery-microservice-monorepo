@@ -93,7 +93,10 @@ public class Order {
     }
 
     public boolean canBeCancelled() {
-        return status == OrderStatus.PENDING || status == OrderStatus.CONFIRMED;
+        return status == OrderStatus.PENDING 
+            || status == OrderStatus.CONFIRMED 
+            || status == OrderStatus.PAID
+            || status == OrderStatus.SHIPPED;
     }
 
     public void cancel() {
@@ -111,8 +114,10 @@ public class Order {
     }
 
     public void markAsShipped() {
-        if (status != OrderStatus.CONFIRMED) {
-            throw new IllegalStateException("Only confirmed orders can be shipped");
+        if (status != OrderStatus.CONFIRMED && status != OrderStatus.PAID) {
+            throw new IllegalStateException(
+                String.format("Only confirmed or paid orders can be shipped. Current status: %s", status)
+            );
         }
         this.status = OrderStatus.SHIPPED;
     }

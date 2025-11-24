@@ -1,8 +1,10 @@
 package com.example.order_service.infrastructure.service;
 
+import com.example.order_service.application.dto.PaymentInfo;
 import com.example.order_service.application.dto.PaymentValidationResponse;
 import com.example.order_service.domain.exception.OrderValidationException;
 import com.example.order_service.domain.repository.PaymentServicePort;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.timelimiter.annotation.TimeLimiter;
 import lombok.extern.slf4j.Slf4j;
@@ -10,6 +12,8 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
+import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
@@ -19,11 +23,15 @@ import java.util.concurrent.Executors;
 @Slf4j
 public class PaymentServiceAdapter implements PaymentServicePort {
 
+    private final WebClient paymentWebClient;
+    private final ObjectMapper objectMapper;
     private final Executor executor = Executors.newCachedThreadPool();
     private PaymentServiceAdapter self; // Self reference để gọi qua proxy
     
     // Constructor injection
-    public PaymentServiceAdapter() {
+    public PaymentServiceAdapter(WebClient paymentWebClient, ObjectMapper objectMapper) {
+        this.paymentWebClient = paymentWebClient;
+        this.objectMapper = objectMapper;
     }
     
     // Setter injection cho self reference (được gọi sau khi bean được tạo)
@@ -145,6 +153,105 @@ public class PaymentServiceAdapter implements PaymentServicePort {
         
         return CompletableFuture.completedFuture(
                 new PaymentValidationResponse(userId, paymentMethod, true, null));
+    }
+
+    @Override
+    public PaymentInfo getPaymentByOrderId(Long orderId) {
+        // Capture JWT token trước khi vào async thread
+        String jwtToken = getJwtToken();
+        
+        // Gọi method async qua proxy để annotations hoạt động đúng
+        try {
+            if (self != null) {
+                return self.getPaymentByOrderIdAsync(orderId, jwtToken).join();
+            } else {
+                // Fallback: gọi trực tiếp nếu self chưa được inject
+                return getPaymentByOrderIdAsync(orderId, jwtToken).join();
+            }
+        } catch (Exception e) {
+            // Unwrap CompletionException nếu có
+            if (e.getCause() instanceof RuntimeException) {
+                throw (RuntimeException) e.getCause();
+            }
+            throw new RuntimeException("Cannot get payment from Payment Service: " + e.getMessage(), e);
+        }
+    }
+
+    @CircuitBreaker(name = "paymentService", fallbackMethod = "getPaymentByOrderIdAsyncFallback")
+    @TimeLimiter(name = "paymentService")
+    public CompletableFuture<PaymentInfo> getPaymentByOrderIdAsync(Long orderId, String jwtToken) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                log.info("=== CALLING PAYMENT SERVICE ===");
+                log.info("Endpoint: GET /api/v1/payments/order/{}", orderId);
+
+                String responseJson = paymentWebClient.get()
+                        .uri("/order/{orderId}", orderId)
+                        .header("Authorization", "Bearer " + jwtToken)
+                        .retrieve()
+                        .bodyToMono(String.class)
+                        .doOnError(error -> log.error("Error calling Payment Service: {}", error.getMessage()))
+                        .block();
+
+                if (responseJson == null) {
+                    log.error("Payment Service returned null response for orderId: {}", orderId);
+                    throw new RuntimeException("Payment not found for orderId: " + orderId);
+                }
+
+                log.info("=== PAYMENT SERVICE RESPONSE ===");
+                log.info("Response received for orderId: {}", orderId);
+
+                // Parse response to PaymentResponse DTO (from Payment Service)
+                PaymentResponseDto paymentResponse = objectMapper.readValue(responseJson, PaymentResponseDto.class);
+
+                log.info("Payment retrieved: paymentId={}, orderId={}, status={}", 
+                        paymentResponse.getId(), paymentResponse.getOrderId(), paymentResponse.getStatus());
+
+                // Convert to PaymentInfo
+                return PaymentInfo.builder()
+                        .paymentId(paymentResponse.getId())
+                        .orderId(paymentResponse.getOrderId())
+                        .amount(paymentResponse.getAmount())
+                        .status(paymentResponse.getStatus())
+                        .build();
+
+            } catch (WebClientResponseException.NotFound ex) {
+                log.warn("Payment for order {} not found (404)", orderId);
+                throw new RuntimeException("Payment not found for orderId: " + orderId);
+            } catch (WebClientResponseException.Forbidden ex) {
+                log.error("Forbidden (403) when getting payment for order {}", orderId);
+                throw new RuntimeException("Access denied when getting payment for orderId: " + orderId);
+            } catch (WebClientResponseException ex) {
+                log.error("Payment Service returned error: {} - {}", ex.getStatusCode(), ex.getResponseBodyAsString());
+                throw new RuntimeException("Payment Service error: " + ex.getMessage());
+            } catch (Exception e) {
+                log.error("Error getting payment from Payment Service", e);
+                throw new RuntimeException("Cannot get payment from Payment Service: " + e.getMessage(), e);
+            }
+        }, executor);
+    }
+
+    public CompletableFuture<PaymentInfo> getPaymentByOrderIdAsyncFallback(
+            Long orderId, String jwtToken, Exception ex) {
+        log.error("Circuit Breaker fallback triggered for getPaymentByOrderId. Error: {}", ex.getMessage());
+        throw new RuntimeException("Payment Service unavailable: " + ex.getMessage(), ex);
+    }
+
+    // DTO class to match Payment Service response
+    private static class PaymentResponseDto {
+        private Long id;
+        private Long orderId;
+        private java.math.BigDecimal amount;
+        private String status;
+
+        public Long getId() { return id; }
+        public void setId(Long id) { this.id = id; }
+        public Long getOrderId() { return orderId; }
+        public void setOrderId(Long orderId) { this.orderId = orderId; }
+        public java.math.BigDecimal getAmount() { return amount; }
+        public void setAmount(java.math.BigDecimal amount) { this.amount = amount; }
+        public String getStatus() { return status; }
+        public void setStatus(String status) { this.status = status; }
     }
 }
 
