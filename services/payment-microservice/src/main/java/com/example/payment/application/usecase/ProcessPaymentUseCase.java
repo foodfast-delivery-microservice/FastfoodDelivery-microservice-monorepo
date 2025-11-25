@@ -1,5 +1,6 @@
 package com.example.payment.application.usecase;
 
+import com.example.payment.domain.exception.PaymentValidationException;
 import com.example.payment.domain.model.EventStatus;
 import com.example.payment.domain.model.OutboxEvent;
 import com.example.payment.domain.model.Payment;
@@ -16,11 +17,8 @@ import com.example.payment.application.dto.PaymentRequest;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import lombok.Builder;
-import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -234,14 +232,14 @@ public class ProcessPaymentUseCase {
         if (!orderDetail.getUserId().equals(request.getUserId())) {
             log.error("Order {} does not belong to user {}. Order belongs to user {}", 
                     request.getOrderId(), request.getUserId(), orderDetail.getUserId());
-            throw new RuntimeException("Order không thuộc về user này");
+            throw new PaymentValidationException("Order không thuộc về user này");
         }
 
         // Validate order status is CONFIRMED (user can only pay when order is confirmed)
         if (!"CONFIRMED".equalsIgnoreCase(orderDetail.getStatus())) {
             log.error("Order {} is in status {}, but payment can only be processed when order is CONFIRMED", 
                     request.getOrderId(), orderDetail.getStatus());
-            throw new RuntimeException("Chỉ có thể thanh toán khi đơn hàng ở trạng thái CONFIRMED. Trạng thái hiện tại: " + orderDetail.getStatus());
+            throw new PaymentValidationException("Chỉ có thể thanh toán khi đơn hàng ở trạng thái CONFIRMED. Trạng thái hiện tại: " + orderDetail.getStatus());
         }
 
         log.info("Order validation passed: orderId={}, userId={}, status={}", 
@@ -259,12 +257,12 @@ public class ProcessPaymentUseCase {
 
         if (!userValidation.isExists()) {
             log.error("User {} does not exist", userId);
-            throw new RuntimeException("User không tồn tại");
+            throw new PaymentValidationException("User không tồn tại");
         }
 
         if (!userValidation.isActive()) {
             log.error("User {} is not active", userId);
-            throw new RuntimeException("User không hoạt động");
+            throw new PaymentValidationException("User không hoạt động");
         }
 
         log.info("User validation passed: userId={}, username={}", 
@@ -285,7 +283,7 @@ public class ProcessPaymentUseCase {
         if (requestAmount.compareTo(orderAmount) != 0) {
             log.error("Payment amount {} does not match order grand total {}", 
                     requestAmount, orderAmount);
-            throw new RuntimeException(
+            throw new PaymentValidationException(
                     String.format("Số tiền thanh toán (%s) không khớp với tổng tiền đơn hàng (%s)", 
                             requestAmount, orderAmount)
             );
