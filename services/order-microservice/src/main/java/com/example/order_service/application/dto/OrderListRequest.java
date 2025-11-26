@@ -14,6 +14,7 @@ import java.time.LocalDateTime;
 public class OrderListRequest {
 
     private Long userId;
+    private Long merchantId;
     private String status;
     private String orderCode;
     private LocalDateTime fromDate;

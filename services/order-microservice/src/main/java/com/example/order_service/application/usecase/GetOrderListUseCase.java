@@ -66,6 +66,11 @@ public class GetOrderListUseCase {
                 predicates.add(criteriaBuilder.equal(root.get("userId"), request.getUserId()));
             }
 
+            // Filter by merchantId
+            if (request.getMerchantId() != null) {
+                predicates.add(criteriaBuilder.equal(root.get("merchantId"), request.getMerchantId()));
+            }
+
             // Filter by status
             if (request.getStatus() != null && !request.getStatus().trim().isEmpty()) {
                 try {
@@ -80,8 +85,7 @@ public class GetOrderListUseCase {
             if (request.getOrderCode() != null && !request.getOrderCode().trim().isEmpty()) {
                 predicates.add(criteriaBuilder.like(
                         criteriaBuilder.lower(root.get("orderCode")),
-                        "%" + request.getOrderCode().toLowerCase() + "%"
-                ));
+                        "%" + request.getOrderCode().toLowerCase() + "%"));
             }
 
             // Filter by date range

@@ -59,1146 +59,405 @@ Tài liệu này mô tả các chức năng chính của hệ thống:
 - **Quản lý Đơn hàng**: Khách hàng đặt hàng, nhà hàng xử lý đơn hàng
 - **Thanh toán**: Xử lý thanh toán và hoàn tiền
 
+### 1.4 Personas (Nhóm người dùng mục tiêu)
+
+| Persona | Nhu cầu chính | Quyền hạn & Công cụ |
+|---------|---------------|----------------------|
+| **Customer (USER)** | Dễ dàng khám phá menu, đặt/ thanh toán đơn và theo dõi trạng thái. | Ứng dụng web/app → Gateway → Order/Payment Service. Chỉ truy cập dữ liệu của mình. |
+| **Merchant (MERCHANT)** | Quản lý catalog, fulfil đơn, theo dõi doanh thu. | Merchant Portal (frontend) → Product/Order/Payment Service. Chỉ thao tác trên dữ liệu của nhà hàng mình. |
+| **Admin (ADMIN)** | Giám sát toàn hệ thống, duyệt merchant, xử lý tranh chấp & hoàn tiền. | Admin Portal + công cụ vận hành → User/Product/Order/Payment Service với quyền toàn cục. |
+
 ---
 
 ## Business Flows
 
-### 2.1 Quy trình Đặt Hàng
+### 2.1 Quy trình Đặt Hàng (Browse → Create Order)
 
-**Mô tả:** Khách hàng đặt món ăn từ nhà hàng.
+- **Giá trị business:** Cho phép khách hàng duyệt menu, đặt món nhanh chóng và sinh ra đơn hàng hợp lệ để merchant xử lý.
+- **Actors & Service chính:** Customer → Gateway → Order Service, Product Service, User Service.
+- **UC liên quan:** UC-C02 (Discover Menu), UC-C03 (Place Order), UC-S01 (Cross-service Validation).
+- **API/Event:** `GET /products`, `POST /orders`, events `OrderCreated`.
+- **Sequence tham chiếu:** [5.1 Quy trình Tạo Đơn hàng](#51-quy-trinh-tao-Don-hang-order-creation).
 
-**Các bước:**
-1. Khách hàng chọn món ăn từ menu và nhập số lượng
-2. Khách hàng nhập thông tin địa chỉ giao hàng (tên người nhận, số điện thoại, địa chỉ)
-3. Hệ thống kiểm tra tài khoản khách hàng có hợp lệ không
-4. Hệ thống kiểm tra món ăn: còn hàng không, giá có đúng không
-5. Hệ thống đảm bảo tất cả món trong đơn hàng thuộc cùng một nhà hàng
-6. Hệ thống tạo đơn hàng với trạng thái "Chờ xác nhận"
-7. Hệ thống tự động tạo thanh toán với trạng thái "Chờ thanh toán"
+**Các bước cốt lõi:**
+1. Customer duyệt menu (theo danh mục, merchant) và chọn sản phẩm.
+2. Gửi `POST /orders` với danh sách item + địa chỉ giao hàng.
+3. Order Service xác thực user (User Service), validate sản phẩm & tồn kho (Product Service), kiểm tra idempotency.
+4. Order Service tính phí, tạo đơn ở trạng thái `PENDING` + bản ghi thanh toán `PENDING`, phát event `OrderCreated`.
+5. Payment Service nhận event và tạo payment record tương ứng; merchant nhận thông báo order mới.
 
-**Kết quả:** Đơn hàng được tạo thành công, khách hàng nhận được mã đơn hàng. Nhà hàng sẽ nhận được thông báo đơn hàng mới.
+**Kết quả:** Đơn hàng và payment ở trạng thái chờ xử lý, dữ liệu giỏ hàng được khóa, customer có mã đơn để theo dõi.
 
-### 2.2 Quy trình Thanh toán
+### 2.2 Quy trình Thanh toán (Payment & Status Sync)
 
-**Mô tả:** Khách hàng thanh toán cho đơn hàng đã được nhà hàng xác nhận. Sau khi thanh toán thành công, hệ thống tự động trừ tồn kho sản phẩm.
+- **Giá trị business:** Khách hàng thanh toán đơn đã xác nhận và theo dõi kết quả; hệ thống tự động cập nhật trạng thái đơn và tồn kho.
+- **Actors & Service chính:** Customer → Gateway → Payment Service ↔ Order Service ↔ Product Service.
+- **UC liên quan:** UC-C04 (Pay & Track), UC-S02 (Event-driven Order Lifecycle), UC-S03 (Inventory & Refund Sync).
+- **API/Event:** `POST /payments`, events `PAYMENT_SUCCESS`, `PAYMENT_FAILED`, `OrderPaid`, `OrderStatusChanged`.
+- **Sequence tham chiếu:** [5.2 Quy trình Thanh toán](#52-quy-trinh-thanh-toan-don-hang-payment-processing) và [5.4 Cập nhật trạng thái qua sự kiện](#54-cap-nhat-trang-thai-don-hang-qua-Su-kien-thanh-toan).
 
-**Các bước:**
-1. Khách hàng chọn thanh toán cho đơn hàng (đơn hàng phải ở trạng thái "Đã xác nhận")
-2. Hệ thống kiểm tra: đơn hàng có thuộc về khách hàng không, trạng thái có đúng không
-3. Hệ thống kiểm tra tài khoản khách hàng có hợp lệ không
-4. Hệ thống kiểm tra số tiền thanh toán có khớp với tổng tiền đơn hàng không
-5. Hệ thống xử lý thanh toán (kết nối với cổng thanh toán)
-6. **Nếu thanh toán thành công:**
-   - Trạng thái thanh toán → "Thành công"
-   - Trạng thái đơn hàng tự động chuyển sang "Đã thanh toán"
-   - Hệ thống gửi sự kiện "OrderPaid" qua message queue
-   - Product Service nhận sự kiện và tự động trừ tồn kho cho từng sản phẩm trong đơn hàng
-   - Nhà hàng nhận được thông báo thanh toán thành công
-7. **Nếu thanh toán thất bại:**
-   - Trạng thái thanh toán → "Thất bại"
-   - Đơn hàng có thể bị hủy hoặc khách hàng có thể thử thanh toán lại
-   - Tồn kho không bị trừ
+**Các bước cốt lõi:**
+1. Customer chọn đơn `CONFIRMED` và gọi `POST /payments` với thông tin thanh toán.
+2. Payment Service xác minh order (Order Service) + user (User Service) + số tiền.
+3. Giao dịch được xử lý (mô phỏng gateway). Kết quả SUCCESS/FAILED được ghi vào `payments`.
+4. Payment Service phát sự kiện `PAYMENT_SUCCESS/FAILED` + `OrderPaid` (khi success).
+5. Order Service listener nhận sự kiện → cập nhật order `PAID/CANCELLED`, phát `OrderStatusChanged`.
+6. Product Service nhận `OrderPaid` để trừ stock, log idempotent; notification service gửi thông báo cho customer & merchant.
 
-**Kết quả:** Thanh toán được xử lý, trạng thái đơn hàng được cập nhật tự động, tồn kho sản phẩm được trừ (nếu thanh toán thành công).
+**Kết quả:** Khách hàng nhận kết quả thanh toán, order phản ánh trạng thái mới, tồn kho cập nhật chính xác.
 
-### 2.3 Quy trình Quản lý Trạng thái Đơn hàng
+### 2.3 Quy trình Quản lý Trạng thái Đơn hàng (Fulfilment & Exceptions)
 
-**Mô tả:** Nhà hàng hoặc Admin cập nhật trạng thái đơn hàng.
+- **Giá trị business:** Merchant/Admin cập nhật tiến trình giao hàng đúng SLA và xử lý ngoại lệ thủ công.
+- **Actors & Service chính:** Merchant/Admin → Gateway → Order Service.
+- **UC liên quan:** UC-M02 (Fulfil Orders), UC-A02 (Override Catalog & Orders), UC-C05 (Manage Orders & Issues).
+- **API/Event:** `GET /orders/merchant`, `PUT /orders/{id}/status`, event `OrderStatusChanged`.
+- **Sequence tham chiếu:** [5.3 Cập nhật trạng thái thủ công](#53-cap-nhat-trang-thai-don-hang-thu-cong-manual-status-update).
 
-**Các bước:**
-1. Nhà hàng/Admin chọn cập nhật trạng thái đơn hàng
-2. Hệ thống kiểm tra: nhà hàng chỉ có thể cập nhật đơn hàng của chính mình
-3. Hệ thống kiểm tra quy tắc chuyển trạng thái:
-   - Chờ xác nhận → Đã xác nhận hoặc Đã hủy
-   - Đã xác nhận → Đang giao hoặc Đã hủy
-   - Đang giao → Đã giao
-   - Đã giao → Đã hoàn tiền (chỉ Admin)
-4. Hệ thống cập nhật trạng thái đơn hàng
-5. Khách hàng nhận được thông báo cập nhật trạng thái
+**Các bước cốt lõi:**
+1. Merchant/Admin truy vấn danh sách order theo trạng thái/ thời gian để ưu tiên xử lý.
+2. Merchant xác nhận order (`PENDING` → `CONFIRMED`), chuẩn bị giao (`CONFIRMED` → `SHIPPED`), hoàn tất (`SHIPPED` → `DELIVERED`), hoặc hủy (trước `SHIPPED`).
+3. Admin có thể can thiệp các bước hoặc đặt order về `REFUNDED` trong trường hợp đặc biệt.
+4. Order Service kiểm tra quyền sở hữu và rule chuyển trạng thái trước khi lưu.
+5. Sau mỗi cập nhật, sự kiện `OrderStatusChanged` phát ra để notification service, analytics dashboard và Payment Service (nếu cần) nắm bắt.
 
-**Kết quả:** Trạng thái đơn hàng được cập nhật, khách hàng được thông báo.
+**Kết quả:** Trạng thái đơn phản ánh tiến trình thực tế, khách hàng cập nhật real-time, SLA được theo dõi.
 
-### 2.4 Quy trình Quản lý Menu
+### 2.4 Quy trình Quản lý Menu (Catalog Operations)
 
-**Mô tả:** Nhà hàng quản lý menu món ăn/đồ uống.
+- **Giá trị business:** Giúp merchant cập nhật catalog nhanh chóng để đảm bảo menu luôn chính xác cho khách hàng.
+- **Actors & Service chính:** Merchant/Admin → Gateway → Product Service.
+- **UC liên quan:** UC-M01 (Maintain Catalog), UC-A02 (Override Catalog & Orders).
+- **API/Event:** `POST/PUT/DELETE /products`, `GET /products/merchants/me`, events `OrderPaid` / `PaymentRefunded` ảnh hưởng stock.
+- **Sequence tham chiếu:** [5.5 Tạo sản phẩm](#55-tao-san-pham-product-creation) và [5.6 Cập nhật sản phẩm](#56-cap-nhat-san-pham-product-update).
 
-**Các bước:**
-1. Nhà hàng thực hiện thao tác: thêm món mới, cập nhật thông tin món, hoặc xóa món
-2. Hệ thống kiểm tra quyền: nhà hàng chỉ quản lý được menu của chính mình
-3. Hệ thống kiểm tra dữ liệu: tên món, giá, số lượng, danh mục phải hợp lệ
-4. Hệ thống lưu thay đổi
-5. Món mới hoặc món đã cập nhật sẽ hiển thị ngay cho khách hàng (nếu đang bán)
+**Các bước cốt lõi:**
+1. Merchant nhập thông tin sản phẩm (tên, mô tả, giá, tồn kho, category) hoặc chỉnh sửa/hủy bán.
+2. Product Service xác định merchant từ JWT, kiểm tra quyền và dữ liệu hợp lệ.
+3. Hệ thống lưu sản phẩm, cập nhật trạng thái `active`, đồng bộ ra catalog public.
+4. Khi Order Paid/Refunded, Product Service nhận event để điều chỉnh stock, đảm bảo con số hiển thị chính xác.
 
-**Kết quả:** Menu được cập nhật thành công, khách hàng có thể thấy thay đổi ngay lập tức.
+**Kết quả:** Menu phản ánh trạng thái bán hàng thực tế, giảm rủi ro sai tồn kho hoặc giá.
 
-### 2.5 Quy trình Hoàn tiền
+### 2.5 Quy trình Hoàn tiền & Hoàn kho (Refund Lifecycle)
 
-**Mô tả:** Khách hàng, Nhà hàng hoặc Admin yêu cầu hoàn tiền cho đơn hàng đã thanh toán thành công. Sau khi hoàn tiền thành công, hệ thống tự động hoàn trả tồn kho sản phẩm.
+- **Giá trị business:** Cho phép khách hàng/merchant/admin giải quyết đơn hàng phát sinh vấn đề sau khi giao, đảm bảo dữ liệu tài chính và tồn kho nhất quán.
+- **Actors & Service chính:** Customer/Merchant/Admin → Gateway → Order Service ↔ Payment Service ↔ Product Service.
+- **UC liên quan:** UC-C05 (Manage Orders & Issues), UC-A03 (Financial Controls), UC-S03 (Inventory & Refund Sync).
+- **API/Event:** `POST /orders/{id}/refund`, `GET /payments/order/{orderId}`, events `OrderRefundRequest`, `PaymentRefunded`.
+- **Sequence tham chiếu:** [5.7 Quy trình Yêu cầu Hoàn tiền](#57-quy-trinh-yeu-cau-hoan-tien-refund-request) và [5.8 Trừ Tồn kho Sau Thanh toán](#58-tru-ton-kho-sau-thanh-toan-stock-deduction-after-payment) (hoàn tồn ngược).
 
-**Các bước:**
-1. Khách hàng/Nhà hàng/Admin gửi yêu cầu hoàn tiền cho đơn hàng
-2. Hệ thống kiểm tra quyền:
-   - Khách hàng chỉ có thể yêu cầu hoàn tiền cho đơn hàng của mình
-   - Nhà hàng chỉ có thể yêu cầu hoàn tiền cho đơn hàng của nhà hàng mình
-   - Admin có thể yêu cầu hoàn tiền cho bất kỳ đơn hàng nào
-3. Hệ thống kiểm tra đơn hàng: tồn tại, đã thanh toán thành công, trạng thái "Đã giao"
-4. Hệ thống kiểm tra thanh toán: trạng thái "Thành công", chưa được hoàn tiền
-5. Hệ thống cập nhật trạng thái đơn hàng thành "Đã hoàn tiền"
-6. Hệ thống chuyển yêu cầu đến Payment Service để xử lý hoàn tiền
-7. Payment Service cập nhật trạng thái thanh toán thành "Đã hoàn tiền"
-8. Hệ thống gửi sự kiện "OrderRefunded" qua message queue
-9. Product Service nhận sự kiện và tự động hoàn trả tồn kho cho từng sản phẩm trong đơn hàng
+**Các bước cốt lõi:**
+1. Customer/Merchant/Admin gửi yêu cầu hoàn tiền, nêu lý do và (nếu là admin) số tiền hoàn.
+2. Order Service xác minh quyền sở hữu, trạng thái order (`DELIVERED`), trạng thái payment (`SUCCESS`) và kiểm tra đã hoàn trước đó hay chưa.
+3. Order Service cập nhật order → `REFUNDED`, phát event `OrderRefundRequest` cho Payment Service.
+4. Payment Service xử lý hoàn tiền, cập nhật payment → `REFUNDED`, phát event `PaymentRefunded`.
+5. Product Service nhận `PaymentRefunded`, hoàn stock và lưu record idempotency.
 
-**Kết quả:** Hoàn tiền được xử lý thành công, trạng thái đơn hàng và thanh toán được cập nhật, tồn kho sản phẩm được hoàn trả.
+**Kết quả:** Tiền hoàn lại cho khách, order và payment phản ánh trạng thái mới, tồn kho được hoàn trả để tiếp tục bán.
 
 ---
 
 ## Use Cases
 
-*Phần này mô tả chi tiết các chức năng mà người dùng có thể thực hiện trong hệ thống. Mỗi use case mô tả một tình huống sử dụng cụ thể với các bước thực hiện và quy tắc nghiệp vụ.*
+Các use case cũ được gom nhóm lại thành 14 hành trình cốt lõi nhằm giúp đội sản phẩm bám sát mục tiêu kinh doanh mà không bị trùng lặp. Chi tiết nghiệp vụ trước đây vẫn có thể tra cứu trong lịch sử tài liệu nếu cần đào sâu.
 
-### 3.1 User Service Use Cases
+### 3.1 Customer Journeys (User-facing)
 
-#### UC-001: Đăng ký Tài khoản
-
-| Mục | Nội dung |
-|-----|----------|
-| **Mã Use Case** | UC-001 |
-| **Tên Use Case** | Đăng ký Tài khoản |
-| **Actor** | Khách hàng hoặc Nhà hàng (chưa có tài khoản) |
-| **Mô tả** | Khách hàng hoặc nhà hàng đăng ký tài khoản mới để sử dụng hệ thống. Khách hàng có thể sử dụng ngay sau khi đăng ký, nhà hàng cần được Admin duyệt. |
-| **Tiền điều kiện** | - Chưa có tài khoản trong hệ thống<br>- Email và username chưa được sử dụng |
-| **Hậu điều kiện** | - Tài khoản được tạo thành công<br>- Nếu là Khách hàng: tài khoản được kích hoạt ngay<br>- Nếu là Nhà hàng: tài khoản cần Admin duyệt trước khi đăng nhập |
-| **Luồng chính** | 1. Người dùng điền form đăng ký: tên đăng nhập, email, mật khẩu, loại tài khoản (Khách hàng hoặc Nhà hàng)<br>2. Hệ thống kiểm tra email chưa được sử dụng<br>3. Hệ thống kiểm tra tên đăng nhập chưa được sử dụng<br>4. Hệ thống kiểm tra mật khẩu đủ mạnh (ít nhất 8 ký tự, có chữ hoa, chữ thường, số, ký tự đặc biệt)<br>5. Hệ thống tạo tài khoản mới<br>6. Nếu là Khách hàng: tài khoản được kích hoạt ngay<br>7. Nếu là Nhà hàng: tài khoản cần Admin duyệt |
-| **Luồng phụ / Ngoại lệ** | 2a. Email đã tồn tại → Hiển thị thông báo "Email này đã được sử dụng"<br>3a. Tên đăng nhập đã tồn tại → Hiển thị thông báo "Tên đăng nhập này đã được sử dụng"<br>4a. Mật khẩu không đủ mạnh → Hiển thị yêu cầu mật khẩu mạnh hơn |
-
----
-
-#### UC-002: Đăng nhập
+#### UC-C01: Onboard & Access
 
 | Mục | Nội dung |
 |-----|----------|
-| **Mã Use Case** | UC-002 |
-| **Tên Use Case** | Đăng nhập |
-| **Actor** | Khách hàng hoặc Nhà hàng (đã có tài khoản) |
-| **Mô tả** | Người dùng đăng nhập vào hệ thống bằng tên đăng nhập và mật khẩu để sử dụng các chức năng. Nhà hàng phải được Admin duyệt mới có thể đăng nhập. |
-| **Tiền điều kiện** | - Đã có tài khoản trong hệ thống<br>- Nếu là Nhà hàng, phải được Admin duyệt |
-| **Hậu điều kiện** | - Đăng nhập thành công<br>- Người dùng có thể sử dụng các chức năng của hệ thống<br>- Hệ thống cấp quyền truy cập (token) |
-| **Luồng chính** | 1. Người dùng nhập tên đăng nhập và mật khẩu<br>2. Hệ thống kiểm tra tài khoản có tồn tại không<br>3. Hệ thống kiểm tra mật khẩu có đúng không<br>4. Nếu là Nhà hàng, hệ thống kiểm tra đã được duyệt chưa<br>5. Hệ thống cấp quyền truy cập (token)<br>6. Người dùng có thể sử dụng các chức năng của hệ thống |
-| **Luồng phụ / Ngoại lệ** | 2a. Tài khoản không tồn tại → Hiển thị "Tên đăng nhập hoặc mật khẩu không đúng"<br>3a. Mật khẩu sai → Hiển thị "Tên đăng nhập hoặc mật khẩu không đúng"<br>4a. Nhà hàng chưa được duyệt → Hiển thị "Tài khoản của bạn đang chờ Admin duyệt" |
+| **Mã Use Case** | UC-C01 |
+| **Actor chính** | Khách hàng / Nhà hàng |
+| **Giá trị** | Người dùng tạo tài khoản, đăng nhập và được định danh đúng vai trò. |
+| **Tiền điều kiện** | Chưa có phiên đăng nhập hợp lệ. |
+| **Hậu điều kiện** | JWT hợp lệ được cấp, merchant cần trạng thái approved trước khi truy cập. |
+| **Luồng chính** | 1. Điền form đăng ký/đăng nhập.<br>2. Hệ thống kiểm tra trùng lặp thông tin & chính sách mật khẩu.<br>3. Merchant mới → chờ Admin duyệt; User thường được kích hoạt ngay.<br>4. Cấp token và thiết lập session. |
+| **API/Event chính** | `POST /auth/register`, `POST /auth/login`, `GET/PUT /users/me`, event duyệt merchant qua Admin UI |
 
----
-
-#### UC-003: Admin Tạo Tài khoản
+#### UC-C02: Discover Menu
 
 | Mục | Nội dung |
 |-----|----------|
-| **Mã Use Case** | UC-003 |
-| **Tên Use Case** | Admin Tạo Tài khoản |
-| **Actor** | Quản trị viên (Admin) |
-| **Mô tả** | Admin tạo tài khoản mới cho khách hàng, nhà hàng hoặc admin khác. Admin có thể duyệt tài khoản nhà hàng ngay khi tạo. |
-| **Tiền điều kiện** | - Admin đã đăng nhập<br>- Admin có quyền quản trị |
-| **Hậu điều kiện** | - Tài khoản được tạo thành công với vai trò và trạng thái duyệt theo yêu cầu<br>- Nếu là nhà hàng và đã được duyệt: có thể đăng nhập ngay |
-| **Luồng chính** | 1. Admin điền form tạo tài khoản: tên đăng nhập, email, mật khẩu, vai trò, trạng thái duyệt<br>2. Hệ thống kiểm tra email chưa được sử dụng<br>3. Hệ thống kiểm tra tên đăng nhập chưa được sử dụng<br>4. Hệ thống kiểm tra vai trò hợp lệ (Khách hàng, Nhà hàng, Admin)<br>5. Hệ thống tạo tài khoản với thông tin đã cung cấp<br>6. Hệ thống trả về thông tin tài khoản đã tạo |
-| **Luồng phụ / Ngoại lệ** | 2a. Email đã tồn tại → Hiển thị "Email này đã được sử dụng"<br>3a. Tên đăng nhập đã tồn tại → Hiển thị "Tên đăng nhập này đã được sử dụng"<br>4a. Vai trò không hợp lệ → Hiển thị "Vai trò không hợp lệ" |
+| **Mã Use Case** | UC-C02 |
+| **Actor chính** | Khách hàng (không cần đăng nhập) |
+| **Giá trị** | Khách hàng xem menu, lọc theo danh mục và nhà hàng. |
+| **Tiền điều kiện** | Sản phẩm đang active. |
+| **Hậu điều kiện** | Danh sách sản phẩm hiển thị theo bộ lọc; dữ liệu luôn mới nhất. |
+| **Luồng chính** | 1. Khách hàng chọn bộ lọc (category, merchant, từ khóa).<br>2. Product Service trả về danh sách đã phân trang.<br>3. Người dùng thêm sản phẩm vào giỏ. |
+| **API/Event chính** | `GET /products`, `GET /products/{category}`, `GET /products/merchants/me` (đối với merchant), cache layer (nếu có) |
 
----
-
-#### UC-004: Cập nhật Thông tin Tài khoản
+#### UC-C03: Place Order
 
 | Mục | Nội dung |
 |-----|----------|
-| **Mã Use Case** | UC-004 |
-| **Tên Use Case** | Cập nhật Thông tin Tài khoản |
-| **Actor** | Khách hàng (tự cập nhật) hoặc Quản trị viên |
-| **Mô tả** | Người dùng hoặc Admin cập nhật thông tin tài khoản như tên đăng nhập, email. Admin có thể cập nhật trạng thái duyệt của nhà hàng. |
-| **Tiền điều kiện** | - Người dùng đã đăng nhập<br>- Tài khoản tồn tại trong hệ thống |
-| **Hậu điều kiện** | - Thông tin tài khoản được cập nhật thành công<br>- Các service khác được thông báo về thay đổi |
-| **Luồng chính** | 1. Người dùng/Admin chọn cập nhật thông tin (tên đăng nhập, email, trạng thái duyệt - chỉ Admin)<br>2. Hệ thống tìm tài khoản theo ID<br>3. Hệ thống cập nhật các thông tin được cung cấp<br>4. Hệ thống lưu thay đổi<br>5. Hệ thống trả về thông tin đã cập nhật |
-| **Luồng phụ / Ngoại lệ** | 2a. Tài khoản không tồn tại → Hiển thị "Tài khoản không tồn tại"<br>1a. Khách hàng cố gắng cập nhật trạng thái duyệt → Bị từ chối, chỉ Admin mới được |
+| **Mã Use Case** | UC-C03 |
+| **Actor chính** | Khách hàng |
+| **Giá trị** | Đặt đơn nhanh, kiểm soát được phí và tính hợp lệ giỏ hàng. |
+| **Tiền điều kiện** | Đăng nhập hợp lệ, giỏ hàng chỉ chứa sản phẩm từ 1 merchant. |
+| **Hậu điều kiện** | Đơn ở trạng thái `PENDING`, thanh toán ở trạng thái `PENDING`. |
+| **Luồng chính** | 1. Gửi thông tin giao hàng + danh sách sản phẩm.<br>2. Order Service xác thực user, idempotency và tồn kho qua Product Service.<br>3. Tính tổng tiền, tạo order + order items.<br>4. Phát sự kiện `OrderCreated` để Payment Service chuẩn bị bản ghi thanh toán. |
+| **API/Event chính** | `POST /orders`, internal `/api/internal/users/{id}`, `/api/internal/products/validate`, event `OrderCreated` |
 
----
-
-#### UC-005: Admin Thay đổi Vai trò Người dùng
+#### UC-C04: Pay & Track
 
 | Mục | Nội dung |
 |-----|----------|
-| **Mã Use Case** | UC-005 |
-| **Tên Use Case** | Admin Thay đổi Vai trò Người dùng |
-| **Actor** | Quản trị viên (Admin) |
-| **Mô tả** | Admin thay đổi vai trò của người dùng (từ Khách hàng sang Nhà hàng hoặc ngược lại). |
-| **Tiền điều kiện** | - Admin đã đăng nhập<br>- Tài khoản người dùng tồn tại trong hệ thống |
-| **Hậu điều kiện** | - Vai trò của người dùng được cập nhật thành công |
-| **Luồng chính** | 1. Admin chọn tài khoản và vai trò mới (Khách hàng, Nhà hàng, Admin)<br>2. Hệ thống kiểm tra Admin có quyền thực hiện<br>3. Hệ thống kiểm tra vai trò mới hợp lệ<br>4. Hệ thống cập nhật vai trò của người dùng<br>5. Hệ thống trả về thông tin đã cập nhật |
-| **Luồng phụ / Ngoại lệ** | 2a. Người thực hiện không phải Admin → Hiển thị "Bạn không có quyền thực hiện thao tác này"<br>3a. Vai trò không hợp lệ → Hiển thị "Vai trò không hợp lệ" |
+| **Mã Use Case** | UC-C04 |
+| **Actor chính** | Khách hàng |
+| **Giá trị** | Thanh toán an toàn và theo dõi trạng thái đơn thời gian thực. |
+| **Tiền điều kiện** | Đơn `CONFIRMED`, thanh toán `PENDING`. |
+| **Hậu điều kiện** | Đơn chuyển `PAID/FAILED`, khách hàng nhận thông báo push/email. |
+| **Luồng chính** | 1. Gửi yêu cầu thanh toán.<br>2. Payment Service xác minh order thuộc khách hàng & số tiền khớp.<br>3. Xử lý cổng thanh toán, cập nhật trạng thái & phát sự kiện `PAYMENT_SUCCESS/FAILED`.<br>4. Order Service cập nhật trạng thái đơn + gửi notification. |
+| **API/Event chính** | `POST /payments`, `GET /payments/order/{orderId}`, events `PAYMENT_SUCCESS`, `PAYMENT_FAILED`, `OrderPaid` |
 
----
-
-#### UC-006: Xóa Tài khoản
+#### UC-C05: Manage Orders & Issues
 
 | Mục | Nội dung |
 |-----|----------|
-| **Mã Use Case** | UC-006 |
-| **Tên Use Case** | Xóa Tài khoản |
-| **Actor** | Quản trị viên (Admin) |
-| **Mô tả** | Admin xóa tài khoản người dùng khỏi hệ thống. |
-| **Tiền điều kiện** | - Admin đã đăng nhập<br>- Tài khoản người dùng tồn tại trong hệ thống |
-| **Hậu điều kiện** | - Tài khoản bị xóa khỏi hệ thống |
-| **Luồng chính** | 1. Admin chọn tài khoản cần xóa<br>2. Hệ thống kiểm tra Admin có quyền thực hiện<br>3. Hệ thống tìm tài khoản theo ID<br>4. Hệ thống xóa tài khoản<br>5. Hệ thống trả về thông báo thành công |
-| **Luồng phụ / Ngoại lệ** | 2a. Người thực hiện không phải Admin → Hiển thị "Bạn không có quyền thực hiện thao tác này"<br>3a. Tài khoản không tồn tại → Hiển thị "Tài khoản không tồn tại" |
+| **Mã Use Case** | UC-C05 |
+| **Actor chính** | Khách hàng |
+| **Giá trị** | Xem lịch sử, chi tiết đơn, yêu cầu hủy/hoàn tiền khi cần. |
+| **Tiền điều kiện** | Người dùng đã đăng nhập. |
+| **Hậu điều kiện** | Trạng thái đơn cập nhật đúng quy trình; yêu cầu hoàn tiền chuyển sang Payment Service. |
+| **Luồng chính** | 1. Lọc và xem danh sách/chi tiết đơn.<br>2. Gửi yêu cầu hủy (khi chưa giao) hoặc hoàn tiền (khi đã giao).<br>3. Order Service kiểm tra quyền, trạng thái và phát sự kiện refund nếu hợp lệ. |
+| **API/Event chính** | `GET /orders`, `GET /orders/{id}`, `POST /orders/{id}/refund`, events `OrderStatusChanged`, `OrderRefundRequest` |
 
----
+### 3.2 Merchant Journeys
 
-#### UC-007: Xem Thông tin Tài khoản
-
-| Mục | Nội dung |
-|-----|----------|
-| **Mã Use Case** | UC-007 |
-| **Tên Use Case** | Xem Thông tin Tài khoản |
-| **Actor** | Quản trị viên (Admin) |
-| **Mô tả** | Admin xem chi tiết thông tin của một tài khoản cụ thể. |
-| **Tiền điều kiện** | - Admin đã đăng nhập |
-| **Hậu điều kiện** | - Admin nhận được thông tin chi tiết của tài khoản |
-| **Luồng chính** | 1. Admin chọn tài khoản cần xem (theo ID)<br>2. Hệ thống kiểm tra Admin có quyền thực hiện<br>3. Hệ thống tìm tài khoản theo ID<br>4. Hệ thống trả về thông tin chi tiết của tài khoản |
-| **Luồng phụ / Ngoại lệ** | 2a. Người thực hiện không phải Admin → Hiển thị "Bạn không có quyền thực hiện thao tác này"<br>3a. Tài khoản không tồn tại → Hiển thị "Tài khoản không tồn tại" |
-
----
-
-#### UC-008: Xem Danh sách Tất cả Tài khoản
+#### UC-M01: Maintain Catalog
 
 | Mục | Nội dung |
 |-----|----------|
-| **Mã Use Case** | UC-008 |
-| **Tên Use Case** | Xem Danh sách Tất cả Tài khoản |
-| **Actor** | Quản trị viên (Admin) |
-| **Mô tả** | Admin xem danh sách tất cả tài khoản trong hệ thống (khách hàng, nhà hàng, admin). |
-| **Tiền điều kiện** | - Admin đã đăng nhập |
-| **Hậu điều kiện** | - Admin nhận được danh sách tất cả tài khoản |
-| **Luồng chính** | 1. Admin yêu cầu xem danh sách tất cả tài khoản<br>2. Hệ thống kiểm tra Admin có quyền thực hiện<br>3. Hệ thống lấy tất cả tài khoản từ hệ thống<br>4. Hệ thống trả về danh sách tài khoản |
-| **Luồng phụ / Ngoại lệ** | 2a. Người thực hiện không phải Admin → Hiển thị "Bạn không có quyền thực hiện thao tác này" |
+| **Mã Use Case** | UC-M01 |
+| **Actor chính** | Merchant, Admin |
+| **Giá trị** | Quản lý menu (CRUD) kèm validation dữ liệu. |
+| **Tiền điều kiện** | Merchant đã được approve và đăng nhập; Admin có quyền toàn cục. |
+| **Hậu điều kiện** | Sản phẩm được lưu/ẩn, cache và danh sách public được cập nhật. |
+| **Luồng chính** | Tạo/cập nhật/xóa sản phẩm, kiểm tra quyền sở hữu, kích hoạt/ẩn sản phẩm. |
+| **API/Event chính** | `POST/PUT/DELETE /products`, `GET /products/merchants/me`, event `OrderPaid`/`PaymentRefunded` ảnh hưởng stock |
 
----
-
-#### UC-009: Đổi Mật khẩu
+#### UC-M02: Fulfil Orders
 
 | Mục | Nội dung |
 |-----|----------|
-| **Mã Use Case** | UC-009 |
-| **Tên Use Case** | Đổi Mật khẩu |
-| **Actor** | Khách hàng hoặc Nhà hàng |
-| **Mô tả** | Người dùng đổi mật khẩu của tài khoản. Cần nhập mật khẩu cũ để xác thực. |
-| **Tiền điều kiện** | - Người dùng đã đăng nhập |
-| **Hậu điều kiện** | - Mật khẩu được cập nhật thành công<br>- Người dùng cần đăng nhập lại với mật khẩu mới |
-| **Luồng chính** | 1. Người dùng nhập mật khẩu cũ và mật khẩu mới<br>2. Hệ thống xác định tài khoản từ phiên đăng nhập<br>3. Hệ thống kiểm tra mật khẩu cũ có đúng không<br>4. Hệ thống kiểm tra mật khẩu mới đủ mạnh (ít nhất 8 ký tự, có chữ hoa, chữ thường, số, ký tự đặc biệt)<br>5. Hệ thống cập nhật mật khẩu mới<br>6. Hệ thống trả về thông báo thành công |
-| **Luồng phụ / Ngoại lệ** | 3a. Mật khẩu cũ sai → Hiển thị "Mật khẩu cũ không đúng"<br>4a. Mật khẩu mới không đủ mạnh → Hiển thị "Mật khẩu mới phải có ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường, số và ký tự đặc biệt" |
+| **Mã Use Case** | UC-M02 |
+| **Actor chính** | Merchant |
+| **Giá trị** | Nắm toàn bộ đơn thuộc nhà hàng, cập nhật trạng thái giao hàng chuẩn SLA. |
+| **Tiền điều kiện** | Merchant đăng nhập; chỉ thao tác trên đơn thuộc nhà hàng mình. |
+| **Hậu điều kiện** | Đơn cập nhật trạng thái hợp lệ, customer nhận notification, hệ thống phát event `OrderStatusChanged`. |
+| **Luồng chính** | 1. Xem danh sách đơn theo thời gian/trạng thái.<br>2. Xác nhận → Đang giao → Đã giao, hoặc hủy khi cần.<br>3. Đẩy notification tới khách hàng. |
+| **API/Event chính** | `GET /orders/merchant`, `PUT /orders/{id}/status`, event `OrderStatusChanged` |
 
----
-
-### 3.2 Product Service Use Cases
-
-#### UC-010: Nhà hàng Tạo Sản phẩm
+#### UC-M03: Monitor Revenue & Payout
 
 | Mục | Nội dung |
 |-----|----------|
-| **Mã Use Case** | UC-010 |
-| **Tên Use Case** | Nhà hàng Tạo Sản phẩm |
-| **Actor** | Nhà hàng (Merchant) |
-| **Mô tả** | Nhà hàng tạo sản phẩm mới (món ăn hoặc đồ uống) để bán trên hệ thống. Sản phẩm mới tạo sẽ được kích hoạt ngay. |
-| **Tiền điều kiện** | - Nhà hàng đã đăng nhập và được duyệt<br>- Nhà hàng có quyền tạo sản phẩm |
-| **Hậu điều kiện** | - Sản phẩm được tạo và kích hoạt trong hệ thống<br>- Khách hàng có thể xem và đặt mua sản phẩm |
-| **Luồng chính** | 1. Nhà hàng điền thông tin sản phẩm: tên, mô tả, giá, số lượng tồn kho, danh mục (Đồ ăn hoặc Đồ uống)<br>2. Hệ thống xác định nhà hàng từ phiên đăng nhập<br>3. Hệ thống kiểm tra dữ liệu: tên và mô tả không rỗng, giá > 0, số lượng tồn kho >= 0, danh mục hợp lệ<br>4. Hệ thống tạo sản phẩm với thông tin đã cung cấp<br>5. Hệ thống kích hoạt sản phẩm (active = true)<br>6. Hệ thống trả về thông tin sản phẩm đã tạo |
-| **Luồng phụ / Ngoại lệ** | 2a. Không xác định được nhà hàng từ phiên đăng nhập → Hiển thị "Bạn cần đăng nhập"<br>3a. Dữ liệu không hợp lệ → Hiển thị "Vui lòng kiểm tra lại thông tin sản phẩm" |
-
----
-
-#### UC-011: Cập nhật Sản phẩm
-
-| Mục | Nội dung |
-|-----|----------|
-| **Mã Use Case** | UC-011 |
-| **Tên Use Case** | Cập nhật Sản phẩm |
-| **Actor** | Nhà hàng hoặc Quản trị viên |
-| **Mô tả** | Nhà hàng cập nhật thông tin sản phẩm của mình (giá, mô tả, số lượng tồn kho, v.v.). Admin có thể cập nhật bất kỳ sản phẩm nào. |
-| **Tiền điều kiện** | - Nhà hàng/Admin đã đăng nhập<br>- Sản phẩm tồn tại trong hệ thống |
-| **Hậu điều kiện** | - Thông tin sản phẩm được cập nhật thành công |
-| **Luồng chính** | 1. Nhà hàng/Admin chọn sản phẩm cần cập nhật và điền thông tin mới<br>2. Hệ thống kiểm tra quyền: Nhà hàng chỉ có thể cập nhật sản phẩm của mình, Admin có thể cập nhật bất kỳ sản phẩm nào<br>3. Hệ thống kiểm tra dữ liệu mới hợp lệ (nếu có)<br>4. Hệ thống cập nhật các thông tin được cung cấp<br>5. Hệ thống trả về thông tin sản phẩm đã cập nhật |
-| **Luồng phụ / Ngoại lệ** | 2a. Nhà hàng cố gắng cập nhật sản phẩm không thuộc về mình → Hiển thị "Bạn không có quyền cập nhật sản phẩm này"<br>3a. Dữ liệu không hợp lệ → Hiển thị "Vui lòng kiểm tra lại thông tin" |
-
----
-
-#### UC-012: Xóa Sản phẩm
-
-| Mục | Nội dung |
-|-----|----------|
-| **Mã Use Case** | UC-012 |
-| **Tên Use Case** | Xóa Sản phẩm |
-| **Actor** | Nhà hàng hoặc Quản trị viên |
-| **Mô tả** | Nhà hàng xóa sản phẩm khỏi hệ thống. Admin có thể xóa bất kỳ sản phẩm nào. |
-| **Tiền điều kiện** | - Nhà hàng/Admin đã đăng nhập<br>- Sản phẩm tồn tại trong hệ thống |
-| **Hậu điều kiện** | - Sản phẩm bị xóa khỏi hệ thống<br>- Khách hàng không thể xem hoặc đặt mua sản phẩm này nữa |
-| **Luồng chính** | 1. Nhà hàng/Admin chọn sản phẩm cần xóa<br>2. Hệ thống kiểm tra quyền: Nhà hàng chỉ có thể xóa sản phẩm của mình, Admin có thể xóa bất kỳ sản phẩm nào<br>3. Hệ thống xóa sản phẩm<br>4. Hệ thống trả về thông báo thành công |
-| **Luồng phụ / Ngoại lệ** | 2a. Nhà hàng cố gắng xóa sản phẩm không thuộc về mình → Hiển thị "Bạn không có quyền xóa sản phẩm này" |
-
----
-
-#### UC-013: Xem Tất cả Sản phẩm
-
-| Mục | Nội dung |
-|-----|----------|
-| **Mã Use Case** | UC-013 |
-| **Tên Use Case** | Xem Tất cả Sản phẩm |
-| **Actor** | Khách hàng (không cần đăng nhập) |
-| **Mô tả** | Khách hàng xem danh sách tất cả sản phẩm đang được bán trên hệ thống. Không cần đăng nhập để xem. |
-| **Tiền điều kiện** | Không có |
-| **Hậu điều kiện** | - Khách hàng nhận được danh sách tất cả sản phẩm đang được bán |
-| **Luồng chính** | 1. Khách hàng yêu cầu xem danh sách sản phẩm<br>2. Hệ thống lấy tất cả sản phẩm đang được bán (active = true)<br>3. Hệ thống trả về danh sách sản phẩm |
-| **Luồng phụ / Ngoại lệ** | Không có |
-
----
-
-#### UC-014: Xem Sản phẩm theo Danh mục
-
-| Mục | Nội dung |
-|-----|----------|
-| **Mã Use Case** | UC-014 |
-| **Tên Use Case** | Xem Sản phẩm theo Danh mục |
-| **Actor** | Khách hàng (không cần đăng nhập) |
-| **Mô tả** | Khách hàng xem danh sách sản phẩm theo danh mục (Đồ ăn hoặc Đồ uống). |
-| **Tiền điều kiện** | Không có |
-| **Hậu điều kiện** | - Khách hàng nhận được danh sách sản phẩm theo danh mục đã chọn |
-| **Luồng chính** | 1. Khách hàng chọn danh mục (Đồ ăn hoặc Đồ uống)<br>2. Hệ thống kiểm tra danh mục hợp lệ<br>3. Hệ thống lấy các sản phẩm thuộc danh mục đó và đang được bán<br>4. Hệ thống trả về danh sách sản phẩm |
-| **Luồng phụ / Ngoại lệ** | 2a. Danh mục không hợp lệ → Hiển thị "Danh mục không hợp lệ, vui lòng chọn Đồ ăn hoặc Đồ uống" |
-
----
-
-#### UC-015: Xem Sản phẩm của Nhà hàng
-
-| Mục | Nội dung |
-|-----|----------|
-| **Mã Use Case** | UC-015 |
-| **Tên Use Case** | Xem Sản phẩm của Nhà hàng |
-| **Actor** | Nhà hàng hoặc Quản trị viên |
-| **Mô tả** | Nhà hàng xem danh sách sản phẩm của mình. Admin có thể xem sản phẩm của bất kỳ nhà hàng nào. |
-| **Tiền điều kiện** | - Nhà hàng/Admin đã đăng nhập |
-| **Hậu điều kiện** | - Nhà hàng/Admin nhận được danh sách sản phẩm (có thể bao gồm cả sản phẩm đã ngừng bán) |
-| **Luồng chính** | 1. Nhà hàng/Admin yêu cầu xem sản phẩm (Admin cần chỉ định nhà hàng)<br>2. Hệ thống xác định nhà hàng: Nhà hàng tự động từ phiên đăng nhập, Admin từ tham số yêu cầu<br>3. Hệ thống lấy danh sách sản phẩm của nhà hàng đó<br>4. Hệ thống trả về danh sách sản phẩm |
-| **Luồng phụ / Ngoại lệ** | 2a. Admin không chỉ định nhà hàng → Hiển thị "Vui lòng chọn nhà hàng" |
-
----
-
-#### UC-016: Xác thực Sản phẩm (Nội bộ)
-
-| Mục | Nội dung |
-|-----|----------|
-| **Mã Use Case** | UC-016 |
-| **Tên Use Case** | Xác thực Sản phẩm (Nội bộ) |
-| **Actor** | Hệ thống (Order Service) |
-| **Mô tả** | Hệ thống xác thực sản phẩm trước khi tạo đơn hàng để đảm bảo sản phẩm tồn tại, đang được bán và còn đủ hàng. |
-| **Tiền điều kiện** | - Order Service cần xác thực sản phẩm trước khi tạo đơn hàng |
-| **Hậu điều kiện** | - Hệ thống nhận được kết quả xác thực để quyết định có tạo đơn hàng hay không |
-| **Luồng chính** | 1. Hệ thống gửi yêu cầu xác thực với danh sách sản phẩm và số lượng<br>2. Hệ thống tìm từng sản phẩm theo ID<br>3. Hệ thống kiểm tra: sản phẩm tồn tại, đang được bán, còn đủ hàng<br>4. Hệ thống trả về kết quả xác thực cho từng sản phẩm |
-| **Luồng phụ / Ngoại lệ** | 3a. Sản phẩm không tồn tại → Xác thực thất bại<br>3b. Sản phẩm không đang được bán → Xác thực thất bại<br>3c. Số lượng tồn kho không đủ → Xác thực thất bại |
-
----
-
-### 3.3 Order Service Use Cases
-
-#### UC-017: Tạo Đơn hàng
-
-| Mục | Nội dung |
-|-----|----------|
-| **Mã Use Case** | UC-017 |
-| **Tên Use Case** | Tạo Đơn hàng |
-| **Actor** | Khách hàng |
-| **Mô tả** | Khách hàng tạo đơn hàng từ các sản phẩm đã chọn. Tất cả sản phẩm trong đơn phải thuộc cùng một nhà hàng. Hệ thống tự động tạo thanh toán chờ xử lý. |
-| **Tiền điều kiện** | - Khách hàng đã đăng nhập<br>- Khách hàng có ít nhất một sản phẩm trong giỏ hàng |
-| **Hậu điều kiện** | - Đơn hàng được tạo với trạng thái "Chờ xác nhận"<br>- Thanh toán được tạo tự động với trạng thái "Chờ thanh toán" |
-| **Luồng chính** | 1. Khách hàng chọn sản phẩm, nhập địa chỉ giao hàng, ghi chú (nếu có)<br>2. Hệ thống xác định khách hàng từ phiên đăng nhập<br>3. Hệ thống kiểm tra yêu cầu: có ít nhất 1 sản phẩm, địa chỉ giao hàng hợp lệ<br>4. Hệ thống kiểm tra tài khoản khách hàng hợp lệ<br>5. Hệ thống kiểm tra trùng lặp đơn hàng (nếu có mã idempotency)<br>6. Hệ thống xác thực sản phẩm: tồn tại, đang bán, còn đủ hàng<br>7. Hệ thống kiểm tra tất cả sản phẩm thuộc cùng một nhà hàng<br>8. Hệ thống tính tổng tiền (tổng phụ, phí vận chuyển, giảm giá, tổng cộng)<br>9. Hệ thống tạo đơn hàng với mã đơn tự động<br>10. Hệ thống lưu đơn hàng và chi tiết sản phẩm<br>11. Hệ thống trả về thông tin đơn hàng đã tạo |
-| **Luồng phụ / Ngoại lệ** | 3a. Yêu cầu không hợp lệ → Hiển thị "Vui lòng kiểm tra lại thông tin đơn hàng"<br>4a. Tài khoản không tồn tại hoặc không hoạt động → Hiển thị "Tài khoản không hợp lệ"<br>5a. Đơn hàng trùng lặp → Trả về đơn hàng đã tạo trước đó<br>6a. Sản phẩm không hợp lệ hoặc hết hàng → Hiển thị "Sản phẩm không khả dụng"<br>7a. Sản phẩm thuộc nhiều nhà hàng → Hiển thị "Vui lòng chọn sản phẩm từ cùng một nhà hàng" |
-
----
-
-#### UC-018: Xem Danh sách Đơn hàng
-
-| Mục | Nội dung |
-|-----|----------|
-| **Mã Use Case** | UC-018 |
-| **Tên Use Case** | Xem Danh sách Đơn hàng |
-| **Actor** | Khách hàng hoặc Quản trị viên |
-| **Mô tả** | Khách hàng xem danh sách đơn hàng của mình với các bộ lọc (trạng thái, mã đơn, khoảng thời gian). Admin có thể xem tất cả đơn hàng. |
-| **Tiền điều kiện** | - Khách hàng/Admin đã đăng nhập |
-| **Hậu điều kiện** | - Khách hàng/Admin nhận được danh sách đơn hàng theo bộ lọc đã chọn |
-| **Luồng chính** | 1. Khách hàng/Admin chọn bộ lọc (trạng thái, mã đơn, khoảng thời gian) và phân trang<br>2. Hệ thống kiểm tra quyền: Khách hàng chỉ xem đơn của mình, Admin xem tất cả<br>3. Hệ thống áp dụng bộ lọc<br>4. Hệ thống áp dụng phân trang và sắp xếp<br>5. Hệ thống trả về danh sách đơn hàng với thông tin phân trang |
-| **Luồng phụ / Ngoại lệ** | Không có |
-
----
-
-#### UC-019: Xem Chi tiết Đơn hàng
-
-| Mục | Nội dung |
-|-----|----------|
-| **Mã Use Case** | UC-019 |
-| **Tên Use Case** | Xem Chi tiết Đơn hàng |
-| **Actor** | Khách hàng, Nhà hàng hoặc Quản trị viên |
-| **Mô tả** | Khách hàng, nhà hàng hoặc Admin xem chi tiết đơn hàng bao gồm danh sách sản phẩm, địa chỉ giao hàng, tổng tiền, trạng thái. |
-| **Tiền điều kiện** | - Khách hàng/Nhà hàng/Admin đã đăng nhập<br>- Đơn hàng tồn tại trong hệ thống |
-| **Hậu điều kiện** | - Khách hàng/Nhà hàng/Admin nhận được chi tiết đơn hàng |
-| **Luồng chính** | 1. Khách hàng/Nhà hàng/Admin chọn đơn hàng cần xem (theo ID)<br>2. Hệ thống tìm đơn hàng theo ID<br>3. Hệ thống kiểm tra quyền: Khách hàng chỉ xem đơn của mình, Nhà hàng chỉ xem đơn của mình, Admin xem bất kỳ đơn nào<br>4. Hệ thống trả về chi tiết đơn hàng bao gồm danh sách sản phẩm và địa chỉ giao hàng |
-| **Luồng phụ / Ngoại lệ** | 2a. Đơn hàng không tồn tại → Hiển thị "Đơn hàng không tồn tại"<br>3a. Khách hàng/Nhà hàng cố gắng xem đơn không thuộc về mình → Hiển thị "Bạn không có quyền xem đơn hàng này" |
-
----
-
-#### UC-020: Xem Đơn hàng của Nhà hàng
-
-| Mục | Nội dung |
-|-----|----------|
-| **Mã Use Case** | UC-020 |
-| **Tên Use Case** | Xem Đơn hàng của Nhà hàng |
-| **Actor** | Nhà hàng hoặc Quản trị viên |
-| **Mô tả** | Nhà hàng xem danh sách đơn hàng của mình với các bộ lọc. Admin có thể xem đơn hàng của bất kỳ nhà hàng nào. |
-| **Tiền điều kiện** | - Nhà hàng/Admin đã đăng nhập |
-| **Hậu điều kiện** | - Nhà hàng/Admin nhận được danh sách đơn hàng của nhà hàng |
-| **Luồng chính** | 1. Nhà hàng/Admin chọn bộ lọc (trạng thái, mã đơn, khoảng thời gian) và phân trang<br>2. Hệ thống xác định nhà hàng: Nhà hàng tự động từ phiên đăng nhập, Admin từ tham số yêu cầu<br>3. Hệ thống lọc đơn hàng theo nhà hàng<br>4. Hệ thống áp dụng các bộ lọc khác<br>5. Hệ thống áp dụng phân trang và sắp xếp<br>6. Hệ thống trả về danh sách đơn hàng với thông tin phân trang |
-| **Luồng phụ / Ngoại lệ** | 2a. Admin không chỉ định nhà hàng → Hiển thị "Vui lòng chọn nhà hàng" |
-
----
-
-#### UC-021: Cập nhật Trạng thái Đơn hàng
-
-| Mục | Nội dung |
-|-----|----------|
-| **Mã Use Case** | UC-021 |
-| **Tên Use Case** | Cập nhật Trạng thái Đơn hàng |
-| **Actor** | Nhà hàng hoặc Quản trị viên |
-| **Mô tả** | Nhà hàng hoặc Admin cập nhật trạng thái đơn hàng (Xác nhận, Đang giao, Đã giao, Hủy, Hoàn tiền). Trạng thái phải tuân theo quy trình nghiệp vụ. |
-| **Tiền điều kiện** | - Nhà hàng/Admin đã đăng nhập<br>- Đơn hàng tồn tại trong hệ thống |
-| **Hậu điều kiện** | - Trạng thái đơn hàng được cập nhật<br>- Các service khác được thông báo về thay đổi |
-| **Luồng chính** | 1. Nhà hàng/Admin chọn đơn hàng và trạng thái mới<br>2. Hệ thống tìm đơn hàng theo ID<br>3. Hệ thống kiểm tra quyền: Nhà hàng chỉ cập nhật đơn của mình, Admin cập nhật bất kỳ đơn nào<br>4. Hệ thống kiểm tra chuyển trạng thái hợp lệ (theo quy trình: Chờ xác nhận → Đã xác nhận → Đang giao → Đã giao, hoặc Hủy/Hoàn tiền ở các bước phù hợp)<br>5. Hệ thống cập nhật trạng thái đơn hàng<br>6. Hệ thống trả về chi tiết đơn hàng đã cập nhật |
-| **Luồng phụ / Ngoại lệ** | 2a. Đơn hàng không tồn tại → Hiển thị "Đơn hàng không tồn tại"<br>3a. Nhà hàng cố gắng cập nhật đơn không thuộc về mình → Hiển thị "Bạn không có quyền cập nhật đơn hàng này"<br>4a. Chuyển trạng thái không hợp lệ → Hiển thị "Không thể chuyển sang trạng thái này" |
-
----
-
-#### UC-022: Cập nhật Trạng thái Đơn hàng qua Sự kiện Thanh toán (Nội bộ)
-
-| Mục | Nội dung |
-|-----|----------|
-| **Mã Use Case** | UC-022 |
-| **Tên Use Case** | Cập nhật Trạng thái Đơn hàng qua Sự kiện Thanh toán (Nội bộ) |
-| **Actor** | Hệ thống (Payment Service) |
-| **Mô tả** | Hệ thống tự động cập nhật trạng thái đơn hàng dựa trên kết quả thanh toán (thành công hoặc thất bại). |
-| **Tiền điều kiện** | - Thanh toán đã được xử lý<br>- Đơn hàng tồn tại trong hệ thống |
-| **Hậu điều kiện** | - Trạng thái đơn hàng được cập nhật tự động dựa trên kết quả thanh toán |
-| **Luồng chính** | 1. Payment Service gửi sự kiện "Thanh toán thành công" hoặc "Thanh toán thất bại"<br>2. Order Service nhận sự kiện<br>3. Hệ thống tìm đơn hàng theo ID trong sự kiện<br>4. Nếu thanh toán thành công: Hệ thống cập nhật đơn hàng sang "Đã thanh toán"<br>5. Nếu thanh toán thất bại: Hệ thống cập nhật đơn hàng sang "Đã hủy" và ghi chú lý do |
-| **Luồng phụ / Ngoại lệ** | 3a. Đơn hàng không tồn tại → Ghi log lỗi<br>4a. Trạng thái đơn hàng không hợp lệ → Ghi log lỗi |
-
----
-
-### 3.4 Payment Service Use Cases
-
-#### UC-023: Xử lý Thanh toán
-
-| Mục | Nội dung |
-|-----|----------|
-| **Mã Use Case** | UC-023 |
-| **Tên Use Case** | Xử lý Thanh toán |
-| **Actor** | Khách hàng |
-| **Mô tả** | Khách hàng thực hiện thanh toán cho đơn hàng đã được nhà hàng xác nhận. Hệ thống tự động cập nhật trạng thái đơn hàng sau khi thanh toán. |
-| **Tiền điều kiện** | - Khách hàng đã đăng nhập<br>- Đơn hàng đã được tạo và có trạng thái "Đã xác nhận"<br>- Thanh toán đã được tạo tự động với trạng thái "Chờ thanh toán" |
-| **Hậu điều kiện** | - Thanh toán được xử lý với trạng thái "Thành công" hoặc "Thất bại"<br>- Trạng thái đơn hàng được cập nhật tự động (Đã thanh toán hoặc Đã hủy) |
-| **Luồng chính** | 1. Khách hàng chọn đơn hàng cần thanh toán và nhập thông tin thanh toán<br>2. Hệ thống xác định khách hàng từ phiên đăng nhập<br>3. Hệ thống kiểm tra đơn hàng: tồn tại, thuộc về khách hàng, trạng thái "Đã xác nhận"<br>4. Hệ thống kiểm tra tài khoản khách hàng hợp lệ<br>5. Hệ thống kiểm tra số tiền thanh toán khớp với tổng tiền đơn hàng<br>6. Hệ thống xử lý thanh toán qua cổng thanh toán<br>7. Nếu thành công: Hệ thống cập nhật trạng thái thanh toán "Thành công" và tạo mã giao dịch<br>8. Nếu thất bại: Hệ thống cập nhật trạng thái thanh toán "Thất bại" và ghi lý do<br>9. Hệ thống trả về kết quả thanh toán |
-| **Luồng phụ / Ngoại lệ** | 3a. Đơn hàng không tồn tại → Hiển thị "Đơn hàng không tồn tại"<br>3b. Đơn hàng không thuộc về khách hàng → Hiển thị "Bạn không có quyền thanh toán đơn hàng này"<br>3c. Đơn hàng chưa được xác nhận → Hiển thị "Đơn hàng chưa được xác nhận"<br>4a. Tài khoản không tồn tại hoặc không hoạt động → Hiển thị "Tài khoản không hợp lệ"<br>5a. Số tiền không khớp → Hiển thị "Số tiền thanh toán không đúng"<br>7a. Cổng thanh toán lỗi → Thanh toán thất bại |
-
----
-
-#### UC-024: Xử lý Hoàn tiền
-
-| Mục | Nội dung |
-|-----|----------|
-| **Mã Use Case** | UC-024 |
-| **Tên Use Case** | Xử lý Hoàn tiền |
-| **Actor** | Hệ thống (Order Service) hoặc Quản trị viên |
-| **Mô tả** | Hệ thống hoặc Admin xử lý hoàn tiền cho khách hàng khi đơn hàng đã giao nhưng cần hoàn trả. Chỉ có thể hoàn tiền cho thanh toán đã thành công. |
-| **Tiền điều kiện** | - Thanh toán đã được xử lý thành công<br>- Đơn hàng có trạng thái "Đã giao" |
-| **Hậu điều kiện** | - Trạng thái thanh toán được cập nhật thành "Đã hoàn tiền"<br>- Trạng thái đơn hàng được cập nhật thành "Đã hoàn tiền" |
-| **Luồng chính** | 1. Hệ thống/Admin chọn thanh toán cần hoàn tiền và nhập số tiền hoàn, lý do<br>2. Hệ thống tìm thanh toán theo ID<br>3. Hệ thống kiểm tra trạng thái thanh toán là "Thành công"<br>4. Hệ thống kiểm tra số tiền hoàn không vượt quá số tiền đã thanh toán<br>5. Hệ thống cập nhật trạng thái thanh toán thành "Đã hoàn tiền"<br>6. Hệ thống trả về kết quả hoàn tiền |
-| **Luồng phụ / Ngoại lệ** | 2a. Thanh toán không tồn tại → Hiển thị "Thanh toán không tồn tại"<br>3a. Trạng thái thanh toán không phải "Thành công" → Hiển thị "Chỉ có thể hoàn tiền cho thanh toán đã thành công"<br>4a. Số tiền hoàn vượt quá số tiền đã thanh toán → Hiển thị "Số tiền hoàn không được vượt quá số tiền đã thanh toán" |
-
----
-
-#### UC-025: Xem Thanh toán của Nhà hàng
-
-| Mục | Nội dung |
-|-----|----------|
-| **Mã Use Case** | UC-025 |
-| **Tên Use Case** | Xem Thanh toán của Nhà hàng |
-| **Actor** | Nhà hàng hoặc Quản trị viên |
-| **Mô tả** | Nhà hàng xem danh sách thanh toán của mình với các bộ lọc (trạng thái, khoảng thời gian). Admin có thể xem thanh toán của bất kỳ nhà hàng nào. |
-| **Tiền điều kiện** | - Nhà hàng/Admin đã đăng nhập |
-| **Hậu điều kiện** | - Nhà hàng/Admin nhận được danh sách thanh toán của nhà hàng |
-| **Luồng chính** | 1. Nhà hàng/Admin chọn bộ lọc (trạng thái, khoảng thời gian) và phân trang<br>2. Hệ thống xác định nhà hàng: Nhà hàng tự động từ phiên đăng nhập, Admin từ tham số yêu cầu<br>3. Hệ thống lọc thanh toán theo nhà hàng<br>4. Hệ thống áp dụng các bộ lọc khác (trạng thái, khoảng thời gian)<br>5. Hệ thống áp dụng phân trang và sắp xếp<br>6. Hệ thống trả về danh sách thanh toán với thông tin phân trang |
-| **Luồng phụ / Ngoại lệ** | 2a. Admin không chỉ định nhà hàng → Hiển thị "Vui lòng chọn nhà hàng" |
-
----
-
-#### UC-026: Xem Thống kê Thanh toán của Nhà hàng
-
-| Mục | Nội dung |
-|-----|----------|
-| **Mã Use Case** | UC-026 |
-| **Tên Use Case** | Xem Thống kê Thanh toán của Nhà hàng |
-| **Actor** | Nhà hàng hoặc Quản trị viên |
-| **Mô tả** | Nhà hàng xem thống kê thanh toán của mình (tổng số thanh toán, tổng số tiền, số thanh toán theo trạng thái, tổng tiền hoàn). Admin có thể xem thống kê của bất kỳ nhà hàng nào hoặc tổng hợp. |
-| **Tiền điều kiện** | - Nhà hàng/Admin đã đăng nhập |
-| **Hậu điều kiện** | - Nhà hàng/Admin nhận được thống kê thanh toán |
-| **Luồng chính** | 1. Nhà hàng/Admin chọn nhà hàng (Admin có thể chọn hoặc xem tổng hợp) và khoảng thời gian<br>2. Hệ thống xác định nhà hàng: Nhà hàng tự động từ phiên đăng nhập, Admin từ tham số yêu cầu (hoặc tổng hợp)<br>3. Hệ thống tính toán thống kê: tổng số thanh toán, tổng số tiền (theo trạng thái), số thanh toán theo trạng thái, tổng tiền hoàn<br>4. Hệ thống trả về thống kê |
-| **Luồng phụ / Ngoại lệ** | Không có |
-
----
-
-### 3.5 Additional Use Cases
-
-#### UC-027: Yêu cầu Hoàn tiền
-
-| Mục | Nội dung |
-|-----|----------|
-| **Mã Use Case** | UC-027 |
-| **Tên Use Case** | Yêu cầu Hoàn tiền |
-| **Actor** | Khách hàng, Nhà hàng hoặc Quản trị viên |
-| **Mô tả** | Khách hàng, Nhà hàng hoặc Admin yêu cầu hoàn tiền cho đơn hàng đã thanh toán thành công. Yêu cầu được chuyển đến Payment Service để xử lý. |
-| **Tiền điều kiện** | - Khách hàng/Nhà hàng/Admin đã đăng nhập<br>- Đơn hàng đã được thanh toán thành công<br>- Đơn hàng chưa được hoàn tiền |
-| **Hậu điều kiện** | - Yêu cầu hoàn tiền được gửi đến Payment Service<br>- Trạng thái đơn hàng được cập nhật (nếu hoàn tiền thành công) |
-| **Luồng chính** | 1. Khách hàng/Nhà hàng/Admin chọn đơn hàng cần hoàn tiền và nhập lý do<br>2. Hệ thống xác định người dùng từ phiên đăng nhập<br>3. Hệ thống kiểm tra quyền: Khách hàng chỉ có thể yêu cầu hoàn tiền cho đơn của mình, Nhà hàng chỉ cho đơn của nhà hàng mình, Admin cho bất kỳ đơn nào<br>4. Hệ thống kiểm tra đơn hàng: tồn tại, đã thanh toán thành công<br>5. Hệ thống chuyển yêu cầu đến Payment Service để xử lý hoàn tiền<br>6. Hệ thống trả về kết quả yêu cầu hoàn tiền |
-| **Luồng phụ / Ngoại lệ** | 3a. Khách hàng/Nhà hàng cố gắng yêu cầu hoàn tiền cho đơn không thuộc về mình → Hiển thị "Bạn không có quyền yêu cầu hoàn tiền cho đơn hàng này"<br>4a. Đơn hàng không tồn tại → Hiển thị "Đơn hàng không tồn tại"<br>4b. Đơn hàng chưa thanh toán thành công → Hiển thị "Chỉ có thể hoàn tiền cho đơn hàng đã thanh toán thành công"<br>4c. Đơn hàng đã được hoàn tiền → Hiển thị "Đơn hàng đã được hoàn tiền" |
-
----
-
-#### UC-028: Lấy Chi tiết Đơn hàng (Nội bộ)
-
-| Mục | Nội dung |
-|-----|----------|
-| **Mã Use Case** | UC-028 |
-| **Tên Use Case** | Lấy Chi tiết Đơn hàng (Nội bộ) |
-| **Actor** | Hệ thống (Payment Service, Product Service) |
-| **Mô tả** | Các microservice khác gọi API nội bộ để lấy chi tiết đơn hàng mà không cần authentication. Endpoint này chỉ dùng cho giao tiếp giữa các service. |
-| **Tiền điều kiện** | - Service khác cần thông tin đơn hàng<br>- Đơn hàng tồn tại trong hệ thống |
-| **Hậu điều kiện** | - Service gọi API nhận được chi tiết đơn hàng |
-| **Luồng chính** | 1. Service khác gọi API nội bộ `/api/internal/orders/{orderId}`<br>2. Hệ thống tìm đơn hàng theo ID<br>3. Hệ thống trả về chi tiết đơn hàng |
-| **Luồng phụ / Ngoại lệ** | 2a. Đơn hàng không tồn tại → Trả về 404 NOT FOUND<br>2b. Lỗi hệ thống → Trả về 500 INTERNAL SERVER ERROR |
-
----
-
-#### UC-029: Xác thực Người dùng (Nội bộ)
-
-| Mục | Nội dung |
-|-----|----------|
-| **Mã Use Case** | UC-029 |
-| **Tên Use Case** | Xác thực Người dùng (Nội bộ) |
-| **Actor** | Hệ thống (Order Service, Payment Service) |
-| **Mô tả** | Các microservice khác gọi API nội bộ để xác thực người dùng có tồn tại và đang hoạt động không. Endpoint này chỉ dùng cho giao tiếp giữa các service. |
-| **Tiền điều kiện** | - Service khác cần xác thực người dùng<br>- Người dùng có thể tồn tại trong hệ thống |
-| **Hậu điều kiện** | - Service gọi API nhận được kết quả xác thực (người dùng hợp lệ hoặc không tồn tại) |
-| **Luồng chính** | 1. Service khác gọi API nội bộ `/api/internal/users/{id}/validate`<br>2. Hệ thống tìm người dùng theo ID<br>3. Hệ thống kiểm tra người dùng có tồn tại và đang hoạt động không<br>4. Hệ thống trả về thông tin người dùng hoặc lỗi |
-| **Luồng phụ / Ngoại lệ** | 2a. Người dùng không tồn tại → Trả về 404 NOT FOUND với mã lỗi "INVALID_ID"<br>2b. Lỗi hệ thống → Trả về 500 INTERNAL SERVER ERROR |
-
----
-
-#### UC-030: Lấy Thanh toán theo Đơn hàng
-
-| Mục | Nội dung |
-|-----|----------|
-| **Mã Use Case** | UC-030 |
-| **Tên Use Case** | Lấy Thanh toán theo Đơn hàng |
-| **Actor** | Hệ thống (Order Service) hoặc Quản trị viên |
-| **Mô tả** | Lấy thông tin thanh toán dựa trên orderId. Endpoint này được dùng bởi Order Service để kiểm tra trạng thái thanh toán hoặc bởi Admin để xem thông tin thanh toán. |
-| **Tiền điều kiện** | - Đơn hàng tồn tại trong hệ thống<br>- Thanh toán có thể đã được tạo cho đơn hàng |
-| **Hậu điều kiện** | - Nhận được thông tin thanh toán (nếu tồn tại) |
-| **Luồng chính** | 1. Order Service/Admin gọi API `/api/v1/payments/order/{orderId}`<br>2. Hệ thống tìm thanh toán theo orderId<br>3. Hệ thống trả về thông tin thanh toán |
-| **Luồng phụ / Ngoại lệ** | 2a. Không tìm thấy thanh toán → Trả về 404 NOT FOUND |
-
----
-
-#### UC-031: Trừ Tồn kho sau Thanh toán (Nội bộ)
-
-| Mục | Nội dung |
-|-----|----------|
-| **Mã Use Case** | UC-031 |
-| **Tên Use Case** | Trừ Tồn kho sau Thanh toán (Nội bộ) |
-| **Actor** | Hệ thống (Product Service) |
-| **Mô tả** | Product Service tự động trừ tồn kho sản phẩm sau khi nhận được sự kiện thanh toán thành công từ Payment Service. Quá trình này đảm bảo idempotency để tránh trừ trùng lặp. |
-| **Tiền điều kiện** | - Thanh toán đã được xử lý thành công<br>- Payment Service đã gửi sự kiện "OrderPaid" qua message queue |
-| **Hậu điều kiện** | - Tồn kho sản phẩm được trừ theo số lượng đã đặt<br>- Bản ghi trừ tồn kho được lưu để đảm bảo idempotency |
-| **Luồng chính** | 1. Product Service nhận sự kiện "OrderPaid" từ message queue<br>2. Hệ thống kiểm tra idempotency: nếu đơn hàng đã được xử lý thì bỏ qua<br>3. Hệ thống lặp qua từng sản phẩm trong đơn hàng:<br>   - Kiểm tra sản phẩm tồn tại và đang bán<br>   - Kiểm tra số lượng tồn kho còn đủ<br>   - Trừ số lượng tồn kho theo số lượng đã đặt<br>4. Hệ thống lưu bản ghi trừ tồn kho để đảm bảo idempotency<br>5. Hệ thống ghi log thành công |
-| **Luồng phụ / Ngoại lệ** | 2a. Đơn hàng đã được xử lý → Bỏ qua, không trừ lại<br>3a. Sản phẩm không tồn tại → Từ chối xử lý, không retry<br>3b. Sản phẩm không đang bán → Từ chối xử lý, không retry<br>3c. Số lượng tồn kho không đủ → Từ chối xử lý, không retry<br>4a. Lỗi kỹ thuật (database, network) → Retry qua message queue |
-
----
-
-### 3.6 Use Cases and Actors Summary Table
-
-Bảng dưới đây liệt kê tất cả các Use Cases và actors tham gia:
-
-| Use Case ID | Use Case Name | Service | Primary Actor | Secondary Actors | Internal/System |
-|------------|---------------|---------|---------------|------------------|-----------------|
-| **UC-001** | User Registration | User Service | User | - | - |
-| **UC-002** | User Login | User Service | User | - | - |
-| **UC-003** | Admin Create User | User Service | Admin | - | - |
-| **UC-004** | Update User Information | User Service | User, Admin | - | - |
-| **UC-005** | Admin Update User Role | User Service | Admin | - | - |
-| **UC-006** | Delete User | User Service | Admin | - | - |
-| **UC-007** | Get User By ID | User Service | Admin | - | - |
-| **UC-008** | Get All Users | User Service | Admin | - | - |
-| **UC-009** | Change Password | User Service | User | - | - |
-| **UC-010** | Merchant Create Product | Product Service | Merchant | Admin | - |
-| **UC-011** | Merchant Update Product | Product Service | Merchant | Admin | - |
-| **UC-012** | Merchant Delete Product | Product Service | Merchant | Admin | - |
-| **UC-013** | Get All Products | Product Service | Public (No Auth) | - | - |
-| **UC-014** | Get Products By Category | Product Service | Public (No Auth) | - | - |
-| **UC-015** | Get Merchant Products | Product Service | Merchant | Admin | - |
-| **UC-016** | Validate Products | Product Service | - | - | Order Service |
-| **UC-017** | Create Order | Order Service | User | - | - |
-| **UC-018** | Get Order List | Order Service | User | Admin | - |
-| **UC-019** | Get Order Detail | Order Service | User | Merchant, Admin | - |
-| **UC-020** | Get Merchant Orders | Order Service | Merchant | Admin | - |
-| **UC-021** | Update Order Status | Order Service | Merchant | Admin | - |
-| **UC-022** | Update Order Status via Payment Events | Order Service | - | - | Payment Service |
-| **UC-023** | Process Payment | Payment Service | User | - | - |
-| **UC-024** | Process Refund | Payment Service | Admin | - | Order Service |
-| **UC-025** | Get Merchant Payments | Payment Service | Merchant | Admin | - |
-| **UC-026** | Get Merchant Payment Statistics | Payment Service | Merchant | Admin | - |
-| **UC-027** | Request Refund | Order Service | User | Merchant, Admin | - |
-| **UC-028** | Get Order Detail (Internal) | Order Service | - | - | Payment Service, Product Service |
-| **UC-029** | Validate User (Internal) | User Service | - | - | Order Service, Payment Service |
-| **UC-030** | Get Payment by Order | Payment Service | Admin | - | Order Service |
-| **UC-031** | Deduct Stock After Payment (Internal) | Product Service | - | - | Payment Service |
-
-#### Chú thích:
-- **Primary Actor**: Actor chính thực hiện use case
-- **Secondary Actors**: Actors có thể thực hiện use case nhưng không phải là primary
-- **Internal/System**: Use case được gọi bởi các service khác (internal API)
-- **Public (No Auth)**: Không cần authentication để thực hiện
-
-#### Thống kê theo Actor:
-
-**User (10 use cases):**
-- UC-001, UC-002, UC-004, UC-009 (User Service)
-- UC-013, UC-014 (Product Service - Public)
-- UC-017, UC-018, UC-019, UC-027 (Order Service)
-- UC-023 (Payment Service)
-
-**Merchant (12 use cases):**
-- UC-010, UC-011, UC-012, UC-015 (Product Service)
-- UC-019, UC-020, UC-021, UC-027 (Order Service)
-- UC-025, UC-026 (Payment Service)
-
-**Admin (19 use cases):**
-- UC-003, UC-004, UC-005, UC-006, UC-007, UC-008 (User Service)
-- UC-010, UC-011, UC-012, UC-015 (Product Service)
-- UC-018, UC-019, UC-020, UC-021, UC-027 (Order Service)
-- UC-024, UC-025, UC-026, UC-030 (Payment Service)
-
-**System/Internal (7 use cases):**
-- UC-016 (Product Service - gọi bởi Order Service)
-- UC-022 (Order Service - gọi bởi Payment Service)
-- UC-024 (Payment Service - có thể gọi bởi Order Service)
-- UC-028 (Order Service - gọi bởi Payment Service, Product Service)
-- UC-029 (User Service - gọi bởi Order Service, Payment Service)
-- UC-030 (Payment Service - gọi bởi Order Service)
-- UC-031 (Product Service - gọi bởi Payment Service)
-
-**Public/No Auth (2 use cases):**
-- UC-013, UC-014 (Product Service)
+| **Mã Use Case** | UC-M03 |
+| **Actor chính** | Merchant |
+| **Giá trị** | Theo dõi thanh toán, doanh thu, số tiền hoàn để quyết định vận hành. |
+| **Tiền điều kiện** | Merchant đăng nhập; thanh toán liên kết với merchant_id tương ứng. |
+| **Hậu điều kiện** | Merchant nắm KPI (tổng đơn, doanh thu, tỷ lệ refund) để lập kế hoạch. |
+| **Luồng chính** | Truy vấn danh sách giao dịch, thống kê theo thời gian, export báo cáo. |
+| **API/Event chính** | `GET /payments/merchant`, `GET /payments/merchant/statistics`, dữ liệu từ events `OrderPaid`, `PaymentRefunded` |
+
+### 3.3 Admin Guardrails
+
+#### UC-A01: Govern Accounts & Roles
+
+| **Mã** | UC-A01 |
+|--------|--------|
+| **Giá trị** | Admin tạo, duyệt merchant, khóa/mở tài khoản, phân quyền. |
+| **Tiền điều kiện** | Admin đăng nhập bằng tài khoản có role ADMIN. |
+| **Hậu điều kiện** | Merchant/Users có trạng thái và vai trò phù hợp, được đồng bộ sang các service khác. |
+| **Trọng tâm** | Đảm bảo chỉ merchant đã kiểm duyệt mới được bật chức năng thương mại. |
+| **API/Event chính** | `POST /users`, `PUT /users/{id}` (bao gồm trường `approved`), `DELETE /users/{id}`, event đồng bộ user cache |
+
+#### UC-A02: Override Catalog & Orders
+
+| **Mã** | UC-A02 |
+|--------|--------|
+| **Giá trị** | Admin xem/điều chỉnh mọi sản phẩm và đơn hàng khi có tranh chấp. |
+| **Tiền điều kiện** | Admin đăng nhập; yêu cầu điều tra tranh chấp hoặc sự cố vận hành. |
+| **Hậu điều kiện** | Dữ liệu sản phẩm/đơn hàng được chỉnh sửa, log audit ghi nhận người thao tác. |
+| **Trọng tâm** | Có thể cập nhật trạng thái đơn hoặc menu thay merchant để giữ trải nghiệm khách hàng. |
+| **API/Event chính** | `PUT /products/{id}`, `PUT /orders/{id}/status`, dashboard quản trị |
+
+#### UC-A03: Financial Controls & Compliance
+
+| **Mã** | UC-A03 |
+|--------|--------|
+| **Giá trị** | Quản trị dòng tiền: phê duyệt hoàn tiền, xem báo cáo tổng hợp, đảm bảo audit trail. |
+| **Tiền điều kiện** | Đơn đã giao, thanh toán `SUCCESS`, có yêu cầu hoàn tiền hợp lệ. |
+| **Hậu điều kiện** | Thanh toán chuyển `REFUNDED`, tồn kho được hoàn trả, báo cáo tài chính ghi nhận. |
+| **Trọng tâm** | Mọi giao dịch hoàn/hủy phải ghi nhận lý do và người phê duyệt. |
+| **API/Event chính** | `POST /orders/{id}/refund`, `GET /payments/order/{orderId}`, events `OrderRefundRequest`, `PaymentRefunded` |
+
+### 3.4 System / Internal Automations
+
+#### UC-S01: Cross-service Validation
+
+| **Mã** | UC-S01 |
+|--------|--------|
+| **Actor chính** | Order/Payment Service (internal) |
+| **Giá trị** | Đảm bảo dữ liệu người dùng và sản phẩm hợp lệ trước khi tạo giao dịch. |
+| **Tiền điều kiện** | Service caller có token nội bộ và id cần validate. |
+| **Hậu điều kiện** | Nhận kết quả hợp lệ/không hợp lệ để quyết định tiếp tục hoặc từ chối request. |
+| **API/Event chính** | Internal API: `/api/internal/users/{id}/validate`, `/api/internal/products/validate`, `/api/internal/orders/{id}` |
+
+#### UC-S02: Event-driven Order Lifecycle
+
+| **Mã** | UC-S02 |
+|--------|--------|
+| **Actor chính** | Payment Service ↔ Order Service |
+| **Giá trị** | Đồng bộ trạng thái đơn tự động theo kết quả thanh toán, giảm thao tác tay. |
+| **Tiền điều kiện** | Payment Service xử lý một giao dịch và có kết quả SUCCESS/FAILED. |
+| **Hậu điều kiện** | Order cập nhật trạng thái (PAID/CANCELLED), phát event `OrderStatusChanged` cho các subscriber. |
+| **API/Event chính** | Events: `PAYMENT_SUCCESS`, `PAYMENT_FAILED`, `OrderStatusChanged`; listener nội bộ của Order Service. |
+
+#### UC-S03: Inventory & Refund Sync
+
+| **Mã** | UC-S03 |
+|--------|--------|
+| **Actor chính** | Product Service (asynchronous consumer) |
+| **Giá trị** | Giữ tồn kho chính xác sau thanh toán hoặc hoàn tiền với cơ chế idempotent. |
+| **Tiền điều kiện** | Payment Service phát `OrderPaid` / `PaymentRefunded`. |
+| **Hậu điều kiện** | Stock được trừ hoặc hoàn, ghi record `stock_deduction_records` để tránh xử lý trùng. |
+| **API/Event chính** | Events `OrderPaid`, `PaymentRefunded`; bảng `stock_deduction_records`. |
+
+### 3.5 Core Use Case Matrix
+
+| ID | Tên Use Case | Persona/Service | Giá trị chính | Thành phần liên quan |
+|----|--------------|-----------------|---------------|----------------------|
+| UC-C01 | Onboard & Access | User Service | Đăng ký, đăng nhập, approve merchant | User Service, Admin Portal |
+| UC-C02 | Discover Menu | Product Service | Khách hàng xem & lọc sản phẩm | Product Service, Cache |
+| UC-C03 | Place Order | Order Service | Tạo đơn hợp lệ, chuẩn bị thanh toán | Order, Product, Payment |
+| UC-C04 | Pay & Track | Payment Service | Thanh toán và cập nhật trạng thái | Payment, Order, Notification |
+| UC-C05 | Manage Orders & Issues | Order Service | Theo dõi/hủy/hoàn tiền đơn | Order, Payment |
+| UC-M01 | Maintain Catalog | Product Service | CRUD menu theo merchant | Product, Admin override |
+| UC-M02 | Fulfil Orders | Order Service | Merchant xử lý & cập nhật đơn | Order, Notification |
+| UC-M03 | Monitor Revenue | Payment Service | Báo cáo thanh toán/hoàn tiền | Payment, Reporting |
+| UC-A01 | Govern Accounts & Roles | User Service | Duyệt merchant, quản lý vai trò | User Service |
+| UC-A02 | Override Catalog & Orders | Product + Order | Can thiệp khi có tranh chấp | Admin Portal |
+| UC-A03 | Financial Controls | Payment Service | Phê duyệt hoàn tiền, audit | Payment, Compliance DB |
+| UC-S01 | Cross-service Validation | Internal API | Đảm bảo dữ liệu hợp lệ | User/Product services |
+| UC-S02 | Event-driven Lifecycle | Messaging Layer | Đồng bộ trạng thái đơn | Order, Payment, MQ |
+| UC-S03 | Inventory & Refund Sync | Product Service | Trừ/hoàn tồn kho tự động | Product, Payment |
+
+> **Legacy chi tiết:** Các bước UC-001…UC-031 trước đây được giữ làm tham chiếu trong Appendix để đội kỹ thuật có thể truy cứu khi cần độ chi tiết mức API.
 
 ---
 
 ## Use Case Diagrams
 
-### 4.1 Overall Use Case Diagram (UML Standard)
+### 4.1 High-level Use Case Diagram (Sau tinh gọn)
 
 ```mermaid
 graph TB
-    subgraph System["Fast Food Delivery System"]
-        subgraph UserMgmt["User Management"]
-            UC001[Register]
-            UC002[Login]
-            UC003[Create User]
-            UC004[Update User]
-            UC005[Update Role]
-            UC006[Delete User]
-            UC007[Get User]
-            UC008[Get All Users]
-            UC009[Change Password]
+    subgraph FastFoodDelivery
+        subgraph CustomerFlow
+            UCC01[UC-C01<br/>Onboard]
+            UCC02[UC-C02<br/>Discover Menu]
+            UCC03[UC-C03<br/>Place Order]
+            UCC04[UC-C04<br/>Pay & Track]
+            UCC05[UC-C05<br/>Manage Issues]
         end
-
-        subgraph ProductMgmt["Product Management"]
-            UC010[Create Product]
-            UC011[Update Product]
-            UC012[Delete Product]
-            UC013[View Products]
-            UC014[View Products By Category]
-            UC015[View Merchant Products]
-            UC016[Validate Products]
+        subgraph MerchantFlow
+            UCM01[UC-M01<br/>Maintain Catalog]
+            UCM02[UC-M02<br/>Fulfil Orders]
+            UCM03[UC-M03<br/>Monitor Revenue]
         end
-
-        subgraph OrderMgmt["Order Management"]
-            UC017[Create Order]
-            UC018[View Order List]
-            UC019[View Order Detail]
-            UC020[View Merchant Orders]
-            UC021[Update Order Status]
-            UC022[Update Order via Events]
-            UC027[Request Refund]
-            UC028[Get Order Detail Internal]
+        subgraph AdminFlow
+            UCA01[UC-A01<br/>Govern Accounts]
+            UCA02[UC-A02<br/>Override Ops]
+            UCA03[UC-A03<br/>Financial Controls]
         end
-
-        subgraph PaymentMgmt["Payment Management"]
-            UC023[Process Payment]
-            UC024[Process Refund]
-            UC025[View Payments]
-            UC026[View Payment Statistics]
-            UC030[Get Payment by Order]
-        end
-
-        subgraph InternalAPIs["Internal APIs"]
-            UC029[Validate User Internal]
-            UC031[Deduct Stock After Payment]
+        subgraph SystemFlow
+            UCS01[UC-S01<br/>Cross-service Validation]
+            UCS02[UC-S02<br/>Event Lifecycle]
+            UCS03[UC-S03<br/>Inventory Sync]
         end
     end
 
-    %% Actors
-    User((User))
-    Merchant((Merchant))
-    Admin((Admin))
-    SystemActor((System))
+    User((Customer)) --> UCC01
+    User --> UCC02
+    User --> UCC03
+    User --> UCC04
+    User --> UCC05
 
-    %% User connections
-    User --> UC001
-    User --> UC002
-    User --> UC004
-    User --> UC009
-    User --> UC013
-    User --> UC014
-    User --> UC017
-    User --> UC018
-    User --> UC019
-    User --> UC023
-    User --> UC027
+    Merchant((Merchant)) --> UCM01
+    Merchant --> UCM02
+    Merchant --> UCM03
 
-    %% Merchant connections
-    Merchant --> UC010
-    Merchant --> UC011
-    Merchant --> UC012
-    Merchant --> UC015
-    Merchant --> UC019
-    Merchant --> UC020
-    Merchant --> UC021
-    Merchant --> UC025
-    Merchant --> UC026
-    Merchant --> UC027
+    Admin((Admin)) --> UCA01
+    Admin --> UCA02
+    Admin --> UCA03
 
-    %% Admin connections
-    Admin --> UC003
-    Admin --> UC004
-    Admin --> UC005
-    Admin --> UC006
-    Admin --> UC007
-    Admin --> UC008
-    Admin --> UC010
-    Admin --> UC011
-    Admin --> UC012
-    Admin --> UC015
-    Admin --> UC018
-    Admin --> UC019
-    Admin --> UC020
-    Admin --> UC021
-    Admin --> UC024
-    Admin --> UC025
-    Admin --> UC026
-    Admin --> UC027
-    Admin --> UC030
+    SystemActor((Internal Services)) --> UCS01
+    SystemActor --> UCS02
+    SystemActor --> UCS03
 
-    %% System connections
-    SystemActor --> UC016
-    SystemActor --> UC022
-    SystemActor --> UC024
-    SystemActor --> UC028
-    SystemActor --> UC029
-    SystemActor --> UC030
-    SystemActor --> UC031
+    %% Shared touchpoints
+    UCC03 --> UCM02
+    UCC04 --> UCA03
+    UCC05 --> UCA02
+    UCS02 --> UCM02
+    UCS03 --> UCM01
 
-    style User fill:#e1f5ff,stroke:#0066cc,stroke-width:2px
-    style Merchant fill:#fff4e1,stroke:#cc9900,stroke-width:2px
-    style Admin fill:#ffe1e1,stroke:#cc0000,stroke-width:2px
-    style SystemActor fill:#e1ffe1,stroke:#00cc00,stroke-width:2px
-    style System fill:#f9f9f9,stroke:#333,stroke-width:3px
+    style User fill:#e1f5ff,stroke:#177ddc,stroke-width:2px
+    style Merchant fill:#fff4e1,stroke:#d89614,stroke-width:2px
+    style Admin fill:#ffe1e1,stroke:#cf1322,stroke-width:2px
+    style SystemActor fill:#e1ffe1,stroke:#389e0d,stroke-width:2px
+    style FastFoodDelivery fill:#f9f9f9,stroke:#333,stroke-width:2px
 ```
 
-### 4.2 Overall Use Case Diagram (Grouped by Service)
+### 4.2 Persona-focused Swimlane
 
 ```mermaid
-graph TB
-    subgraph Actors
-        User[User]
-        Merchant[Merchant]
-        Admin[Admin]
-        System[System/Internal]
+flowchart LR
+    subgraph Customer
+        A01[UC-C01\nOnboard]
+        A02[UC-C02\nDiscover]
+        A03[UC-C03\nPlace Order]
+        A04[UC-C04\nPay & Track]
+        A05[UC-C05\nManage Issues]
     end
 
-    subgraph UserService["User Service"]
-        UC001[UC-001: Register]
-        UC002[UC-002: Login]
-        UC003[UC-003: Create User]
-        UC004[UC-004: Update User]
-        UC005[UC-005: Update Role]
-        UC006[UC-006: Delete User]
-        UC007[UC-007: Get User By ID]
-        UC008[UC-008: Get All Users]
-        UC009[UC-009: Change Password]
-        UC029[UC-029: Validate User Internal]
+    subgraph Merchant
+        B01[UC-M01\nCatalog]
+        B02[UC-M02\nFulfil]
+        B03[UC-M03\nRevenue]
     end
 
-    subgraph ProductService["Product Service"]
-        UC010[UC-010: Create Product]
-        UC011[UC-011: Update Product]
-        UC012[UC-012: Delete Product]
-        UC013[UC-013: Get All Products]
-        UC014[UC-014: Get Products By Category]
-        UC015[UC-015: Get Merchant Products]
-        UC016[UC-016: Validate Products]
-        UC031[UC-031: Deduct Stock After Payment]
+    subgraph Admin
+        C01[UC-A01\nGovern Accounts]
+        C02[UC-A02\nOverride Ops]
+        C03[UC-A03\nFinancial Controls]
     end
 
-    subgraph OrderService["Order Service"]
-        UC017[UC-017: Create Order]
-        UC018[UC-018: Get Order List]
-        UC019[UC-019: Get Order Detail]
-        UC020[UC-020: Get Merchant Orders]
-        UC021[UC-021: Update Order Status]
-        UC022[UC-022: Update Order Status via Events]
-        UC027[UC-027: Request Refund]
-        UC028[UC-028: Get Order Detail Internal]
+    subgraph Internal
+        D01[UC-S01\nValidation]
+        D02[UC-S02\nEvents]
+        D03[UC-S03\nInventory Sync]
     end
 
-    subgraph PaymentService["Payment Service"]
-        UC023[UC-023: Process Payment]
-        UC024[UC-024: Process Refund]
-        UC025[UC-025: Get Merchant Payments]
-        UC026[UC-026: Get Payment Statistics]
-        UC030[UC-030: Get Payment by Order]
-    end
-
-    %% User connections
-    User --> UC001
-    User --> UC002
-    User --> UC009
-    User --> UC013
-    User --> UC014
-    User --> UC017
-    User --> UC018
-    User --> UC019
-    User --> UC023
-    User --> UC027
-
-    %% Merchant connections
-    Merchant --> UC010
-    Merchant --> UC011
-    Merchant --> UC012
-    Merchant --> UC015
-    Merchant --> UC020
-    Merchant --> UC021
-    Merchant --> UC025
-    Merchant --> UC026
-    Merchant --> UC027
-
-    %% Admin connections
-    Admin --> UC003
-    Admin --> UC004
-    Admin --> UC005
-    Admin --> UC006
-    Admin --> UC007
-    Admin --> UC008
-    Admin --> UC010
-    Admin --> UC011
-    Admin --> UC012
-    Admin --> UC015
-    Admin --> UC018
-    Admin --> UC019
-    Admin --> UC020
-    Admin --> UC021
-    Admin --> UC025
-    Admin --> UC026
-    Admin --> UC027
-    Admin --> UC030
-
-    %% System/Internal connections
-    System --> UC016
-    System --> UC022
-    System --> UC024
-    System --> UC028
-    System --> UC029
-    System --> UC030
-    System --> UC031
-
-    style User fill:#e1f5ff
-    style Merchant fill:#fff4e1
-    style Admin fill:#ffe1e1
-    style System fill:#e1ffe1
-```
-
-### 4.3 User Service Use Case Diagram
-
-```mermaid
-graph LR
-    subgraph Actors
-        User[User]
-        Admin[Admin]
-    end
-
-    subgraph UserService["User Service"]
-        UC001[UC-001: Register]
-        UC002[UC-002: Login]
-        UC003[UC-003: Create User]
-        UC004[UC-004: Update User]
-        UC005[UC-005: Update Role]
-        UC006[UC-006: Delete User]
-        UC007[UC-007: Get User By ID]
-        UC008[UC-008: Get All Users]
-        UC009[UC-009: Change Password]
-    end
-
-    User --> UC001
-    User --> UC002
-    User --> UC004
-    User --> UC009
-
-    Admin --> UC003
-    Admin --> UC004
-    Admin --> UC005
-    Admin --> UC006
-    Admin --> UC007
-    Admin --> UC008
-
-    style User fill:#e1f5ff
-    style Admin fill:#ffe1e1
-```
-
-### 4.4 Product Service Use Case Diagram
-
-```mermaid
-graph LR
-    subgraph Actors
-        Public[Public User]
-        Merchant[Merchant]
-        Admin[Admin]
-        System[Order Service]
-    end
-
-    subgraph ProductService["Product Service"]
-        UC010[UC-010: Create Product]
-        UC011[UC-011: Update Product]
-        UC012[UC-012: Delete Product]
-        UC013[UC-013: Get All Products]
-        UC014[UC-014: Get Products By Category]
-        UC015[UC-015: Get Merchant Products]
-        UC016[UC-016: Validate Products]
-    end
-
-    Public --> UC013
-    Public --> UC014
-
-    Merchant --> UC010
-    Merchant --> UC011
-    Merchant --> UC012
-    Merchant --> UC015
-
-    Admin --> UC010
-    Admin --> UC011
-    Admin --> UC012
-    Admin --> UC015
-
-    System --> UC016
-
-    style Public fill:#e1f5ff
-    style Merchant fill:#fff4e1
-    style Admin fill:#ffe1e1
-    style System fill:#e1ffe1
-```
-
-### 4.5 Order Service Use Case Diagram
-
-```mermaid
-graph LR
-    subgraph Actors
-        User[User]
-        Merchant[Merchant]
-        Admin[Admin]
-        System[Payment Service]
-    end
-
-    subgraph OrderService["Order Service"]
-        UC017[UC-017: Create Order]
-        UC018[UC-018: Get Order List]
-        UC019[UC-019: Get Order Detail]
-        UC020[UC-020: Get Merchant Orders]
-        UC021[UC-021: Update Order Status]
-        UC022[UC-022: Update Order Status via Events]
-    end
-
-    User --> UC017
-    User --> UC018
-    User --> UC019
-
-    Merchant --> UC019
-    Merchant --> UC020
-    Merchant --> UC021
-
-    Admin --> UC018
-    Admin --> UC019
-    Admin --> UC020
-    Admin --> UC021
-
-    System --> UC022
-
-    style User fill:#e1f5ff
-    style Merchant fill:#fff4e1
-    style Admin fill:#ffe1e1
-    style System fill:#e1ffe1
-```
-
-### 4.6 Payment Service Use Case Diagram
-
-```mermaid
-graph LR
-    subgraph Actors
-        User[User]
-        Merchant[Merchant]
-        Admin[Admin]
-        System[Order Service]
-    end
-
-    subgraph PaymentService["Payment Service"]
-        UC023[UC-023: Process Payment]
-        UC024[UC-024: Process Refund]
-        UC025[UC-025: Get Merchant Payments]
-        UC026[UC-026: Get Payment Statistics]
-    end
-
-    User --> UC023
-
-    Merchant --> UC025
-    Merchant --> UC026
-
-    Admin --> UC024
-    Admin --> UC025
-    Admin --> UC026
-
-    System --> UC024
-
-    style User fill:#e1f5ff
-    style Merchant fill:#fff4e1
-    style Admin fill:#ffe1e1
-    style System fill:#e1ffe1
-```
-
-### 4.7 Use Case Diagram by Actor
-
-```mermaid
-graph TB
-    subgraph UserActor["User Actor"]
-        User[User]
-        U1[Register]
-        U2[Login]
-        U3[Change Password]
-        U4[View Products]
-        U5[View Products By Category]
-        U6[Create Order]
-        U7[View Own Orders]
-        U8[View Order Detail]
-        U9[Process Payment]
-
-        User --> U1
-        User --> U2
-        User --> U3
-        User --> U4
-        User --> U5
-        User --> U6
-        User --> U7
-        User --> U8
-        User --> U9
-    end
-
-    subgraph MerchantActor["Merchant Actor"]
-        Merchant[Merchant]
-        M1[Create Product]
-        M2[Update Product]
-        M3[Delete Product]
-        M4[View Own Products]
-        M5[View Own Orders]
-        M6[View Order Detail]
-        M7[Update Order Status]
-        M8[View Payments]
-        M9[View Payment Statistics]
-
-        Merchant --> M1
-        Merchant --> M2
-        Merchant --> M3
-        Merchant --> M4
-        Merchant --> M5
-        Merchant --> M6
-        Merchant --> M7
-        Merchant --> M8
-        Merchant --> M9
-    end
-
-    subgraph AdminActor["Admin Actor"]
-        Admin[Admin]
-        A1[Create User]
-        A2[Update User]
-        A3[Update User Role]
-        A4[Delete User]
-        A5[View All Users]
-        A6[View User Detail]
-        A7[Manage Products]
-        A8[View All Orders]
-        A9[Update Order Status]
-        A10[Process Refund]
-        A11[View Payments]
-        A12[View Payment Statistics]
-
-        Admin --> A1
-        Admin --> A2
-        Admin --> A3
-        Admin --> A4
-        Admin --> A5
-        Admin --> A6
-        Admin --> A7
-        Admin --> A8
-        Admin --> A9
-        Admin --> A10
-        Admin --> A11
-        Admin --> A12
-    end
-
-    subgraph SystemActor["System/Internal Actor"]
-        System[System Services]
-        S1[Validate Products]
-        S2[Update Order via Payment Events]
-        S3[Process Refund via Order Event]
-
-        System --> S1
-        System --> S2
-        System --> S3
-    end
-
-    style User fill:#e1f5ff
-    style Merchant fill:#fff4e1
-    style Admin fill:#ffe1e1
-    style System fill:#e1ffe1
+    A03 --> B02 --> D02
+    A04 --> C03 --> D02
+    A05 --> C02
+    B01 --> D03
+    D01 --> A03
 ```
 
 ---
 
 ## Sequence Diagrams
 
-### 5.1 Order Creation Sequence Diagram
+*Phần này minh họa chi tiết các quy trình nghiệp vụ cốt lõi đã mô tả ở **Business Flows** và **Use Cases**, dưới dạng sequence diagram. Mỗi quy trình đều có mô tả ngắn, phạm vi và các service tham gia.*
+
+### 5.1 Quy trình Tạo Đơn hàng (Order Creation)
+
+**Mô tả ngắn:** Minh họa luồng UC-C03 (Place Order) và UC-S01 (Cross-service Validation): khách hàng tạo đơn qua Gateway, Order Service xác thực user, sản phẩm, idempotency, lưu đơn và phát sự kiện `OrderCreated` cho Payment Service.
 
 ```mermaid
 sequenceDiagram
@@ -1244,7 +503,9 @@ sequenceDiagram
     end
 ```
 
-### 5.2 Payment Processing Sequence Diagram
+### 5.2 Quy trình Thanh toán Đơn hàng (Payment Processing)
+
+**Mô tả ngắn:** Minh họa luồng UC-C04 (Pay & Track) và UC-S02 (Event-driven Order Lifecycle): khách hàng gọi `POST /payments`, Payment Service xác thực order + user + số tiền, xử lý thanh toán, phát `PAYMENT_SUCCESS/FAILED` để Order Service cập nhật trạng thái đơn.
 
 ```mermaid
 sequenceDiagram
@@ -1295,7 +556,9 @@ sequenceDiagram
     end
 ```
 
-### 5.3 Order Status Update (Manual) Sequence Diagram
+### 5.3 Cập nhật Trạng thái Đơn hàng Thủ công (Manual Status Update)
+
+**Mô tả ngắn:** Minh họa luồng UC-M02 và UC-A02 khi Merchant/Admin cập nhật trạng thái đơn (CONFIRMED/SHIPPED/DELIVERED/CANCELLED) qua API; Order Service kiểm tra quyền, rule chuyển trạng thái và phát `OrderStatusChanged`.
 
 ```mermaid
 sequenceDiagram
@@ -1327,7 +590,9 @@ sequenceDiagram
     end
 ```
 
-### 5.4 Order Status Update (via Payment Events) Sequence Diagram
+### 5.4 Cập nhật Trạng thái Đơn hàng qua Sự kiện Thanh toán
+
+**Mô tả ngắn:** Tiếp nối 5.2, thể hiện UC-S02 khi Payment Service phát sự kiện kết quả thanh toán; Order Service listener nhận và tự động cập nhật đơn sang `PAID` hoặc `CANCELLED`, ghi chú lý do và phát `OrderStatusChanged`.
 
 ```mermaid
 sequenceDiagram
@@ -1361,7 +626,9 @@ sequenceDiagram
     OrderServiceListener-->>RabbitMQ: ACK
 ```
 
-### 5.5 Product Creation Sequence Diagram
+### 5.5 Tạo Sản phẩm (Product Creation)
+
+**Mô tả ngắn:** Minh họa một phần UC-M01 (Maintain Catalog): Merchant/Admin gọi `POST /products` qua Gateway, Product Service validate quyền và dữ liệu, gán `merchantId` và lưu sản phẩm mới.
 
 ```mermaid
 sequenceDiagram
@@ -1382,7 +649,9 @@ sequenceDiagram
     Gateway-->>Merchant: 201 Created
 ```
 
-### 5.6 Product Update Sequence Diagram
+### 5.6 Cập nhật Sản phẩm (Product Update)
+
+**Mô tả ngắn:** Tiếp tục UC-M01: Merchant/Admin cập nhật sản phẩm qua `PUT /products/{id}`, Product Service kiểm tra quyền sở hữu (merchant chỉ sửa sản phẩm của mình), validate dữ liệu rồi cập nhật DB.
 
 ```mermaid
 sequenceDiagram
@@ -1404,7 +673,9 @@ sequenceDiagram
     Gateway-->>Merchant: 200 OK
 ```
 
-### 5.7 Refund Request Sequence Diagram
+### 5.7 Quy trình Yêu cầu Hoàn tiền (Refund Request)
+
+**Mô tả ngắn:** Minh họa UC-C05 (Manage Orders & Issues) và UC-A03 (Financial Controls): khách hàng/merchant/admin gửi yêu cầu hoàn tiền, Order Service validate quyền + trạng thái đơn + payment, cập nhật đơn sang `REFUNDED` và phát `OrderRefundRequest` để Payment Service xử lý hoàn tiền.
 
 ```mermaid
 sequenceDiagram
@@ -1464,7 +735,9 @@ sequenceDiagram
     end
 ```
 
-### 5.8 Stock Deduction After Payment Sequence Diagram
+### 5.8 Trừ Tồn kho Sau Thanh toán (Stock Deduction After Payment)
+
+**Mô tả ngắn:** Minh họa UC-S03 (Inventory & Refund Sync): sau khi thanh toán thành công, Payment Service phát `OrderPaid`, Product Service nhận, kiểm tra idempotency, validate từng sản phẩm và trừ stock, ghi lại bản ghi idempotent.
 
 ```mermaid
 sequenceDiagram
@@ -1511,11 +784,29 @@ sequenceDiagram
 
 ## Entity Relationship Diagram (ERD)
 
-### 6.1 Overall ERD
+### 6.1 Conceptual ERD
 
 ```mermaid
 erDiagram
-    %% User Service Database
+    USER ||--o{ ORDER : places
+    USER ||--o{ PAYMENT : initiates
+    MERCHANT ||--o{ PRODUCT : owns
+    MERCHANT ||--o{ ORDER : fulfills
+    PRODUCT ||--o{ ORDER_ITEM : included_in
+    ORDER ||--o{ ORDER_ITEM : contains
+    ORDER ||--|| PAYMENT : settles
+    ORDER ||--o{ OUTBOX_EVENT : emits
+    ORDER ||--o{ IDEMPOTENCY_KEY : deduped_by
+    PAYMENT ||--o{ OUTBOX_EVENT_PAYMENT : emits
+    ORDER ||--o{ STOCK_DEDUCTION_RECORD : adjusts_stock
+```
+
+*Ý nghĩa:* sơ đồ khái niệm nhấn mạnh các thực thể chính và quan hệ nghiệp vụ: người dùng đặt đơn, merchant quản lý sản phẩm & fulfil đơn, mọi thay đổi đều sinh event/outbox và ghi nhận điều chỉnh tồn kho.
+
+### 6.2 Physical ERD (Per-service Data Model)
+
+```mermaid
+erDiagram
     USERS {
         bigint id PK
         varchar username UK
@@ -1525,7 +816,6 @@ erDiagram
         boolean approved
     }
 
-    %% Product Service Database
     PRODUCTS {
         bigint id PK
         varchar name
@@ -1537,7 +827,6 @@ erDiagram
         boolean active
     }
 
-    %% Order Service Database
     ORDERS {
         bigint id PK
         varchar order_code UK
@@ -1591,7 +880,6 @@ erDiagram
         timestamp created_at
     }
 
-    %% Payment Service Database
     PAYMENTS {
         bigint id PK
         bigint order_id UK
@@ -1616,19 +904,29 @@ erDiagram
         timestamp created_at
     }
 
-    %% Relationships
+    STOCK_DEDUCTION_RECORDS {
+        bigint id PK
+        bigint order_id FK
+        bigint product_id FK
+        int quantity
+        enum adjustment_type
+        timestamp processed_at
+    }
+
     ORDERS ||--o{ ORDER_ITEMS : "has"
     ORDERS ||--o{ IDEMPOTENCY_KEYS : "has"
     ORDERS }o--|| USERS : "belongs to"
     ORDERS }o--|| PRODUCTS : "references merchant"
     ORDER_ITEMS }o--|| PRODUCTS : "references"
-    PRODUCTS }o--|| USERS : "belongs to (merchant)"
-    PAYMENTS }o--|| ORDERS : "for"
+    PRODUCTS }o--|| USERS : "merchant owner"
+    PAYMENTS }o--|| ORDERS : "settles"
     PAYMENTS }o--|| USERS : "belongs to"
     PAYMENTS }o--|| USERS : "merchant"
+    STOCK_DEDUCTION_RECORDS }o--|| PRODUCTS : "adjusts"
+    STOCK_DEDUCTION_RECORDS }o--|| ORDERS : "linked to"
 ```
 
-### 6.2 Database Schema Details
+### 6.3 Database Schema Details
 
 #### User Service Database (userservice)
 
@@ -1651,6 +949,16 @@ erDiagram
 - `category` (ENUM: DRINK, FOOD, NOT NULL)
 - `merchant_id` (BIGINT, NOT NULL, INDEX)
 - `active` (BOOLEAN, NOT NULL, DEFAULT true)
+- `created_at` / `updated_at`
+
+**Table: stock_deduction_records**
+- `id` (BIGINT, PK, AUTO_INCREMENT)
+- `order_id` (BIGINT, NOT NULL, FK -> orders.id)
+- `product_id` (BIGINT, NOT NULL, FK -> products.id)
+- `quantity` (INT, NOT NULL)
+- `adjustment_type` (ENUM: DEDUCT, RESTORE, NOT NULL)
+- `processed_at` (TIMESTAMP, NOT NULL)
+- UNIQUE KEY (`order_id`, `product_id`, `adjustment_type`) để đảm bảo idempotency
 
 #### Order Service Database (orderservice)
 
@@ -1728,15 +1036,18 @@ erDiagram
 - `status` (VARCHAR(20), NOT NULL, INDEX)
 - `created_at` (TIMESTAMP, NOT NULL)
 
-### 6.3 Relationships Summary
+### 6.4 Relationships Summary
 
 1. **Users → Products**: One-to-Many (merchant owns products)
 2. **Users → Orders**: One-to-Many (user creates orders)
 3. **Users → Payments**: One-to-Many (user makes payments)
 4. **Orders → Order Items**: One-to-Many (order contains items)
 5. **Orders → Payments**: One-to-One (each order has one payment)
-6. **Products → Order Items**: Reference (order items reference products)
-7. **Orders → Idempotency Keys**: One-to-Many (order can have idempotency key)
+6. **Products → Order Items**: Reference (order items snapshot product data)
+7. **Orders → Idempotency Keys**: One-to-Many (order can có nhiều request idempotency)
+8. **Orders → Outbox Events**: One-to-Many (mỗi thay đổi sinh event để đồng bộ)
+9. **Payments → Outbox Events**: One-to-Many (event payment status)
+10. **Orders/Products → Stock Deduction Records**: One-to-Many (ghi lại mỗi lần trừ/hoàn tồn kho dựa trên order)
 
 ---
 
@@ -1755,6 +1066,18 @@ Hệ thống bao gồm các module chính:
 - **Module Quản lý Sản phẩm**: Quản lý menu món ăn/đồ uống của nhà hàng
 - **Module Quản lý Đơn hàng**: Xử lý đặt hàng và theo dõi trạng thái
 - **Module Thanh toán**: Xử lý thanh toán và hoàn tiền
+
+| Thành phần | Vai trò chính | Công nghệ | Port/Dịch vụ |
+|------------|---------------|-----------|---------------|
+| API Gateway | Entry point, auth, routing | Spring Cloud Gateway | `8080` |
+| Service Registry | Service discovery | Netflix Eureka | `8761` |
+| User Service | Auth/authorization, merchant approval | Spring Boot + MySQL (`userservice`) | `8081` |
+| Product Service | Catalog & stock | Spring Boot + MySQL (`productmicroservice`) | `8082` |
+| Order Service | Order lifecycle, idempotency, outbox | Spring Boot + MySQL (`orderservice`) | `8083` |
+| Payment Service | Payments, refunds, events | Spring Boot + MySQL (`paymentservice`) | `8084` |
+| RabbitMQ | Event bus (OrderCreated, OrderPaid, ...) | RabbitMQ 3.13 | `5672/15672` |
+| MySQL | Shared DB engine (multi schema) | MySQL 8.0 | `3306` |
+| Frontend | React SPA (Admin/Merchant/Customer Portal) | React + Vite | `3000` |
 
 ### 7.2 Tích hợp và Đồng bộ Dữ liệu
 
@@ -1788,119 +1111,90 @@ Hệ thống sử dụng các công nghệ hiện đại, phổ biến:
 - **Message Queue**: RabbitMQ (để đồng bộ dữ liệu giữa các module)
 - **Container**: Docker (để triển khai dễ dàng)
 
+### 7.5 Observability & Reliability
+
+- **Spring Boot Actuator** bật trên mọi service (`/actuator/health`, `/actuator/info`, `/actuator/metrics`) để phục vụ monitoring và cảnh báo.
+- **Resilience4j** bảo vệ các call giữa services (Order ↔ Payment) với circuit breaker (failure threshold 50%, window 10 request, auto half-open sau 5–10s).
+- **Structured logging & correlation ID**: Gateway gán traceId cho từng request, chuyển xuống các service để dễ truy vết.
+- **Metrics & Alerts**: Đếm số order/payment theo trạng thái (PAID, FAILED, REFUNDED) từ bảng outbox + actuator metrics để feed dashboards.
+- **Retry & Idempotency**: Outbox pattern (Order/Payment) + `stock_deduction_records` đảm bảo sự kiện được xử lý ít nhất một lần nhưng không nhân đôi.
+
 ---
 
 ## API Endpoints Documentation
 
-*Lưu ý: Phần này mô tả các API endpoints để tham khảo kỹ thuật. Đối với khách hàng, các chức năng này được thể hiện qua giao diện ứng dụng/web.*
+*Lưu ý: Tất cả endpoint bên dưới đều được client gọi qua API Gateway tại base URL `http://<gateway>/api/v1/...`. Bảng chỉ liệt kê các endpoint cốt lõi, map với các hành trình UC-C/M/A/S ở trên.*
 
-### 8.1 Chức năng Quản lý Tài khoản
+### 8.1 User & Auth APIs (UC-C01, UC-A01)
 
-**Đăng ký Tài khoản**
-- Khách hàng hoặc nhà hàng có thể đăng ký tài khoản mới
-- Cần cung cấp: username, email, password
-- Nhà hàng cần được Admin duyệt trước khi sử dụng
+| Endpoint | Method | Mô tả | Auth | Use Case |
+|---------|--------|-------|------|----------|
+| `/auth/register` | POST | Đăng ký tài khoản Customer hoặc Merchant. | Public | UC-C01 |
+| `/auth/login` | POST | Đăng nhập, trả về JWT (access + refresh token). | Public | UC-C01 |
+| `/users/me` | GET | Lấy thông tin tài khoản hiện tại. | JWT | UC-C01, UC-C05 |
+| `/users/me` | PUT | Cập nhật thông tin cá nhân (email, username, profile). | JWT | UC-C01 |
+| `/users/me/password` | PUT | Đổi mật khẩu. | JWT | UC-C01 |
+| `/users` | POST | Admin tạo tài khoản (Customer/Merchant/Admin). | ADMIN | UC-A01 |
+| `/users/{id}` | GET/PUT/DELETE | Admin xem/sửa/xóa tài khoản. | ADMIN | UC-A01 |
+| `/users` | GET | Admin xem danh sách tất cả tài khoản (phân trang, lọc theo role). | ADMIN | UC-A01 |
 
-**Đăng nhập**
-- Đăng nhập bằng username và password
-- Hệ thống cấp token để truy cập các chức năng
+### 8.2 Product APIs (UC-C02, UC-M01, UC-S01, UC-S03)
 
-**Quản lý Thông tin Cá nhân**
-- Cập nhật thông tin (username, email)
-- Đổi mật khẩu
-- Admin có thể quản lý tất cả tài khoản
+| Endpoint | Method | Mô tả | Auth | Use Case |
+|---------|--------|-------|------|----------|
+| `/products` | GET | Danh sách sản phẩm public, chỉ trả về `active = true`. | Public | UC-C02 |
+| `/products/{category}` | GET | Danh sách sản phẩm theo danh mục. | Public | UC-C02 |
+| `/products` | POST | Merchant/Admin tạo sản phẩm mới (merchantId từ JWT với merchant). | MERCHANT/ADMIN | UC-M01 |
+| `/products/{id}` | PUT | Cập nhật thông tin sản phẩm, chỉ chủ sở hữu hoặc Admin. | MERCHANT/ADMIN | UC-M01 |
+| `/products/{id}` | DELETE | Xóa/ẩn sản phẩm khỏi menu. | MERCHANT/ADMIN | UC-M01 |
+| `/products/merchants/me` | GET | Merchant xem tất cả sản phẩm của mình. | MERCHANT | UC-M01, UC-M03 |
+| `/internal/products/validate` | POST | Order Service xác thực danh sách sản phẩm (tồn tại, active, đủ stock). | Internal | UC-S01 |
+| `/internal/stock/deduction` | POST (event-consumer) | Trừ/hoàn tồn kho dựa trên `OrderPaid`/`PaymentRefunded`. | Event | UC-S03 |
 
+### 8.3 Order APIs (UC-C03, UC-C05, UC-M02, UC-A02, UC-S01, UC-S02)
 
----
+| Endpoint | Method | Mô tả | Auth | Use Case |
+|---------|--------|-------|------|----------|
+| `/orders` | POST | Customer tạo đơn hàng từ giỏ hiện tại, kiểm tra user + sản phẩm + idempotency. | CUSTOMER | UC-C03, UC-S01 |
+| `/orders` | GET | Customer xem danh sách đơn của mình (lọc trạng thái, thời gian, mã đơn). | CUSTOMER | UC-C05 |
+| `/orders/{orderId}` | GET | Xem chi tiết đơn hàng (Customer/Merchant/Admin theo quyền). | JWT | UC-C05, UC-M02, UC-A02 |
+| `/orders/merchant` | GET | Merchant xem đơn hàng của nhà hàng mình. | MERCHANT | UC-M02 |
+| `/orders/{orderId}/status` | PUT | Merchant/Admin cập nhật trạng thái đơn (CONFIRMED, SHIPPED, DELIVERED, CANCELLED). | MERCHANT/ADMIN | UC-M02, UC-A02 |
+| `/orders/{orderId}/refund` | POST | Customer/Merchant/Admin gửi yêu cầu hoàn tiền. | JWT | UC-C05, UC-A03 |
+| `/internal/orders/{orderId}` | GET | Payment/Product Service lấy chi tiết đơn nội bộ. | Internal | UC-S01 |
+| *(Event)* `OrderCreated` | - | Phát sau khi tạo đơn, Payment Service tạo thanh toán `PENDING`. | Event | UC-S02 |
+| *(Event)* `OrderStatusChanged` | - | Phát khi trạng thái đơn đổi (manual hoặc qua payment). | Event | UC-S02 |
 
-### 8.2 Chức năng Quản lý Sản phẩm
+### 8.4 Payment APIs (UC-C04, UC-M03, UC-A03, UC-S02, UC-S03)
 
-**Thêm Sản phẩm**
-- Nhà hàng thêm món ăn/đồ uống vào menu
-- Cần cung cấp: tên món, mô tả, giá, số lượng, danh mục (Món ăn/Đồ uống)
-- Sản phẩm mới sẽ hiển thị ngay cho khách hàng
+| Endpoint | Method | Mô tả | Auth | Use Case |
+|---------|--------|-------|------|----------|
+| `/payments` | POST | Customer thanh toán cho đơn đã `CONFIRMED`. | CUSTOMER | UC-C04 |
+| `/payments/order/{orderId}` | GET | Lấy thông tin thanh toán theo orderId (Admin/Order Service). | ADMIN/Internal | UC-A03, UC-S02 |
+| `/payments/merchant` | GET | Merchant xem lịch sử thanh toán theo thời gian, trạng thái. | MERCHANT | UC-M03 |
+| `/payments/merchant/statistics` | GET | Thống kê doanh thu, số lần thanh toán, số tiền hoàn theo khoảng thời gian. | MERCHANT/ADMIN | UC-M03, UC-A03 |
+| *(Event)* `PAYMENT_SUCCESS` / `PAYMENT_FAILED` | - | Cập nhật trạng thái đơn (PAID/CANCELLED) trong Order Service. | Event | UC-S02 |
+| *(Event)* `OrderPaid` | - | Product Service trừ tồn kho sau thanh toán. | Event | UC-S03 |
+| *(Event)* `PaymentRefunded` | - | Product Service hoàn tồn kho sau hoàn tiền. | Event | UC-S03 |
 
-**Cập nhật Sản phẩm**
-- Nhà hàng có thể cập nhật thông tin: tên, mô tả, giá, số lượng
-- Có thể tạm ngừng bán (ẩn khỏi menu)
+### 8.5 Mapping Endpoint ↔ Luồng Nghiệp vụ
 
-**Xóa Sản phẩm**
-- Nhà hàng có thể xóa sản phẩm khỏi menu
+- **Quy trình Đặt Hàng (UC-C02 → UC-C03 → UC-S01 → UC-S02):**
+  - `GET /products` / `/products/{category}` → khách chọn món.  
+  - `POST /orders` → tạo đơn, validate user + product + stock, phát `OrderCreated`.  
+  - Payment Service nhận `OrderCreated` → chuẩn bị payment record.
 
-**Xem Menu**
-- Khách hàng xem danh sách tất cả món đang bán (không cần đăng nhập)
-- Có thể lọc theo danh mục (Món ăn hoặc Đồ uống)
-- Nhà hàng xem danh sách sản phẩm của mình (bao gồm cả món đã ngừng bán)
+- **Quy trình Thanh toán & Cập nhật Đơn (UC-C04, UC-S02, UC-S03):**
+  - `POST /payments` → xử lý thanh toán, phát `PAYMENT_SUCCESS/FAILED` + `OrderPaid`.  
+  - Order Service nhận sự kiện → cập nhật trạng thái đơn (`PAID` hoặc `CANCELLED`).  
+  - Product Service nhận `OrderPaid` → trừ tồn kho; dashboard Merchant/Admin đọc từ `orders` + `payments`.
 
----
+- **Quy trình Quản lý Đơn & Hoàn tiền (UC-C05, UC-M02, UC-A02, UC-A03):**
+  - `GET /orders`, `/orders/merchant`, `/orders/{id}` → xem lịch sử và chi tiết.  
+  - `PUT /orders/{id}/status` → Merchant/Admin cập nhật trạng thái vận hành.  
+  - `POST /orders/{id}/refund` → Order Service phát `OrderRefundRequest` → Payment Service hoàn tiền, phát `PaymentRefunded` để hoàn tồn kho.
 
-### 8.3 Chức năng Quản lý Đơn hàng
-
-**Đặt Hàng**
-- Khách hàng chọn món từ menu, nhập số lượng
-- Nhập địa chỉ giao hàng (tên người nhận, số điện thoại, địa chỉ chi tiết)
-- Hệ thống tự động tính tổng tiền (tiền món + phí ship - giảm giá)
-- Tạo đơn hàng với mã đơn hàng duy nhất
-- Hệ thống tự động kiểm tra: món còn hàng không, giá có đúng không
-
-**Xem Danh sách Đơn hàng**
-- Khách hàng xem tất cả đơn hàng của mình
-- Có thể lọc theo trạng thái (Chờ xác nhận, Đã xác nhận, Đang giao, Đã giao, Đã hủy)
-- Có thể tìm kiếm theo mã đơn hàng
-- Nhà hàng xem tất cả đơn hàng của mình
-- Admin xem tất cả đơn hàng trong hệ thống
-
-**Xem Chi tiết Đơn hàng**
-- Xem đầy đủ thông tin: danh sách món, số lượng, giá, địa chỉ giao hàng, trạng thái
-
-**Cập nhật Trạng thái Đơn hàng**
-- Nhà hàng: Xác nhận đơn → Đang giao → Đã giao
-- Nhà hàng/Admin: Có thể hủy đơn (nếu chưa giao)
-- Admin: Có thể xử lý hoàn tiền cho đơn đã giao
-
----
-
-### 8.4 Chức năng Thanh toán
-
-**Thanh toán Đơn hàng**
-- Khách hàng thanh toán cho đơn hàng đã được nhà hàng xác nhận
-- Hệ thống kiểm tra: đơn hàng có thuộc về khách hàng không, trạng thái có phải "Đã xác nhận" không
-- Sau khi thanh toán thành công, trạng thái đơn tự động chuyển sang "Đã thanh toán"
-- Nếu thanh toán thất bại, đơn hàng có thể bị hủy
-
-**Xem Lịch sử Thanh toán**
-- Nhà hàng xem tất cả giao dịch thanh toán của mình
-- Có thể lọc theo trạng thái (Thành công, Thất bại, Đã hoàn tiền)
-- Có thể xem theo khoảng thời gian
-
-**Thống kê Doanh thu**
-- Nhà hàng xem thống kê:
-  - Tổng số đơn đã thanh toán
-  - Tổng doanh thu
-  - Số đơn thành công/thất bại
-  - Số tiền đã hoàn
-  - Có thể xem theo khoảng thời gian (ngày, tuần, tháng)
-- Admin xem thống kê tổng hợp cho tất cả nhà hàng
-
-**Hoàn tiền**
-- Admin có thể xử lý hoàn tiền cho đơn hàng đã giao (theo yêu cầu khách hàng)
-
----
-
-### 8.5 Lưu ý Kỹ thuật
-
-**Bảo mật:**
-- Tất cả chức năng (trừ xem menu) yêu cầu đăng nhập
-- Mỗi người dùng chỉ truy cập được dữ liệu của mình
-- Hệ thống tự động kiểm tra quyền truy cập
-
-**Xử lý Lỗi:**
-- Hệ thống hiển thị thông báo lỗi rõ ràng khi có vấn đề
-- Ví dụ: "Món này đã hết hàng", "Đơn hàng không tồn tại", "Bạn không có quyền thực hiện thao tác này"
-
-**Hiệu năng:**
-- Hệ thống hỗ trợ phân trang khi danh sách quá dài
-- Tìm kiếm và lọc nhanh chóng
+Các luồng trên chính là hiện thực kỹ thuật của các hành trình UC-C/M/A/S đã gom nhóm ở phần Use Cases, đảm bảo không bỏ sót nghiệp vụ cũ nhưng trình bày gọn hơn cho cả business và dev.
 
 ---
 
@@ -1973,6 +1267,24 @@ Thanh toán có các trạng thái:
 - Cập nhật trạng thái đơn hàng
 - Xử lý hoàn tiền
 - Xem thống kê tổng hợp toàn hệ thống
+
+### E. Mapping Legacy Use Cases (UC-00x → UC-C/M/A/S)
+
+| Legacy UC (cũ) | Phạm vi chức năng | Hành trình mới |
+|----------------|-------------------|----------------|
+| UC-001 – UC-005 | Đăng ký, đăng nhập, quản lý hồ sơ / mật khẩu | UC-C01 (Onboard & Access) |
+| UC-003 – UC-008 | Admin tạo/sửa/xóa/danh sách users, duyệt merchant | UC-A01 (Govern Accounts & Roles) |
+| UC-009 | Đổi mật khẩu người dùng | UC-C01 |
+| UC-010 – UC-015 | CRUD sản phẩm, xem catalog theo merchant/public | UC-M01 (Maintain Catalog), UC-C02 (Discover Menu) |
+| UC-016 | Validate sản phẩm trước khi đặt hàng | UC-S01 (Cross-service Validation) |
+| UC-017 – UC-021 | Tạo đơn, xem danh sách, cập nhật trạng thái | UC-C03/UC-C05 (Customer), UC-M02 (Merchant Fulfilment), UC-A02 (Admin Override) |
+| UC-022 | Cập nhật đơn qua sự kiện thanh toán | UC-S02 (Event-driven Lifecycle) |
+| UC-023 – UC-026 | Thanh toán, hoàn tiền, thống kê payment | UC-C04 (Pay & Track), UC-M03 (Monitor Revenue), UC-A03 (Financial Controls) |
+| UC-027 | Yêu cầu hoàn tiền | UC-C05, UC-A03 |
+| UC-028 | Internal API lấy chi tiết đơn | UC-S01 |
+| UC-029 | Internal API xác thực người dùng | UC-S01 |
+| UC-030 | Lấy thanh toán theo order | UC-A03, UC-S02 |
+| UC-031 | Trừ tồn kho sau thanh toán | UC-S03 (Inventory & Refund Sync) |
 
 ---
 

@@ -161,14 +161,50 @@ public class CreateOrderUseCase {
      */
     private void validateDeliveryAddress(CreateOrderRequest.DeliveryAddressRequest address) {
         if (address == null) {
-            throw new OrderValidationException("Dia chi giao hang la bat buoc");
+            // Thêm từ khóa "address" để compatible với test messageContains("address")
+            throw new OrderValidationException("Dia chi giao hang (delivery address) la bat buoc");
+        }
+
+        // ===== BASIC VALIDATION: Receiver name (empty / too short) =====
+        String receiverName = address.getReceiverName() != null ? address.getReceiverName().trim() : "";
+        if (receiverName.isEmpty() || receiverName.length() < 2) {
+            throw new OrderValidationException("Tên người nhận không được để trống và phải có ít nhất 2 ký tự");
         }
 
         // ===== BUSINESS RULE: Receiver name must contain at least one letter =====
         // Bean Validation @Pattern only checks format, not business rule
-        String receiverName = address.getReceiverName() != null ? address.getReceiverName().trim() : "";
-        if (!receiverName.isEmpty() && !receiverName.matches(".*[\\p{L}].*")) {
+        if (!receiverName.matches(".*[\\p{L}].*")) {
             throw new OrderValidationException("Tên người nhận phải chứa ít nhất một chữ cái");
+        }
+
+        // ===== BASIC VALIDATION: Phone number =====
+        String phone = address.getReceiverPhone() != null ? address.getReceiverPhone().trim() : "";
+        if (phone.isEmpty() || !phone.matches("^0\\d{9}$")) {
+            throw new OrderValidationException("Số điện thoại không hợp lệ");
+        }
+
+        // ===== BASIC VALIDATION: Address line 1 (detailed address) =====
+        String addressLine1 = address.getAddressLine1() != null ? address.getAddressLine1().trim() : "";
+        if (addressLine1.isEmpty() || addressLine1.length() < 5) {
+            throw new OrderValidationException("Địa chỉ chi tiết quá ngắn");
+        }
+
+        // ===== BASIC VALIDATION: Ward =====
+        String ward = address.getWard() != null ? address.getWard().trim() : "";
+        if (ward.isEmpty() || ward.length() < 2) {
+            throw new OrderValidationException("Phường/Xã quá ngắn");
+        }
+
+        // ===== BASIC VALIDATION: District =====
+        String district = address.getDistrict() != null ? address.getDistrict().trim() : "";
+        if (district.isEmpty() || district.length() < 2) {
+            throw new OrderValidationException("Quận/Huyện quá ngắn");
+        }
+
+        // ===== BASIC VALIDATION: City =====
+        String city = address.getCity() != null ? address.getCity().trim() : "";
+        if (city.isEmpty() || city.length() < 2) {
+            throw new OrderValidationException("Thành phố/Tỉnh quá ngắn");
         }
 
         // ===== BUSINESS RULE: Validate Lat/Lng (Optional) =====

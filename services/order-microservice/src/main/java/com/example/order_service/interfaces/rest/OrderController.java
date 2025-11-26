@@ -5,6 +5,7 @@ import com.example.order_service.application.usecase.CreateOrderUseCase;
 import com.example.order_service.application.usecase.GetMerchantOrdersUseCase;
 import com.example.order_service.application.usecase.GetOrderDetailUseCase;
 import com.example.order_service.application.usecase.GetOrderListUseCase;
+import com.example.order_service.application.usecase.GetUserStatisticsUseCase;
 import com.example.order_service.application.usecase.RequestRefundUseCase;
 import com.example.order_service.application.usecase.UpdateOrderStatusUseCase;
 import com.example.order_service.domain.exception.InvalidJwtTokenException;
@@ -39,6 +40,7 @@ public class OrderController {
     private final UpdateOrderStatusUseCase updateOrderStatusUseCase;
     private final GetMerchantOrdersUseCase getMerchantOrdersUseCase;
     private final RequestRefundUseCase requestRefundUseCase;
+    private final GetUserStatisticsUseCase getUserStatisticsUseCase;
     private final JwtTokenService jwtTokenService;
 
     /**
@@ -50,7 +52,7 @@ public class OrderController {
             @AuthenticationPrincipal Jwt jwt,
             @Valid @RequestBody CreateOrderRequest request,
             @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey) {
-        
+
         // ===== PHASE 1: SECURITY - Extract userId from JWT token =====
         Long userIdFromToken;
         try {
@@ -64,35 +66,35 @@ public class OrderController {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, e.getMessage());
         } catch (Exception e) {
             log.error("Unexpected error while processing JWT token: {}", e.getMessage(), e);
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, 
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,
                     "Token không hợp lệ: " + e.getMessage());
         }
 
         // Always override the userId in the request to prevent spoofing
         request.setUserId(userIdFromToken);
         log.debug("UserId {} set in request (from JWT token)", userIdFromToken);
-        
+
         // 4. Validate scope/role
         var scopes = jwt.getClaimAsStringList("scope");
         String roleClaim = jwt.getClaimAsString("role");
         boolean hasScope = scopes != null && scopes.contains("order:create");
         boolean hasRolePermission = roleClaim != null &&
                 (roleClaim.equalsIgnoreCase("USER") ||
-                 roleClaim.equalsIgnoreCase("ADMIN") ||
-                 roleClaim.equalsIgnoreCase("MERCHANT") ||
-                 roleClaim.equalsIgnoreCase("ORDER_CREATE"));
+                        roleClaim.equalsIgnoreCase("ADMIN") ||
+                        roleClaim.equalsIgnoreCase("MERCHANT") ||
+                        roleClaim.equalsIgnoreCase("ORDER_CREATE"));
 
         if (!hasScope && !hasRolePermission) {
             log.error("Missing required scope 'order:create'. Available scopes: {}, roleClaim: {}", scopes, roleClaim);
             throw new ResponseStatusException(HttpStatus.FORBIDDEN,
                     "Thiếu quyền order:create");
         }
-        
+
         // 5. Extract jti for audit logging
         String jti = jwt.getId();
         log.info("JWT jti (audit): {}", jti);
-        
-//  THÊM LOGGING ĐỂ DEBUG
+
+        // THÊM LOGGING ĐỂ DEBUG
         log.info("=== CREATE ORDER REQUEST ===");
         log.info("UserId from token: {}", request.getUserId());
         log.info("Discount: {}", request.getDiscount());
@@ -101,11 +103,10 @@ public class OrderController {
         log.info("Number of items: {}", request.getOrderItems() != null ? request.getOrderItems().size() : 0);
 
         if (request.getOrderItems() != null) {
-            request.getOrderItems().forEach(item ->
-                    log.info("OrderItem: productId={}, quantity={} (productName and unitPrice will be fetched from Product Service)",
-                            item.getProductId(),
-                            item.getQuantity())
-            );
+            request.getOrderItems().forEach(item -> log.info(
+                    "OrderItem: productId={}, quantity={} (productName and unitPrice will be fetched from Product Service)",
+                    item.getProductId(),
+                    item.getQuantity()));
         } else {
             log.warn("OrderItems is NULL!");
         }
@@ -120,7 +121,7 @@ public class OrderController {
         }
 
         log.info("Idempotency-Key from @RequestHeader: {}", idempotencyKey);
-        
+
         // Log tất cả headers để debug
         ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
         if (attributes != null) {
@@ -131,12 +132,12 @@ public class OrderController {
                 String headerName = headerNames.nextElement();
                 String headerValue = httpRequest.getHeader(headerName);
                 // Log tất cả headers liên quan đến idempotency, request, trace, correlation
-                if (headerName.toLowerCase().contains("idempotency") || 
-                    headerName.toLowerCase().contains("idem") ||
-                    headerName.toLowerCase().contains("request") ||
-                    headerName.toLowerCase().contains("trace") ||
-                    headerName.toLowerCase().contains("correlation") ||
-                    headerName.toLowerCase().contains("x-")) {
+                if (headerName.toLowerCase().contains("idempotency") ||
+                        headerName.toLowerCase().contains("idem") ||
+                        headerName.toLowerCase().contains("request") ||
+                        headerName.toLowerCase().contains("trace") ||
+                        headerName.toLowerCase().contains("correlation") ||
+                        headerName.toLowerCase().contains("x-")) {
                     log.info("🔍 Header '{}': {}", headerName, headerValue);
                 }
             }
@@ -144,23 +145,23 @@ public class OrderController {
             String idempotencyKeyFromRequest = httpRequest.getHeader("Idempotency-Key");
             log.info("🔍 Idempotency-Key from HttpServletRequest: {}", idempotencyKeyFromRequest);
             if (idempotencyKeyFromRequest != null && !idempotencyKeyFromRequest.equals(idempotencyKey)) {
-                log.error("❌ MISMATCH! @RequestHeader value: '{}' != HttpServletRequest value: '{}'", 
-                    idempotencyKey, idempotencyKeyFromRequest);
+                log.error("❌ MISMATCH! @RequestHeader value: '{}' != HttpServletRequest value: '{}'",
+                        idempotencyKey, idempotencyKeyFromRequest);
             }
         }
         log.info("=== END REQUEST ===");
         log.info("Creating order for user: {} (jti: {})", request.getUserId(), jti);
-        
+
         // Execute use case to create order
         OrderResponse response = createOrderUseCase.execute(request, idempotencyKey, jti);
-        
+
         // Verify userId is correctly set in response
         if (response.getUserId() == null || !response.getUserId().equals(userIdFromToken)) {
             log.warn("⚠️ UserId mismatch: expected {}, got {}", userIdFromToken, response.getUserId());
             // Override to ensure consistency
             response.setUserId(userIdFromToken);
         }
-        
+
         log.info("✓ Order created successfully with userId: {}", response.getUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -172,6 +173,7 @@ public class OrderController {
     @GetMapping
     public ResponseEntity<PageResponse<OrderListResponse>> getOrderList(
             @RequestParam(required = false) Long userId,
+            @RequestParam(required = false) Long merchantId,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String orderCode,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fromDate,
@@ -181,11 +183,13 @@ public class OrderController {
             @RequestParam(defaultValue = "createdAt") String sortBy,
             @RequestParam(defaultValue = "DESC") String sortDirection) {
 
-        log.info("Getting order list with filters - userId: {}, status: {}, orderCode: {}, fromDate: {}, toDate: {}, page: {}, size: {}",
+        log.info(
+                "Getting order list with filters - userId: {}, status: {}, orderCode: {}, fromDate: {}, toDate: {}, page: {}, size: {}",
                 userId, status, orderCode, fromDate, toDate, page, size);
 
         OrderListRequest request = OrderListRequest.builder()
                 .userId(userId)
+                .merchantId(merchantId)
                 .status(status)
                 .orderCode(orderCode)
                 .fromDate(fromDate)
@@ -281,6 +285,29 @@ public class OrderController {
         return ResponseEntity.ok(response);
     }
 
+    /**
+     * Lấy thống kê đơn hàng của User (Admin/User)
+     * GET /api/v1/orders/users/{userId}/statistics
+     */
+    @GetMapping("/users/{userId}/statistics")
+    public ResponseEntity<UserStatisticsResponse> getUserStatistics(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable Long userId) {
+
+        log.info("Getting statistics for userId: {}", userId);
+
+        // Validate permission (Admin or Owner)
+        Long userIdFromToken = jwtTokenService.extractUserId(jwt);
+        String role = jwt.getClaimAsString("role");
+
+        if (!"ADMIN".equalsIgnoreCase(role) && !userId.equals(userIdFromToken)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only view your own statistics");
+        }
+
+        UserStatisticsResponse response = getUserStatisticsUseCase.execute(userId);
+        return ResponseEntity.ok(response);
+    }
+
     // ========== MERCHANT ENDPOINTS ==========
 
     /**
@@ -301,7 +328,8 @@ public class OrderController {
 
         Long merchantId = jwtTokenService.extractUserId(jwt);
         if (merchantId == null) {
-            throw new ResponseStatusException(org.springframework.http.HttpStatus.UNAUTHORIZED, "Cannot extract merchantId from token");
+            throw new ResponseStatusException(org.springframework.http.HttpStatus.UNAUTHORIZED,
+                    "Cannot extract merchantId from token");
         }
 
         log.info("Getting orders for merchant: {} with filters - status: {}, orderCode: {}, fromDate: {}, toDate: {}",
@@ -333,19 +361,21 @@ public class OrderController {
 
         Long merchantId = jwtTokenService.extractUserId(jwt);
         if (merchantId == null) {
-            throw new ResponseStatusException(org.springframework.http.HttpStatus.UNAUTHORIZED, "Cannot extract merchantId from token");
+            throw new ResponseStatusException(org.springframework.http.HttpStatus.UNAUTHORIZED,
+                    "Cannot extract merchantId from token");
         }
 
         log.info("Merchant {} getting order detail for orderId: {}", merchantId, orderId);
 
         try {
             OrderDetailResponse response = getOrderDetailUseCase.execute(orderId);
-            
+
             // Validate merchant ownership
             if (!response.getMerchantId().equals(merchantId)) {
-                throw new ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN, "Order does not belong to this merchant");
+                throw new ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN,
+                        "Order does not belong to this merchant");
             }
-            
+
             return ResponseEntity.ok(response);
         } catch (OrderNotFoundException e) {
             log.warn("Order not found: {}", e.getMessage());
@@ -365,7 +395,8 @@ public class OrderController {
 
         Long merchantId = jwtTokenService.extractUserId(jwt);
         if (merchantId == null) {
-            throw new ResponseStatusException(org.springframework.http.HttpStatus.UNAUTHORIZED, "Cannot extract merchantId from token");
+            throw new ResponseStatusException(org.springframework.http.HttpStatus.UNAUTHORIZED,
+                    "Cannot extract merchantId from token");
         }
 
         log.info("Merchant {} updating order status for orderId: {}, request: {}", merchantId, orderId, request);
@@ -388,7 +419,8 @@ public class OrderController {
     /**
      * Request refund for an order
      * POST /api/v1/orders/{orderId}/refund
-     * Supports: User (only their own orders), Admin (any order), Merchant (only their merchant orders)
+     * Supports: User (only their own orders), Admin (any order), Merchant (only
+     * their merchant orders)
      */
     @PostMapping("/{orderId}/refund")
     public ResponseEntity<RefundResponse> requestRefund(
@@ -396,17 +428,17 @@ public class OrderController {
             @PathVariable Long orderId,
             @Valid @RequestBody RefundRequest request) {
 
-        log.info("Refund request for orderId: {}, userId from token: {}", orderId, 
+        log.info("Refund request for orderId: {}, userId from token: {}", orderId,
                 jwtTokenService.extractUserId(jwt));
 
         try {
             // Get order to validate ownership
             OrderDetailResponse orderDetail = getOrderDetailUseCase.execute(orderId);
-            
+
             // Extract user info from JWT
             Long userIdFromToken = jwtTokenService.extractUserId(jwt);
             String role = jwt.getClaimAsString("role");
-            
+
             if (userIdFromToken == null) {
                 throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Cannot extract userId from token");
             }
@@ -415,18 +447,18 @@ public class OrderController {
             if ("USER".equalsIgnoreCase(role)) {
                 // User can only refund their own orders
                 if (!orderDetail.getUserId().equals(userIdFromToken)) {
-                    throw new ResponseStatusException(HttpStatus.FORBIDDEN, 
+                    throw new ResponseStatusException(HttpStatus.FORBIDDEN,
                             "You can only refund your own orders");
                 }
             } else if ("MERCHANT".equalsIgnoreCase(role)) {
                 // Merchant can only refund orders from their merchant
                 if (!orderDetail.getMerchantId().equals(userIdFromToken)) {
-                    throw new ResponseStatusException(HttpStatus.FORBIDDEN, 
+                    throw new ResponseStatusException(HttpStatus.FORBIDDEN,
                             "You can only refund orders from your merchant");
                 }
             } else if (!"ADMIN".equalsIgnoreCase(role)) {
                 // Admin can refund any order, other roles are not allowed
-                throw new ResponseStatusException(HttpStatus.FORBIDDEN, 
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN,
                         "Only USER, MERCHANT, or ADMIN can request refunds");
             }
 
