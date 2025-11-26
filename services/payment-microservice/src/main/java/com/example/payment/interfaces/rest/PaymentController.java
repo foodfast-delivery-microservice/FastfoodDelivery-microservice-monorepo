@@ -152,6 +152,29 @@ public class PaymentController {
     }
 
     /**
+     * ADMIN: Lấy thống kê doanh thu của một merchant cụ thể
+     * GET /api/v1/payments/merchants/{merchantId}/statistics
+     */
+    @GetMapping("/merchants/{merchantId}/statistics")
+    public ResponseEntity<PaymentStatisticsResponse> getMerchantStatisticsForAdmin(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable Long merchantId,
+            @RequestParam(value = "fromDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fromDate,
+            @RequestParam(value = "toDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime toDate) {
+
+        // Validate Admin Role
+        String role = jwt.getClaimAsString("role");
+        if (!"ADMIN".equalsIgnoreCase(role)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only Admin can access this endpoint");
+        }
+
+        log.info("Admin getting payment statistics for merchant: {}", merchantId);
+
+        PaymentStatisticsResponse response = getMerchantPaymentStatisticsUseCase.execute(merchantId, fromDate, toDate);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
      * Get payment by orderId (for internal use by Order Service)
      * GET /api/v1/payments/order/{orderId}
      */

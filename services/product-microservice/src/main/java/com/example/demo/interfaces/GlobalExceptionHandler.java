@@ -59,4 +59,14 @@ public class GlobalExceptionHandler {
                 "ACCESS_DENIED");
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
     }
+
+    @ExceptionHandler(ProductDeletionNotAllowedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleProductDeletionNotAllowedException(ProductDeletionNotAllowedException ex) {
+        ApiResponse<Void> response = new ApiResponse<>(
+                HttpStatus.BAD_REQUEST,
+                ex.getMessage(),
+                null,
+                "PRODUCT_DELETION_NOT_ALLOWED");
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
 }

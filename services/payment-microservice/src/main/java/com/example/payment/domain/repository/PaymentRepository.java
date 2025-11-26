@@ -16,47 +16,53 @@ import java.util.Optional;
 
 @Repository
 public interface PaymentRepository extends JpaRepository<Payment, Long>, JpaSpecificationExecutor<Payment> {
-    Optional<Payment> findByOrderId(Long orderId);
-    List<Payment> findByUserId(Long userId);
-    
-    // Merchant queries
-    Page<Payment> findByMerchantId(Long merchantId, Pageable pageable);
-    
-    Page<Payment> findByMerchantIdAndStatus(Long merchantId, Payment.Status status, Pageable pageable);
-    List<Payment> findByMerchantIdAndStatus(Long merchantId, Payment.Status status);
-    
-    Page<Payment> findByMerchantIdAndCreatedAtBetween(
-            Long merchantId, 
-            LocalDateTime fromDate, 
-            LocalDateTime toDate, 
-            Pageable pageable
-    );
-    
-    Page<Payment> findByMerchantIdAndStatusAndCreatedAtBetween(
-            Long merchantId, 
-            Payment.Status status,
-            LocalDateTime fromDate, 
-            LocalDateTime toDate, 
-            Pageable pageable
-    );
-    
-    // Statistics queries
-    @Query("SELECT COALESCE(SUM(p.amount), 0) FROM Payment p WHERE p.merchantId = :merchantId AND p.status = :status AND p.createdAt BETWEEN :fromDate AND :toDate")
-    BigDecimal sumAmountByMerchantIdAndStatusAndCreatedAtBetween(
-            @Param("merchantId") Long merchantId,
-            @Param("status") Payment.Status status,
-            @Param("fromDate") LocalDateTime fromDate,
-            @Param("toDate") LocalDateTime toDate
-    );
-    
-    @Query("SELECT COUNT(p) FROM Payment p WHERE p.merchantId = :merchantId AND p.status = :status AND p.createdAt BETWEEN :fromDate AND :toDate")
-    Long countByMerchantIdAndStatusAndCreatedAtBetween(
-            @Param("merchantId") Long merchantId,
-            @Param("status") Payment.Status status,
-            @Param("fromDate") LocalDateTime fromDate,
-            @Param("toDate") LocalDateTime toDate
-    );
+        Optional<Payment> findByOrderId(Long orderId);
+
+        List<Payment> findByUserId(Long userId);
+
+        // Merchant queries
+        Page<Payment> findByMerchantId(Long merchantId, Pageable pageable);
+
+        Page<Payment> findByMerchantIdAndStatus(Long merchantId, Payment.Status status, Pageable pageable);
+
+        List<Payment> findByMerchantIdAndStatus(Long merchantId, Payment.Status status);
+
+        Page<Payment> findByMerchantIdAndCreatedAtBetween(
+                        Long merchantId,
+                        LocalDateTime fromDate,
+                        LocalDateTime toDate,
+                        Pageable pageable);
+
+        Page<Payment> findByMerchantIdAndStatusAndCreatedAtBetween(
+                        Long merchantId,
+                        Payment.Status status,
+                        LocalDateTime fromDate,
+                        LocalDateTime toDate,
+                        Pageable pageable);
+
+        // Statistics queries
+        @Query("SELECT COALESCE(SUM(p.amount), 0) FROM Payment p WHERE p.merchantId = :merchantId AND p.status = :status AND p.createdAt BETWEEN :fromDate AND :toDate")
+        BigDecimal sumAmountByMerchantIdAndStatusAndCreatedAtBetween(
+                        @Param("merchantId") Long merchantId,
+                        @Param("status") Payment.Status status,
+                        @Param("fromDate") LocalDateTime fromDate,
+                        @Param("toDate") LocalDateTime toDate);
+
+        @Query("SELECT COUNT(p) FROM Payment p WHERE p.merchantId = :merchantId AND p.status = :status AND p.createdAt BETWEEN :fromDate AND :toDate")
+        Long countByMerchantIdAndStatusAndCreatedAtBetween(
+                        @Param("merchantId") Long merchantId,
+                        @Param("status") Payment.Status status,
+                        @Param("fromDate") LocalDateTime fromDate,
+                        @Param("toDate") LocalDateTime toDate);
+
+        // Lifetime statistics queries
+        @Query("SELECT COALESCE(SUM(p.amount), 0) FROM Payment p WHERE p.merchantId = :merchantId AND p.status = :status")
+        BigDecimal sumAmountByMerchantIdAndStatus(
+                        @Param("merchantId") Long merchantId,
+                        @Param("status") Payment.Status status);
+
+        @Query("SELECT COUNT(p) FROM Payment p WHERE p.merchantId = :merchantId AND p.status = :status")
+        Long countByMerchantIdAndStatus(
+                        @Param("merchantId") Long merchantId,
+                        @Param("status") Payment.Status status);
 }
-
-
-

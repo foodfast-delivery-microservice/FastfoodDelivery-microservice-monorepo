@@ -17,13 +17,13 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: 1234
       MYSQL_DATABASE: userservice
-#      MYSQL_USER: root
-#      MYSQL_PASSWORD: password
+    #      MYSQL_USER: root
+    #      MYSQL_PASSWORD: password
     volumes:
       - mysql-data:/var/lib/mysql
       - ./mysql-init:/docker-entrypoint-initdb.d # Chạy script tạo các DB
     healthcheck:
-      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
       timeout: 20s
       retries: 10
 
@@ -38,24 +38,18 @@ services:
       RABBITMQ_DEFAULT_USER: guest
       RABBITMQ_DEFAULT_PASS: guest
 
-  # 4. API Gateway (ĐÃ CẬP NHẬT)
+  # 4. API Gateway
   gateway-service:
     build: ./services/gateway-service
     container_name: gateway-service
     ports:
-      # Đây là cổng chính bạn truy cập từ bên ngoài
       - "8080:8080"
     environment:
-      # Tiêm biến cho Eureka
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://registry-service:8761/eureka/
-      # Tiêm biến cho JWT
       APP_JWT_SECRETKEY: g5rhnoLF2O4S/p5wPKY9ojbK3X2g6ifB6cG9lkaLUg9quMDtO1PSI4J6biyJHZ5uAnyTbuTyaWRpHy+BADU7NQ==
     depends_on:
-      # Gateway phải chờ registry khởi động
       registry-service:
         condition: service_started
-      # Gateway cũng nên chờ các service khác, nhưng chờ Eureka là quan trọng nhất
-      # vì nó sẽ tự động khám phá các service kia sau
 
   # 5. User Service
   user-service:
@@ -90,11 +84,14 @@ services:
       SPRING_DATASOURCE_PASSWORD: 1234
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://registry-service:8761/eureka/
       APP_JWT_SECRETKEY: g5rhnoLF2O4S/p5wPKY9ojbK3X2g6ifB6cG9lkaLUg9quMDtO1PSI4J6biyJHZ5uAnyTbuTyaWRpHy+BADU7NQ==
+      SPRING_RABBITMQ_HOST: rabbitmq-broker
     depends_on:
       registry-service:
         condition: service_started
       mysql-db:
         condition: service_healthy
+      rabbitmq-broker:
+        condition: service_started
 
   # 7. Order Service
   order-service:
@@ -116,7 +113,7 @@ services:
       rabbitmq-broker:
         condition: service_started
 
-    # 8. Payment service
+  # 8. Payment service
   payment-service:
     build: ./services/payment-microservice
     container_name: payment-service
@@ -128,16 +125,28 @@ services:
       SPRING_DATASOURCE_PASSWORD: 1234
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://registry-service:8761/eureka/
       SPRING_RABBITMQ_HOST: rabbitmq-broker
-
     depends_on:
       registry-service:
         condition: service_started
       mysql-db:
         condition: service_healthy
-      rabbitmq-broker: # <-- (ĐÃ THÊM)
+      rabbitmq-broker:
         condition: service_started
+
+  # 9. Frontend Application
+  frontend:
+    build: ./frontend
+    container_name: frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - gateway-service
+    networks:
+      - default
+
 volumes:
   mysql-data:
+
 
 networks:
   default:
