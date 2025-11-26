@@ -17,6 +17,7 @@ public class RabbitMQConfig {
 
     // --- CẤU HÌNH NHẬN EVENT TỪ ORDER-SERVICE ---
     public static final String ORDER_EXCHANGE = "order_exchange";
+    public static final String USER_EVENTS_EXCHANGE = "user.events";
 
     // tạo đơn hàng
     public static final String ORDER_CREATED_ROUTING_KEY = "order.created";
@@ -51,11 +52,29 @@ public class RabbitMQConfig {
     }
 
     @Bean
+    public TopicExchange userEventsExchange() {
+        return new TopicExchange(USER_EVENTS_EXCHANGE);
+    }
+
+    @Bean
+    public Queue paymentMerchantDeactivatedQueue() {
+        return new Queue(PAYMENT_MERCHANT_DEACTIVATED_QUEUE, true);
+    }
+
+    @Bean
     public Binding bindingOrderCreated(Queue paymentQueue, TopicExchange orderExchange) {
         return BindingBuilder
                 .bind(paymentQueue)
                 .to(orderExchange)
                 .with(ORDER_CREATED_ROUTING_KEY);
+    }
+
+    @Bean
+    public Binding merchantDeactivatedBinding() {
+        return BindingBuilder
+                .bind(paymentMerchantDeactivatedQueue())
+                .to(userEventsExchange())
+                .with(MERCHANT_DEACTIVATED_ROUTING_KEY);
     }
 
     // --- CẤU HÌNH GỬI EVENT PHẢN HỒI VỀ ORDER-SERVICE ---
@@ -64,6 +83,8 @@ public class RabbitMQConfig {
     public static final String PAYMENT_FAILED_ROUTING_KEY = "payment.failed";
 
     public static final String PAYMENT_REFUNDED_ROUTING_KEY = "payment.refunded";
+    public static final String PAYMENT_MERCHANT_DEACTIVATED_QUEUE = "payment.merchant.deactivated.queue";
+    public static final String MERCHANT_DEACTIVATED_ROUTING_KEY = "merchant.deactivated";
     @Bean
     public TopicExchange paymentExchange() {
         return new TopicExchange(PAYMENT_EXCHANGE);

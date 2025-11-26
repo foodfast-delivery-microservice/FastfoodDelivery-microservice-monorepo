@@ -2,12 +2,15 @@ package com.example.order_service.interfaces.rest;
 
 import com.example.order_service.application.dto.*;
 import com.example.order_service.domain.model.OrderStatus;
+import com.example.order_service.domain.repository.ProductServicePort;
+import com.example.order_service.domain.repository.UserServicePort;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -19,6 +22,9 @@ import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -34,11 +40,24 @@ class OrderControllerIntegrationTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @MockBean
+    private ProductServicePort productServicePort;
+
+    @MockBean
+    private UserServicePort userServicePort;
+
     private String orderIdempotencyKey;
     private Long createdOrderId;
 
     @BeforeEach
     void setUp() throws Exception {
+        when(productServicePort.validateProducts(any()))
+                .thenReturn(List.of(new ProductValidationResponse(
+                        1L, true, "Test Product", BigDecimal.TEN, 10L
+                )));
+        when(userServicePort.validateUser(anyLong()))
+                .thenReturn(new UserValidationResponse(1L, true, true, "test-user"));
+
         // Create a test order first for management tests
         orderIdempotencyKey = "test-order-management-" + System.currentTimeMillis();
         createdOrderId = createTestOrder();

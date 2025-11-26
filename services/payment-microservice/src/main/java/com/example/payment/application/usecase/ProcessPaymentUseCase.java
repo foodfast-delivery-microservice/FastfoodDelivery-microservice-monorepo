@@ -123,6 +123,9 @@ public class ProcessPaymentUseCase {
 
         // Get merchantId from order detail
         Long merchantId = orderDetail.getMerchantId() != null ? orderDetail.getMerchantId() : 0L;
+        if (merchantId != null && merchantId > 0) {
+            validateMerchant(merchantId);
+        }
 
         Payment payment;
         if (existingPayment != null) {
@@ -267,6 +270,21 @@ public class ProcessPaymentUseCase {
 
         log.info("User validation passed: userId={}, username={}", 
                 userValidation.getUserId(), userValidation.getUsername());
+    }
+
+    private void validateMerchant(Long merchantId) {
+        log.info("Validating merchant: merchantId={}", merchantId);
+        UserValidationResponse merchantValidation = userServicePort.validateUser(merchantId);
+
+        if (!merchantValidation.isExists()) {
+            log.error("Merchant {} does not exist", merchantId);
+            throw new PaymentValidationException("Merchant không tồn tại");
+        }
+
+        if (!merchantValidation.isActive()) {
+            log.error("Merchant {} is not active", merchantId);
+            throw new PaymentValidationException("Merchant không hoạt động");
+        }
     }
 
     /**

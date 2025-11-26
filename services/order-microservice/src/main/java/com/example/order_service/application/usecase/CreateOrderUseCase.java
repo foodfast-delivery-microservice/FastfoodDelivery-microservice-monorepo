@@ -46,6 +46,9 @@ public class CreateOrderUseCase {
     @Value("${app.user.validation.enabled:true}")
     private boolean userValidationEnabled;
 
+    @Value("${app.merchant.validation.enabled:true}")
+    private boolean merchantValidationEnabled;
+
     /**
      * MAIN METHOD - TẠO ORDER
      * Flow: Validate -> Check duplicate -> Call Product Service -> Create Order -> Save -> Event
@@ -292,6 +295,9 @@ public class CreateOrderUseCase {
 
         // Validate all products belong to the same merchant
         Long merchantId = validateSingleMerchant(validatedProducts);
+        if (merchantValidationEnabled) {
+            ensureMerchantIsActive(merchantId);
+        }
 
         // Tạo Order
         Order order = Order.builder()
@@ -378,6 +384,25 @@ public class CreateOrderUseCase {
 
         log.debug("All products validated to belong to merchant: {}", firstMerchantId);
         return firstMerchantId;
+    }
+
+    private void ensureMerchantIsActive(Long merchantId) {
+        try {
+            UserValidationResponse merchant = userServicePort.validateUser(merchantId);
+
+            if (!merchant.exists()) {
+                throw new OrderValidationException("Merchant không tồn tại: " + merchantId);
+            }
+
+            if (!merchant.active()) {
+                throw new OrderValidationException("Merchant không đang hoạt động: " + merchantId);
+            }
+        } catch (OrderValidationException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Failed to validate merchant {} status", merchantId, e);
+            throw new OrderValidationException("Không thể xác thực merchant: " + merchantId);
+        }
     }
     /**
      * Lưu idempotency key để chống duplicate request

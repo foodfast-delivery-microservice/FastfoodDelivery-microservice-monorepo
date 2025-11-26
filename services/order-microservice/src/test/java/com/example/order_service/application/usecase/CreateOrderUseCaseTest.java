@@ -3,12 +3,14 @@ package com.example.order_service.application.usecase;
 import com.example.order_service.application.dto.CreateOrderRequest;
 import com.example.order_service.application.dto.OrderResponse;
 import com.example.order_service.application.dto.ProductValidationResponse;
+import com.example.order_service.application.dto.UserValidationResponse;
 import com.example.order_service.domain.exception.OrderValidationException;
 import com.example.order_service.domain.model.*;
 import com.example.order_service.domain.repository.IdempotencyKeyRepository;
 import com.example.order_service.domain.repository.OrderRepository;
 import com.example.order_service.domain.repository.OutboxEventRepository;
 import com.example.order_service.domain.repository.ProductServicePort;
+import com.example.order_service.domain.repository.UserServicePort;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -46,6 +48,9 @@ class CreateOrderUseCaseTest {
 
     @Mock
     private ProductServicePort productServicePort;
+
+    @Mock
+    private UserServicePort userServicePort;
 
     @Mock
     private ObjectMapper objectMapper;
@@ -89,6 +94,9 @@ class CreateOrderUseCaseTest {
                         10L // Merchant ID từ Product Service
                 )
         );
+
+        when(productServicePort.validateProducts(any())).thenReturn(validatedProducts);
+        when(userServicePort.validateUser(anyLong())).thenReturn(new UserValidationResponse(1L, true, true, "mock-user"));
     }
 
     // =====================================================================

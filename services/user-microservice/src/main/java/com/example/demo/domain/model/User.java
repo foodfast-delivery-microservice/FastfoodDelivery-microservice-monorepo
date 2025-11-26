@@ -37,6 +37,9 @@ public class User {
   @Column(nullable = false)
   private boolean approved = true;
 
+  @Column(nullable = false)
+  private boolean active = true;
+
   public enum UserRole {
       ADMIN,
       USER,

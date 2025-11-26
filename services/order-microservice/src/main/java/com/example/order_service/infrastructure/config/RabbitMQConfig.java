@@ -16,6 +16,7 @@ public class RabbitMQConfig {
 
     public static final String ORDER_EXCHANGE = "order_exchange";
     public static final String PAYMENT_EXCHANGE = "payment_exchange";
+    public static final String USER_EVENTS_EXCHANGE = "user.events";
 
     public static final String PAYMENT_SUCCESS_QUEUE = "payment.success.queue";
     public static final String PAYMENT_FAILED_QUEUE = "payment.failed.queue";
@@ -29,6 +30,8 @@ public class RabbitMQConfig {
     public static final String ORDER_REFUNDED_ROUTING_KEY = "order.refunded";
     public static final String ORDER_PAID_QUEUE = "order.paid.queue";
     public static final String ORDER_PAID_ROUTING_KEY = "order.paid";
+    public static final String ORDER_MERCHANT_DEACTIVATED_QUEUE = "order.merchant.deactivated.queue";
+    public static final String MERCHANT_DEACTIVATED_ROUTING_KEY = "merchant.deactivated";
 
 
     @Bean
@@ -38,6 +41,11 @@ public class RabbitMQConfig {
     @Bean
     public TopicExchange paymentExchange() {
         return new TopicExchange(PAYMENT_EXCHANGE);
+    }
+
+    @Bean
+    public TopicExchange userEventsExchange() {
+        return new TopicExchange(USER_EVENTS_EXCHANGE);
     }
 
     @Bean
@@ -63,6 +71,11 @@ public class RabbitMQConfig {
     @Bean
     public Queue orderPaidQueue() {
         return new Queue(ORDER_PAID_QUEUE, true);
+    }
+
+    @Bean
+    public Queue orderMerchantDeactivatedQueue() {
+        return new Queue(ORDER_MERCHANT_DEACTIVATED_QUEUE, true);
     }
 
     @Bean
@@ -98,6 +111,13 @@ public class RabbitMQConfig {
         return BindingBuilder.bind(orderPaidQueue())
                 .to(orderExchange())
                 .with(ORDER_PAID_ROUTING_KEY);
+    }
+
+    @Bean
+    public Binding merchantDeactivatedBinding() {
+        return BindingBuilder.bind(orderMerchantDeactivatedQueue())
+                .to(userEventsExchange())
+                .with(MERCHANT_DEACTIVATED_ROUTING_KEY);
     }
 
     @Bean

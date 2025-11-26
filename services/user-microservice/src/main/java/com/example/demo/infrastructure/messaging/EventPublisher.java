@@ -1,5 +1,6 @@
 package com.example.demo.infrastructure.messaging;
 
+import com.example.demo.infrastructure.messaging.event.MerchantDeactivatedEvent;
 import com.example.demo.interfaces.rest.dto.event.UserUpdatedEventDTO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,6 +24,19 @@ public class EventPublisher {
             rabbitTemplate.convertAndSend(USER_EVENTS_EXCHANGE, "user.updated", userUpdatedEventDTO);
         } catch (Exception e) {
             log.error("Failed to publish UserUpdatedEvent for userId: {}", userUpdatedEventDTO.getUserId(), e);
+        }
+    }
+
+    public void publishMerchantDeactivated(MerchantDeactivatedEvent merchantDeactivatedEvent) {
+        try {
+            log.info("Publishing MerchantDeactivatedEvent for merchantId: {}", merchantDeactivatedEvent.getMerchantId());
+            rabbitTemplate.convertAndSend(
+                    USER_EVENTS_EXCHANGE,
+                    "merchant.deactivated",
+                    merchantDeactivatedEvent
+            );
+        } catch (Exception e) {
+            log.error("Failed to publish MerchantDeactivatedEvent for merchantId: {}", merchantDeactivatedEvent.getMerchantId(), e);
         }
     }
 }

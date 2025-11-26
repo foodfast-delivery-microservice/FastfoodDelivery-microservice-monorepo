@@ -121,13 +121,10 @@ public class UserServiceAdapter implements UserServicePort {
                 // Extract user data
                 Long id = dataNode.has("id") ? dataNode.get("id").asLong() : userId;
                 String username = dataNode.has("username") ? dataNode.get("username").asText() : null;
-                
-                // Assume user is active if found (User Service doesn't have active field yet)
-                // In future, can add active field check
-                boolean active = true;
+                boolean active = !dataNode.has("active") || dataNode.get("active").asBoolean();
                 boolean exists = true;
 
-                log.info("User validation result: userId={}, exists={}, active={}, username={}", 
+                log.info("User validation result: userId={}, exists={}, active={}, username={}",
                         id, exists, active, username);
 
                 return new UserValidationResponse(id, exists, active, username);

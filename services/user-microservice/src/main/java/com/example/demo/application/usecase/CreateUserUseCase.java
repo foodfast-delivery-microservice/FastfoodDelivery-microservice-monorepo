@@ -41,6 +41,7 @@ public class  CreateUserUseCase {
         user.setRole(role);
         boolean approved = createUserRequest.getApproved() != null ? createUserRequest.getApproved() : true;
         user.setApproved(approved);
+        user.setActive(true);
 
         User saved =  userRepository.save(user);
 
@@ -49,7 +50,8 @@ public class  CreateUserUseCase {
                 saved.getUsername(),
                 saved.getEmail(),
                 saved.getRole().name(),
-                saved.isApproved()
+                saved.isApproved(),
+                saved.isActive()
         );
     }
 }

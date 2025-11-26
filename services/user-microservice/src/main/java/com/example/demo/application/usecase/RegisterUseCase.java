@@ -36,6 +36,7 @@ public class RegisterUseCase {
         user.setPassword(passwordEncoder.encode(registerRequest.getPassword()));
         user.setRole(role);
         user.setApproved(approved);
+        user.setActive(true);
 
         User saved = userRepository.save(user);
         return new CreateUserResponse(
@@ -43,7 +44,8 @@ public class RegisterUseCase {
                 saved.getUsername(),
                 saved.getEmail(),
                 saved.getRole().name(),
-                saved.isApproved()
+                saved.isApproved(),
+                saved.isActive()
         );
     }
 

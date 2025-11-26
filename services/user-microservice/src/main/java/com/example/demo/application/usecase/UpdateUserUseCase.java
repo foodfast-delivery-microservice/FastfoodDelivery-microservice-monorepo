@@ -4,11 +4,13 @@ import com.example.demo.domain.exception.*;
 import com.example.demo.domain.model.User;
 import com.example.demo.domain.repository.UserRepository;
 import com.example.demo.infrastructure.messaging.EventPublisher;
+import com.example.demo.infrastructure.messaging.event.MerchantDeactivatedEvent;
 import com.example.demo.interfaces.rest.dto.event.UserUpdatedEventDTO;
 import com.example.demo.interfaces.rest.dto.user.UserPatchDTO;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Service;
 
 import java.util.Set;
@@ -58,6 +60,20 @@ public class UpdateUserUseCase {
             existingUser.setApproved(userPatchDTO.getApproved());
         }
 
+        boolean merchantDeactivated = false;
+        if (userPatchDTO.getActive() != null) {
+            boolean admin = isAdmin(authentication);
+            if (!admin) {
+                throw new AdminAccessDeniedException();
+            }
+            boolean requestedActive = userPatchDTO.getActive();
+            boolean currentlyActive = existingUser.isActive();
+            if (!requestedActive && currentlyActive && existingUser.getRole() == User.UserRole.MERCHANT) {
+                merchantDeactivated = true;
+            }
+            existingUser.setActive(requestedActive);
+        }
+
         User updatedUser = userRepository.save(existingUser);
 
 
@@ -70,10 +86,28 @@ public class UpdateUserUseCase {
 
         eventPublisher.publishUserUpdated(eventDTO);
 
+        if (merchantDeactivated) {
+            MerchantDeactivatedEvent event = MerchantDeactivatedEvent.builder()
+                    .merchantId(updatedUser.getId())
+                    .occurredAt(java.time.Instant.now())
+                    .reason("Merchant deactivated via admin request")
+                    .build();
+            eventPublisher.publishMerchantDeactivated(event);
+        }
+
         // -- KẾT THÚC BƯỚC MỚI --
 
         return updatedUser;
 
+    }
+
+    private boolean isAdmin(Authentication authentication) {
+        if (authentication == null) {
+            return false;
+        }
+        return authentication.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .anyMatch(auth -> "ROLE_ADMIN".equalsIgnoreCase(auth) || "ADMIN".equalsIgnoreCase(auth));
     }
 
     // thay đổi role của user

@@ -8,6 +8,7 @@ public class UserPatchDTO {
     private String email;
     private String role;
     private Boolean approved;
+    private Boolean active;
 
 
 }

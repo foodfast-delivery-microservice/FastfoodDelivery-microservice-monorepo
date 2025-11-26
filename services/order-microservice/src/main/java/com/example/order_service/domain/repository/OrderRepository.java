@@ -27,6 +27,8 @@ public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecific
 
     List<Order> findByUserIdAndStatus(Long userId, OrderStatus status);
 
+    List<Order> findByMerchantIdAndStatus(Long merchantId, OrderStatus status);
+
     @Query("SELECT o FROM Order o WHERE o.createdAt BETWEEN :startDate AND :endDate")
     List<Order> findByCreatedAtBetween(@Param("startDate") LocalDateTime startDate,
                                        @Param("endDate") LocalDateTime endDate);

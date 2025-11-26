@@ -23,6 +23,7 @@ public interface PaymentRepository extends JpaRepository<Payment, Long>, JpaSpec
     Page<Payment> findByMerchantId(Long merchantId, Pageable pageable);
     
     Page<Payment> findByMerchantIdAndStatus(Long merchantId, Payment.Status status, Pageable pageable);
+    List<Payment> findByMerchantIdAndStatus(Long merchantId, Payment.Status status);
     
     Page<Payment> findByMerchantIdAndCreatedAtBetween(
             Long merchantId, 
