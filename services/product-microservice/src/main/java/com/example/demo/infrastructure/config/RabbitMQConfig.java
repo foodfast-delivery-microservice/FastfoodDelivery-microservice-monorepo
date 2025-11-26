@@ -22,6 +22,8 @@ public class RabbitMQConfig {
     public static final String USER_EVENTS_EXCHANGE = "user.events";
     public static final String MERCHANT_DEACTIVATED_QUEUE = "product.merchant.deactivated.queue";
     public static final String MERCHANT_DEACTIVATED_ROUTING_KEY = "merchant.deactivated";
+    public static final String MERCHANT_ACTIVATED_QUEUE = "product.merchant.activated.queue";
+    public static final String MERCHANT_ACTIVATED_ROUTING_KEY = "merchant.activated";
 
     @Bean
     public TopicExchange orderExchange() {
@@ -49,6 +51,11 @@ public class RabbitMQConfig {
     }
 
     @Bean
+    public Queue productMerchantActivatedQueue() {
+        return new Queue(MERCHANT_ACTIVATED_QUEUE, true);
+    }
+
+    @Bean
     public Binding orderRefundedBinding() {
         return BindingBuilder.bind(orderRefundedQueue())
                 .to(orderExchange())
@@ -67,6 +74,13 @@ public class RabbitMQConfig {
         return BindingBuilder.bind(productMerchantDeactivatedQueue())
                 .to(userEventsExchange())
                 .with(MERCHANT_DEACTIVATED_ROUTING_KEY);
+    }
+
+    @Bean
+    public Binding merchantActivatedBinding() {
+        return BindingBuilder.bind(productMerchantActivatedQueue())
+                .to(userEventsExchange())
+                .with(MERCHANT_ACTIVATED_ROUTING_KEY);
     }
 
     @Bean

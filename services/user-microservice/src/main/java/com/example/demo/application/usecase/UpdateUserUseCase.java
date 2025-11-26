@@ -4,6 +4,7 @@ import com.example.demo.domain.exception.*;
 import com.example.demo.domain.model.User;
 import com.example.demo.domain.repository.UserRepository;
 import com.example.demo.infrastructure.messaging.EventPublisher;
+import com.example.demo.infrastructure.messaging.event.MerchantActivatedEvent;
 import com.example.demo.infrastructure.messaging.event.MerchantDeactivatedEvent;
 import com.example.demo.interfaces.rest.dto.event.UserUpdatedEventDTO;
 import com.example.demo.interfaces.rest.dto.user.UserPatchDTO;
@@ -61,6 +62,7 @@ public class UpdateUserUseCase {
         }
 
         boolean merchantDeactivated = false;
+        boolean merchantActivated = false;
         if (userPatchDTO.getActive() != null) {
             boolean admin = isAdmin(authentication);
             if (!admin) {
@@ -70,6 +72,8 @@ public class UpdateUserUseCase {
             boolean currentlyActive = existingUser.isActive();
             if (!requestedActive && currentlyActive && existingUser.getRole() == User.UserRole.MERCHANT) {
                 merchantDeactivated = true;
+            } else if (requestedActive && !currentlyActive && existingUser.getRole() == User.UserRole.MERCHANT) {
+                merchantActivated = true;
             }
             existingUser.setActive(requestedActive);
         }
@@ -93,6 +97,16 @@ public class UpdateUserUseCase {
                     .reason("Merchant deactivated via admin request")
                     .build();
             eventPublisher.publishMerchantDeactivated(event);
+        }
+
+        if (merchantActivated) {
+            MerchantActivatedEvent event = MerchantActivatedEvent.builder()
+                    .merchantId(updatedUser.getId())
+                    .occurredAt(java.time.Instant.now())
+                    .reason("Merchant reactivated via admin request")
+                    .triggeredBy(authentication != null ? authentication.getName() : "system")
+                    .build();
+            eventPublisher.publishMerchantActivated(event);
         }
 
         // -- KẾT THÚC BƯỚC MỚI --

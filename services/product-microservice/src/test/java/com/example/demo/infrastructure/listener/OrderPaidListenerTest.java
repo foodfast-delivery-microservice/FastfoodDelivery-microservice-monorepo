@@ -75,7 +75,7 @@ class OrderPaidListenerTest {
 
         validJsonPayload = "{\"orderId\":100,\"userId\":1,\"merchantId\":10,\"orderItems\":[{\"productId\":1,\"quantity\":5,\"merchantId\":10},{\"productId\":2,\"quantity\":3,\"merchantId\":10}]}";
 
-        when(objectMapper.readValue(validJsonPayload, OrderPaidEvent.class))
+        lenient().when(objectMapper.readValue(validJsonPayload, OrderPaidEvent.class))
                 .thenReturn(validEvent);
     }
 
