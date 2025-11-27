@@ -1119,6 +1119,267 @@ Hệ thống sử dụng các công nghệ hiện đại, phổ biến:
 - **Metrics & Alerts**: Đếm số order/payment theo trạng thái (PAID, FAILED, REFUNDED) từ bảng outbox + actuator metrics để feed dashboards.
 - **Retry & Idempotency**: Outbox pattern (Order/Payment) + `stock_deduction_records` đảm bảo sự kiện được xử lý ít nhất một lần nhưng không nhân đôi.
 
+### 7.6 Component Diagram
+
+Component diagram mô tả các component, ports, provided interfaces (⭕) và required interfaces (🔌) của hệ thống.
+
+```mermaid
+flowchart TB
+    subgraph Client["Client Layer"]
+        direction TB
+        Frontend["«component»<br/>React SPA<br/>Port: 3000<br/>⭕ HTTP/REST Client<br/>Provider: Browser"]
+    end
+
+    subgraph Edge["Edge Layer"]
+        direction LR
+        Gateway["«component»<br/>API Gateway<br/>Port: 8080<br/>⭕ REST API<br/>🔌 Service Discovery<br/>Provider: Spring Cloud Gateway"]
+        Registry["«component»<br/>Eureka Server<br/>Port: 8761<br/>⭕ Eureka REST API<br/>Provider: Netflix Eureka"]
+    end
+
+    subgraph Services["Microservices Layer"]
+        direction LR
+        UserSvc["«component»<br/>User Service<br/>Port: 8081<br/>⭕ REST API<br/>🔌 Service Discovery, JDBC, AMQP<br/>Provider: Spring Boot"]
+        ProductSvc["«component»<br/>Product Service<br/>Port: 8082<br/>⭕ REST API<br/>🔌 Service Discovery, JDBC, AMQP<br/>Provider: Spring Boot"]
+        OrderSvc["«component»<br/>Order Service<br/>Port: 8083<br/>⭕ REST API<br/>🔌 Service Discovery, JDBC, AMQP<br/>Provider: Spring Boot"]
+        PaymentSvc["«component»<br/>Payment Service<br/>Port: 8084<br/>⭕ REST API<br/>🔌 Service Discovery, JDBC, AMQP<br/>Provider: Spring Boot"]
+    end
+
+    subgraph DataStores["Data & Messaging Layer"]
+        direction LR
+        MySQLUser[("MySQL Database<br/>Schema: userservice<br/>Port: 3306<br/>⭕ JDBC<br/>Provider: MySQL 8.0")]
+        MySQLProduct[("MySQL Database<br/>Schema: productmicroservice<br/>Port: 3306<br/>⭕ JDBC<br/>Provider: MySQL 8.0")]
+        MySQLOrder[("MySQL Database<br/>Schema: orderservice<br/>Port: 3306<br/>⭕ JDBC<br/>Provider: MySQL 8.0")]
+        MySQLPayment[("MySQL Database<br/>Schema: paymentservice<br/>Port: 3306<br/>⭕ JDBC<br/>Provider: MySQL 8.0")]
+        RabbitMQ[("RabbitMQ Broker<br/>Port: 5672, 15672<br/>⭕ AMQP 0.9.1<br/>Provider: RabbitMQ 3.13")]
+    end
+
+    Frontend -->|HTTP/REST + JWT| Gateway
+    Gateway --> UserSvc
+    Gateway --> ProductSvc
+    Gateway --> OrderSvc
+    Gateway --> PaymentSvc
+
+    Gateway -.->|Service Discovery| Registry
+    UserSvc -.->|Service Discovery| Registry
+    ProductSvc -.->|Service Discovery| Registry
+    OrderSvc -.->|Service Discovery| Registry
+    PaymentSvc -.->|Service Discovery| Registry
+
+    UserSvc -.->|JDBC| MySQLUser
+    ProductSvc -.->|JDBC| MySQLProduct
+    OrderSvc -.->|JDBC| MySQLOrder
+    PaymentSvc -.->|JDBC| MySQLPayment
+
+    OrderSvc <-->|AMQP Events| RabbitMQ
+    PaymentSvc <-->|AMQP Events| RabbitMQ
+    ProductSvc <-->|AMQP Events| RabbitMQ
+
+    style Frontend fill:#e1f5ff,stroke:#177ddc,stroke-width:2px
+    style Gateway fill:#f39c12,stroke:#333,stroke-width:2px
+    style Registry fill:#3498db,stroke:#333,stroke-width:2px
+    style UserSvc fill:#2ecc71,stroke:#333,stroke-width:2px
+    style ProductSvc fill:#2ecc71,stroke:#333,stroke-width:2px
+    style OrderSvc fill:#2ecc71,stroke:#333,stroke-width:2px
+    style PaymentSvc fill:#2ecc71,stroke:#333,stroke-width:2px
+    style MySQLUser fill:#00758f,stroke:#333,stroke-width:2px
+    style MySQLProduct fill:#00758f,stroke:#333,stroke-width:2px
+    style MySQLOrder fill:#00758f,stroke:#333,stroke-width:2px
+    style MySQLPayment fill:#00758f,stroke:#333,stroke-width:2px
+    style RabbitMQ fill:#ff6600,stroke:#333,stroke-width:2px
+```
+
+**Chú thích:**
+- **Port**: Cổng mạng mà component lắng nghe/kết nối
+- **⭕ Provided Interface**: Interface mà component cung cấp
+- **🔌 Required Interface**: Interface mà component cần từ component khác
+- **Provider**: Công nghệ/thư viện cung cấp implementation
+
+**Bảng tóm tắt:**
+
+| Component | Port | Provided | Required | Provider |
+|-----------|------|----------|----------|----------|
+| React SPA | 3000 | HTTP/REST Client | - | Browser |
+| API Gateway | 8080 | REST API | Service Discovery | Spring Cloud Gateway |
+| Eureka Server | 8761 | Eureka REST API | - | Netflix Eureka |
+| User/Product/Order/Payment Service | 8081-8084 | REST API | Service Discovery, JDBC, AMQP | Spring Boot |
+| MySQL (4 schemas) | 3306 | JDBC | - | MySQL 8.0 |
+| RabbitMQ | 5672, 15672 | AMQP 0.9.1 | - | RabbitMQ 3.13 |
+
+*Diễn giải:* Frontend gọi Gateway qua HTTP/REST. Gateway định tuyến tới các microservice thông qua Eureka (Service Discovery). Mỗi service kết nối tới MySQL riêng qua JDBC và trao đổi sự kiện qua RabbitMQ bằng AMQP.
+
+#### 7.6.1 Phiên bản PlantUML (Tham khảo)
+
+PlantUML hỗ trợ tốt hơn cho UML Component Diagram với ports và interfaces theo chuẩn. Để sử dụng, cần cài đặt PlantUML hoặc sử dụng online editor tại [plantuml.com](http://www.plantuml.com/plantuml/uml/).
+
+```plantuml
+@startuml Component Diagram
+!theme plain
+skinparam componentStyle rectangle
+skinparam linetype ortho
+
+package "Client Layer" {
+    component [React SPA\nProvider: Browser] as Frontend
+    portin "Port: 3000" as FrontendPort
+    interface "HTTP/REST Client" as FrontendAPI
+    Frontend -- FrontendPort
+    FrontendPort -- FrontendAPI
+}
+
+package "Edge Layer" {
+    component [API Gateway\nProvider: Spring Cloud Gateway] as Gateway
+    portin "Port: 8080" as GatewayPort
+    portin "Port: 8761" as GatewaySDPort
+    interface "REST API" as GatewayAPI
+    interface "Service Discovery" as GatewaySD
+    Gateway -- GatewayPort
+    Gateway -- GatewaySDPort
+    GatewayPort -- GatewayAPI
+    GatewaySDPort -- GatewaySD
+
+    component [Eureka Server\nProvider: Netflix Eureka] as Registry
+    portin "Port: 8761" as RegistryPort
+    interface "Eureka REST API" as RegistryAPI
+    Registry -- RegistryPort
+    RegistryPort -- RegistryAPI
+}
+
+package "Microservices Layer" {
+    component [User Service\nProvider: Spring Boot] as UserSvc
+    portin "Port: 8081" as UserSvcPort
+    portin "Port: 8761" as UserSvcSDPort
+    portin "Port: 3306" as UserSvcDBPort
+    portin "Port: 5672" as UserSvcMQPort
+    interface "REST API" as UserSvcAPI
+    interface "Service Discovery" as UserSvcSD
+    interface "JDBC" as UserSvcJDBC
+    interface "AMQP" as UserSvcAMQP
+    UserSvc -- UserSvcPort
+    UserSvc -- UserSvcSDPort
+    UserSvc -- UserSvcDBPort
+    UserSvc -- UserSvcMQPort
+    UserSvcPort -- UserSvcAPI
+    UserSvcSDPort -- UserSvcSD
+    UserSvcDBPort -- UserSvcJDBC
+    UserSvcMQPort -- UserSvcAMQP
+
+    component [Product Service\nProvider: Spring Boot] as ProductSvc
+    portin "Port: 8082" as ProductSvcPort
+    portin "Port: 8761" as ProductSvcSDPort
+    portin "Port: 3306" as ProductSvcDBPort
+    portin "Port: 5672" as ProductSvcMQPort
+    interface "REST API" as ProductSvcAPI
+    interface "Service Discovery" as ProductSvcSD
+    interface "JDBC" as ProductSvcJDBC
+    interface "AMQP" as ProductSvcAMQP
+    ProductSvc -- ProductSvcPort
+    ProductSvc -- ProductSvcSDPort
+    ProductSvc -- ProductSvcDBPort
+    ProductSvc -- ProductSvcMQPort
+    ProductSvcPort -- ProductSvcAPI
+    ProductSvcSDPort -- ProductSvcSD
+    ProductSvcDBPort -- ProductSvcJDBC
+    ProductSvcMQPort -- ProductSvcAMQP
+
+    component [Order Service\nProvider: Spring Boot] as OrderSvc
+    portin "Port: 8083" as OrderSvcPort
+    portin "Port: 8761" as OrderSvcSDPort
+    portin "Port: 3306" as OrderSvcDBPort
+    portin "Port: 5672" as OrderSvcMQPort
+    interface "REST API" as OrderSvcAPI
+    interface "Service Discovery" as OrderSvcSD
+    interface "JDBC" as OrderSvcJDBC
+    interface "AMQP" as OrderSvcAMQP
+    OrderSvc -- OrderSvcPort
+    OrderSvc -- OrderSvcSDPort
+    OrderSvc -- OrderSvcDBPort
+    OrderSvc -- OrderSvcMQPort
+    OrderSvcPort -- OrderSvcAPI
+    OrderSvcSDPort -- OrderSvcSD
+    OrderSvcDBPort -- OrderSvcJDBC
+    OrderSvcMQPort -- OrderSvcAMQP
+
+    component [Payment Service\nProvider: Spring Boot] as PaymentSvc
+    portin "Port: 8084" as PaymentSvcPort
+    portin "Port: 8761" as PaymentSvcSDPort
+    portin "Port: 3306" as PaymentSvcDBPort
+    portin "Port: 5672" as PaymentSvcMQPort
+    interface "REST API" as PaymentSvcAPI
+    interface "Service Discovery" as PaymentSvcSD
+    interface "JDBC" as PaymentSvcJDBC
+    interface "AMQP" as PaymentSvcAMQP
+    PaymentSvc -- PaymentSvcPort
+    PaymentSvc -- PaymentSvcSDPort
+    PaymentSvc -- PaymentSvcDBPort
+    PaymentSvc -- PaymentSvcMQPort
+    PaymentSvcPort -- PaymentSvcAPI
+    PaymentSvcSDPort -- PaymentSvcSD
+    PaymentSvcDBPort -- PaymentSvcJDBC
+    PaymentSvcMQPort -- PaymentSvcAMQP
+}
+
+package "Data & Messaging Layer" {
+    database "MySQL\nuserservice\nProvider: MySQL 8.0" as MySQLUser
+    portin "Port: 3306" as MySQLUserPort
+    interface "JDBC" as MySQLUserJDBC
+    MySQLUser -- MySQLUserPort
+    MySQLUserPort -- MySQLUserJDBC
+
+    database "MySQL\nproductmicroservice\nProvider: MySQL 8.0" as MySQLProduct
+    portin "Port: 3306" as MySQLProductPort
+    interface "JDBC" as MySQLProductJDBC
+    MySQLProduct -- MySQLProductPort
+    MySQLProductPort -- MySQLProductJDBC
+
+    database "MySQL\norderservice\nProvider: MySQL 8.0" as MySQLOrder
+    portin "Port: 3306" as MySQLOrderPort
+    interface "JDBC" as MySQLOrderJDBC
+    MySQLOrder -- MySQLOrderPort
+    MySQLOrderPort -- MySQLOrderJDBC
+
+    database "MySQL\npaymentservice\nProvider: MySQL 8.0" as MySQLPayment
+    portin "Port: 3306" as MySQLPaymentPort
+    interface "JDBC" as MySQLPaymentJDBC
+    MySQLPayment -- MySQLPaymentPort
+    MySQLPaymentPort -- MySQLPaymentJDBC
+
+    queue "RabbitMQ Broker\nProvider: RabbitMQ 3.13" as RabbitMQ
+    portin "Port: 5672" as RabbitMQPort
+    interface "AMQP 0.9.1" as RabbitMQAMQP
+    RabbitMQ -- RabbitMQPort
+    RabbitMQPort -- RabbitMQAMQP
+}
+
+' Interface Connections
+FrontendAPI --> GatewayAPI : HTTP/REST + JWT
+GatewayAPI --> UserSvcAPI
+GatewayAPI --> ProductSvcAPI
+GatewayAPI --> OrderSvcAPI
+GatewayAPI --> PaymentSvcAPI
+
+GatewaySD --> RegistryAPI
+UserSvcSD --> RegistryAPI
+ProductSvcSD --> RegistryAPI
+OrderSvcSD --> RegistryAPI
+PaymentSvcSD --> RegistryAPI
+
+UserSvcJDBC --> MySQLUserJDBC
+ProductSvcJDBC --> MySQLProductJDBC
+OrderSvcJDBC --> MySQLOrderJDBC
+PaymentSvcJDBC --> MySQLPaymentJDBC
+
+OrderSvcAMQP <--> RabbitMQAMQP : Events
+PaymentSvcAMQP <--> RabbitMQAMQP : Events
+ProductSvcAMQP <--> RabbitMQAMQP : Events
+
+@enduml
+```
+
+**Cách sử dụng PlantUML:**
+1. **Online**: Truy cập [plantuml.com/plantuml/uml/](http://www.plantuml.com/plantuml/uml/) và paste code trên
+2. **VS Code**: Cài extension "PlantUML" và preview
+3. **CLI**: Cài PlantUML Java và chạy `plantuml component.puml`
+4. **GitHub/GitLab**: Tự động render PlantUML trong markdown
+
 ---
 
 ## API Endpoints Documentation

@@ -137,14 +137,30 @@ public class UserController {
     @DeleteMapping("/{id}")
     // @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<String>> deleteUser(@PathVariable Long id) {
-        deleteUserByIdUseCase.execute(id);
-        ApiResponse<String> result = new ApiResponse<>(
-                HttpStatus.NO_CONTENT,
-                "deleted",
-                null,
-                null);
+        try {
+            deleteUserByIdUseCase.execute(id);
+            ApiResponse<String> result = new ApiResponse<>(
+                    HttpStatus.NO_CONTENT,
+                    "deleted",
+                    null,
+                    null);
 
-        return ResponseEntity.status(HttpStatus.NO_CONTENT).body(result);
+            return ResponseEntity.status(HttpStatus.NO_CONTENT).body(result);
+        } catch (com.example.demo.domain.exception.MerchantDeletionNotAllowedException ex) {
+            ApiResponse<String> result = new ApiResponse<>(
+                    HttpStatus.BAD_REQUEST,
+                    ex.getMessage(),
+                    null,
+                    "MERCHANT_DELETION_NOT_ALLOWED");
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(result);
+        } catch (com.example.demo.domain.exception.InvalidId ex) {
+            ApiResponse<String> result = new ApiResponse<>(
+                    HttpStatus.NOT_FOUND,
+                    ex.getMessage(),
+                    null,
+                    "INVALID_ID");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(result);
+        }
     }
 
 }

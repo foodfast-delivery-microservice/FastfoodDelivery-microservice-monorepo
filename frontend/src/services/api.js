@@ -56,6 +56,8 @@ export const adminService = {
         api.get(`/products/merchants/me`, { params: { ...params, merchantId, includeInactive: true } }),
     updateUserStatus: (userId, active) =>
         api.patch(`/users/${userId}`, { active }),
+    deleteUser: (userId) =>
+        api.delete(`/users/${userId}`),
     getUserStatistics: (userId) => api.get(`/orders/users/${userId}/statistics`),
     getOrderDetails: (orderId) => api.get(`/orders/${orderId}`),
 

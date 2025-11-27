@@ -60,6 +60,52 @@ const MerchantList = () => {
         }
     };
 
+    const handleDeleteMerchant = async (merchant) => {
+        // Kiểm tra ràng buộc: Merchant phải inactive trước khi xóa
+        if (merchant.active) {
+            alert(
+                `❌ KHÔNG THỂ XÓA MERCHANT ĐANG HOẠT ĐỘNG!\n\n` +
+                `Merchant "${merchant.username}" đang ở trạng thái HOẠT ĐỘNG.\n\n` +
+                `Để xóa merchant này, bạn cần:\n` +
+                `1. Click nút "Block" để vô hiệu hóa merchant\n` +
+                `2. Sau đó mới có thể xóa\n\n` +
+                `💡 Lý do: Tránh xóa nhầm merchant đang hoạt động, ảnh hưởng đến đơn hàng và thanh toán.`
+            );
+            return;
+        }
+
+        // Xác nhận xóa
+        const confirmMessage = `⚠️ CẢNH BÁO: XÓA VĨNH VIỄN MERCHANT\n\n` +
+            `Bạn có chắc chắn muốn xóa merchant này không?\n\n` +
+            `Merchant: ${merchant.username}\n` +
+            `Email: ${merchant.email}\n\n` +
+            `Hành động này KHÔNG THỂ HOÀN TÁC!\n` +
+            `Tất cả dữ liệu liên quan sẽ bị xóa vĩnh viễn.`;
+
+        if (!window.confirm(confirmMessage)) return;
+
+        try {
+            await adminService.deleteUser(merchant.id);
+            alert(`✅ Đã xóa merchant "${merchant.username}" thành công!`);
+            fetchMerchants(); // Refresh list
+        } catch (error) {
+            console.error("Error deleting merchant:", error);
+            const errorMessage = error.response?.data?.message || 
+                                error.message || 
+                                "Không thể xóa merchant. Vui lòng thử lại.";
+            
+            // Hiển thị thông báo lỗi chi tiết
+            if (error.response?.data?.errorCode === 'MERCHANT_DELETION_NOT_ALLOWED') {
+                alert(
+                    `❌ ${errorMessage}\n\n` +
+                    `Vui lòng block merchant trước khi xóa.`
+                );
+            } else {
+                alert(`❌ Lỗi: ${errorMessage}`);
+            }
+        }
+    };
+
     if (loading) return <div className="text-center py-10">Loading merchants...</div>;
 
     return (
@@ -115,6 +161,18 @@ const MerchantList = () => {
                                             } font-medium`}
                                     >
                                         {merchant.active ? 'Block' : 'Unblock'}
+                                    </button>
+                                    <button
+                                        onClick={() => handleDeleteMerchant(merchant)}
+                                        className={`font-medium ${
+                                            merchant.active 
+                                                ? 'text-gray-400 cursor-not-allowed' 
+                                                : 'text-red-600 hover:text-red-900'
+                                        }`}
+                                        title={merchant.active ? "Merchant phải bị block trước khi xóa" : "Xóa merchant vĩnh viễn"}
+                                        disabled={merchant.active}
+                                    >
+                                        Delete
                                     </button>
                                 </td>
                             </tr>
