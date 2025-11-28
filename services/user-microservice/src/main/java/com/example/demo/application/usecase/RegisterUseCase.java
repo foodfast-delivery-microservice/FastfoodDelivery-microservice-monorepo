@@ -18,13 +18,14 @@ public class RegisterUseCase {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
     }
+
     // cho user tự đăng kí
     public CreateUserResponse register(RegisterRequest registerRequest) {
         if (userRepository.existsByUsername(registerRequest.getUsername())) {
             throw new UsernameAlreadyExistException(registerRequest.getUsername());
         }
         if (userRepository.existsByEmail(registerRequest.getEmail())) {
-            throw  new EmailAlreadyExistException(registerRequest.getEmail());
+            throw new EmailAlreadyExistException(registerRequest.getEmail());
         }
 
         User.UserRole role = resolveRole(registerRequest.getRole());
@@ -38,15 +39,20 @@ public class RegisterUseCase {
         user.setApproved(approved);
         user.setActive(true);
 
+        // Map Profile Fields
+        user.setFullName(registerRequest.getFullName());
+        user.setPhone(registerRequest.getPhone());
+        user.setAddress(registerRequest.getAddress());
+        user.setAvatar(registerRequest.getAvatar());
+
+        // Map Merchant Fields
+        user.setRestaurantName(registerRequest.getRestaurantName());
+        user.setRestaurantAddress(registerRequest.getRestaurantAddress());
+        user.setRestaurantImage(registerRequest.getRestaurantImage());
+        user.setOpeningHours(registerRequest.getOpeningHours());
+
         User saved = userRepository.save(user);
-        return new CreateUserResponse(
-                saved.getId(),
-                saved.getUsername(),
-                saved.getEmail(),
-                saved.getRole().name(),
-                saved.isApproved(),
-                saved.isActive()
-        );
+        return CreateUserResponse.fromEntity(saved);
     }
 
     private User.UserRole resolveRole(String requestedRole) {

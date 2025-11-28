@@ -19,6 +19,7 @@ public class ProductResponse {
     private String category;
     private boolean active;
     private Long merchantId;
+    private String imageUrl;
 
     public static ProductResponse fromEntity(Product product) {
         ProductResponse productResponse = new ProductResponse();
@@ -30,6 +31,7 @@ public class ProductResponse {
         productResponse.setCategory(product.getCategory().name());
         productResponse.setActive(product.isActive());
         productResponse.setMerchantId(product.getMerchantId());
+        productResponse.setImageUrl(product.getImageUrl());
         return productResponse;
     }
 }

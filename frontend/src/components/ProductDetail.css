@@ -1,0 +1,307 @@
+/* ====== TỔNG THỂ TRANG ====== */
+.productDetail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: linear-gradient(180deg, #fff7f0, #ffffff);
+  padding: 60px 20px 100px;
+  font-family: 'Poppins', sans-serif;
+  min-height: 100vh;
+}
+
+.productDetail__container {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  background: #fff;
+  border-radius: 24px;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+  padding: 40px 50px;
+  max-width: 1200px;
+  width: 100%;
+}
+
+.productDetail__image {
+  padding-right: 60px;
+}
+
+.productDetail__image img {
+  width: 100%;
+  max-width: 450px;
+  border-radius: 16px;
+
+  object-fit: cover;
+  box-shadow: 0 4px 20px rgba(255, 94, 0, 0.15);
+  transition: transform 0.4s ease;
+}
+
+.productDetail__image img:hover {
+  transform: scale(1.07);
+}
+
+.productDetail__info {
+  flex: 1;
+  padding-left: 30px;
+}
+
+.productDetail__name {
+  font-size: 2.2rem;
+  color: #f97316;
+  font-weight: 700;
+}
+
+.productDetail__rating {
+  font-size: 1rem;
+  color: #666;
+  margin: 12px 0 18px;
+}
+
+.productDetail__price {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.price--discounted {
+  font-size: 2rem;
+  color: #e85d04;
+  font-weight: 700;
+}
+
+.price--original {
+  text-decoration: line-through;
+  color: #aaa;
+}
+
+.price--badge {
+  background: #ff6d00;
+  color: #fff;
+  padding: 6px 12px;
+  border-radius: 10px;
+}
+
+.productDetail__desc {
+  margin-top: 10px;
+  line-height: 1.7;
+  color: #444;
+}
+
+.productDetail__ingredients {
+  background: #fff5eb;
+  padding: 16px 20px;
+  border-left: 5px solid #ff6d00;
+  border-radius: 8px;
+  margin-top: 20px;
+}
+
+.productDetail__addBtn {
+  background: linear-gradient(90deg, #ff7a00, #ff5400);
+  color: #fff;
+  border: none;
+  padding: 14px 32px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  border-radius: 14px;
+  cursor: pointer;
+  margin-top: 28px;
+  transition: all 0.3s ease;
+}
+
+.productDetail__addBtn:hover {
+  transform: translateY(-3px);
+}
+
+.productDetail__progress {
+  margin-top: 25px;
+}
+
+.progress__bar {
+  background: #ffe6d4;
+  height: 10px;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.progress__fill {
+  background: linear-gradient(90deg, #ff7a00, #ff5400);
+  height: 100%;
+  transition: width 0.4s ease-in-out;
+}
+
+.productDetail__backLink {
+  display: inline-block;
+  margin-top: 30px;
+  text-decoration: none;
+  color: #f97316;
+  font-weight: 600;
+}
+
+/* ====== KHUNG SẢN PHẨM GỢI Ý ====== */
+.relatedProducts {
+  background: #fffaf5;
+  border-radius: 24px;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.08);
+  padding: 50px 40px;
+  margin: 60px auto;
+  max-width: 1150px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+/* ✅ (THÊM MỚI) Style cho tiêu đề "Gợi ý cho bạn" */
+.relatedProducts h3 {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #ff6d00;
+  margin-bottom: 35px;
+  position: relative;
+  display: inline-block;
+}
+
+/* ✅ (THÊM MỚI) Gạch 2 bên tiêu đề */
+.relatedProducts h3::before,
+.relatedProducts h3::after {
+  content: "";
+  display: inline-block;
+  width: 70px;
+  height: 3px;
+  background-color: #ff7b00;
+  vertical-align: middle;
+  margin: 0 12px;
+  border-radius: 5px;
+}
+
+/* Lưới chứa các card */
+.relatedProducts__grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 28px;
+  /* Tăng gap lên 1 chút cho thoáng */
+}
+
+/* ✅ (THÊM MỚI) Tắt gạch chân của thẻ Link */
+.relatedProducts__link {
+  text-decoration: none;
+  color: inherit;
+}
+
+/* Card sản phẩm */
+.relatedProducts__item {
+  background: #fff;
+  border-radius: 18px;
+  padding: 18px;
+  width: 230px;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+
+  /* ✅ (CẬP NHẬT) Dùng Flex để căn nút bấm xuống đáy */
+  display: flex;
+  flex-direction: column;
+  text-align: center;
+  /* Giữ text ở giữa */
+}
+
+.relatedProducts__item:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 8px 20px rgba(255, 123, 0, 0.25);
+}
+
+/* Ảnh sản phẩm */
+.relatedProducts__item img {
+  width: 100%;
+  height: 160px;
+  object-fit: cover;
+  border-radius: 14px;
+  transition: transform 0.4s ease;
+  /* Thêm transition cho ảnh */
+}
+
+/* ✅ (CẬP NHẬT) Thêm hiệu ứng zoom ảnh khi hover card */
+.relatedProducts__item:hover img {
+  transform: scale(1.05);
+}
+
+/* ✅ (THÊM MỚI) Style tên sản phẩm */
+.relatedProducts__item h4 {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #333;
+  /* Màu chữ chính */
+  margin: 12px 0 6px;
+  transition: color 0.3s ease;
+  /* Hiệu ứng đổi màu chữ */
+}
+
+/* ✅ (THÊM MỚI) Đổi màu tên khi hover card */
+.relatedProducts__item:hover h4 {
+  color: #ff7b00;
+  /* Màu cam chủ đạo */
+}
+
+/* ✅ (THÊM MỚI) Style giá tiền */
+.relatedProducts__item p {
+  color: #e85d04;
+  /* Màu cam đậm cho giá */
+  font-size: 1rem;
+  font-weight: 700;
+  /* In đậm giá tiền */
+  margin-bottom: 14px;
+}
+
+/* Nút "Thêm" */
+.relatedProducts__addBtn {
+  background: linear-gradient(90deg, #ff7a00, #ff5400);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 8px 16px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  /* Thêm chữ đậm cho nút */
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 3px 12px rgba(255, 122, 0, 0.3);
+  /* Thêm bóng mờ */
+
+  /* ✅ (CẬP NHẬT) Đẩy nút xuống đáy card */
+  margin-top: auto;
+}
+
+.relatedProducts__addBtn:hover {
+  transform: scale(1.07);
+  box-shadow: 0 5px 16px rgba(255, 123, 0, 0.4);
+}
+/* Nổi bật tên nhà hàng */
+.productDetail__restaurantCard {
+  background: #fff7e6;
+  padding: 14px 18px;
+  border-radius: 12px;
+  border-left: 5px solid #ff7a00;
+  margin: 18px 0;
+  box-shadow: 0 3px 10px rgba(255, 122, 0, 0.15);
+}
+
+.productDetail__restaurantCard h4 {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #e85d04;
+  margin-bottom: 4px;
+}
+
+.restaurant-address {
+  font-size: 0.95rem;
+  color: #555;
+}
+.productDetail__desc {
+  background: #fff;
+  padding: 18px 22px;
+  border-radius: 14px;
+  font-size: 1.05rem;
+  line-height: 1.65;
+  color: #333;
+  box-shadow: 0 4px 12px rgba(255, 122, 0, 0.12);
+  border: 1px solid #ffe2c2;
+  margin-top: 22px;
+}

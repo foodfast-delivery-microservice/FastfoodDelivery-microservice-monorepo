@@ -1,0 +1,133 @@
+/* ================================ */
+/* REGISTER PAGE — PREMIUM STYLE    */
+/* Tone: Đỏ – Vàng – Trắng          */
+/* ================================ */
+
+.register-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 90vh;
+  padding: 40px 20px;
+  background: linear-gradient(135deg, #fff7e6, #ffffff);
+}
+
+.register-box {
+  max-width: 450px;
+  width: 100%;
+  padding: 35px 35px;
+  background: #ffffff;
+  border-radius: 18px;
+  border: 1.5px solid #f6d7a3;
+  box-shadow: 0 12px 38px rgba(0, 0, 0, 0.08);
+  animation: fadeIn 0.4s ease forwards;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.register-box h2 {
+  text-align: center;
+  font-size: 2rem;
+  font-weight: 800;
+  margin-bottom: 25px;
+  color: #d2191a;
+}
+
+/* ===== Input ===== */
+.register-box input {
+  width: 100%;
+  margin-bottom: 16px;
+  padding: 14px 15px;
+  border-radius: 10px;
+  border: 1.5px solid #ddd;
+  background: #fffdf8;
+  transition: 0.3s ease;
+  font-size: 1rem;
+}
+
+.register-box input:focus {
+  outline: none;
+  border-color: #fcb32c;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(252, 179, 44, 0.35);
+}
+
+/* ===== Button ===== */
+.register-btn {
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(135deg, #d2191a, #b71314);
+  border: none;
+  border-radius: 10px;
+  color: #fff;
+  font-size: 1.15rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: 0.25s ease;
+  margin-top: 10px;
+  box-shadow: 0 4px 14px rgba(209, 29, 29, 0.3);
+}
+
+.register-btn:hover {
+  transform: translateY(-2px);
+  background: linear-gradient(135deg, #b71314, #9e1011);
+}
+
+/* ===== Error message ===== */
+.register-error {
+  text-align: center;
+  color: #d2191a;
+  background-color: #ffe3e3;
+  border: 1.5px solid #f29494;
+  padding: 10px;
+  border-radius: 8px;
+  margin-bottom: 10px;
+  font-weight: 600;
+  animation: shake 0.25s ease;
+}
+
+@keyframes shake {
+  0% {
+    transform: translateX(0);
+  }
+
+  25% {
+    transform: translateX(-3px);
+  }
+
+  50% {
+    transform: translateX(3px);
+  }
+
+  100% {
+    transform: translateX(0);
+  }
+}
+
+/* ===== Link to login ===== */
+.to-login {
+  margin-top: 20px;
+  text-align: center;
+  font-size: 0.95rem;
+}
+
+.to-login a {
+  color: #d2191a;
+  font-weight: 700;
+  text-decoration: none;
+  margin-left: 5px;
+}
+
+.to-login a:hover {
+  text-decoration: underline;
+}

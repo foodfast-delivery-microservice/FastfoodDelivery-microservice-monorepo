@@ -34,6 +34,7 @@ public class ProductController {
     private final ValidateProductsUseCase validateProductsUseCase;
     private final UpdateProductUseCase updateProductUseCase;
     private final GetMerchantProductsUseCase getMerchantProductsUseCase;
+    private final GetProductByIdUseCase getProductByIdUseCase;
 
     @PostMapping
     public ResponseEntity<ApiResponse<ProductResponse>> createProduct(
@@ -111,17 +112,28 @@ public class ProductController {
     }
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<ProductResponse>>> getAllProducts() {
+    public ResponseEntity<ApiResponse<List<ProductResponse>>> getAllProducts(
+            @RequestParam(value = "merchantId", required = false) Long merchantId) {
 
         ApiResponse<List<ProductResponse>> result = new ApiResponse<>(
                 HttpStatus.OK,
                 "get all products",
-                getAllProductsUserCase.getAllProducts(),
+                getAllProductsUserCase.getAllProducts(merchantId),
                 null);
         return ResponseEntity.status(HttpStatus.OK).body(result);
     }
 
-    @GetMapping("/{category}")
+    @GetMapping("/{id:[0-9]+}")
+    public ResponseEntity<ApiResponse<ProductResponse>> getProductById(@PathVariable Long id) {
+        ApiResponse<ProductResponse> result = new ApiResponse<>(
+                HttpStatus.OK,
+                "get product",
+                getProductByIdUseCase.execute(id),
+                null);
+        return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/{category:[a-zA-Z_]+}")
     public ResponseEntity<ApiResponse<List<ProductResponse>>> getProductsByCategory(@PathVariable String category) {
         ApiResponse<List<ProductResponse>> result = new ApiResponse<>(
                 HttpStatus.OK,

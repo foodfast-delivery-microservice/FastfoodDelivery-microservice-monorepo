@@ -1,0 +1,225 @@
+/* ================================
+   📦 WAITING FOR CONFIRMATION PAGE
+   Tone: Trắng – Đen – Vàng – Đỏ (Luxury Clean)
+===================================*/
+
+.wfc-page {
+  padding: 24px;
+  font-family: "Segoe UI", sans-serif;
+  background-color: #ffffff;
+  min-height: 100vh;
+  color: #2b2623;
+}
+
+/* ====== Title ====== */
+.wfc-page h2 {
+  text-align: center;
+  color: #d2191a;
+  font-size: 26px;
+  margin-bottom: 24px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+/* ====== Main Layout ====== */
+.wfc-container {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+}
+
+/* ====== Left Info Card ====== */
+.wfc-info-panel {
+  flex: 1;
+  background: #fff;
+  border-radius: 14px;
+  padding: 22px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+  border: 1.5px solid #f3d18c;
+}
+
+/* Title inside box */
+.wfc-info-panel h3 {
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 14px;
+  color: #2b2623;
+  border-left: 4px solid #fcb32c;
+  padding-left: 10px;
+}
+
+/* Section Title */
+.wfc-section-title {
+  margin-top: 20px;
+  font-weight: 700;
+  font-size: 17px;
+
+  color: #d2191a;
+}
+
+/* Order detail rows */
+.wfc-detail-row {
+  display: flex;
+  justify-content: space-between;
+  margin: 6px 0;
+  font-size: 15px;
+  color: #333;
+}
+
+.wfc-detail-row span:first-child {
+  font-weight: 600;
+  color: #2b2623;
+}
+
+/* Items list box */
+.wfc-item-list {
+  margin-top: 12px;
+  background: #fff8e6;
+  padding: 14px;
+  border-radius: 10px;
+  border: 1px solid #f6dba7;
+}
+
+.wfc-item-list ul {
+  list-style: none;
+  margin: 8px 0 0 0;
+  padding: 0;
+}
+
+.wfc-item-list li {
+  padding: 6px 0;
+  border-bottom: 1px solid #eee;
+  font-size: 15px;
+  color: #2b2623;
+}
+
+.wfc-item-list li:last-child {
+  border-bottom: none;
+}
+
+/* Tracking info */
+.wfc-tracking-box {
+  margin-top: 16px;
+  background: #f1f5f9;
+  padding: 12px;
+  border-radius: 10px;
+  border-left: 4px solid #fcb32c;
+  font-size: 15px;
+  color: #222;
+}
+
+/* ====== Button: Confirm Received ====== */
+.wfc-btn-received {
+  margin-top: 20px;
+  padding: 12px;
+  background-color: #d2191a;
+  color: #fff;
+  width: 100%;
+  border: none;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: 0.25s ease-in-out;
+}
+
+.wfc-btn-received:hover {
+  background-color: #b31516;
+  transform: scale(1.03);
+}
+
+/* ====== Map Panel (Right Side) ====== */
+.wfc-map-panel {
+  flex: 1.25;
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 16px;
+  border: 1.5px solid #f3d18c;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+}
+
+.wfc-map-panel h3 {
+  text-align: center;
+  color: #2b2623;
+  margin-bottom: 10px;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+/* Map */
+.leaflet-container {
+  border-radius: 12px;
+  overflow: hidden;
+  height: 600px !important;
+}
+
+/* ====== Responsive ====== */
+@media (max-width: 992px) {
+  .wfc-container {
+    flex-direction: column;
+  }
+}
+
+/* —— BOX CHO NHÀ HÀNG & KHÁCH —— */
+.wfc-box {
+  background: #fff8e6;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1.5px solid #f3d18c;
+  margin-bottom: 18px;
+}
+
+.wfc-box-title {
+  font-size: 17px;
+  font-weight: 700;
+  margin-bottom: 10px;
+  color: #d2191a;
+}
+
+/* —— Hàng thông tin —— */
+.wfc-detail-row {
+  display: flex;
+  justify-content: flex-start;
+  gap: 12px;
+  margin: 6px 0;
+  font-size: 15px;
+  color: #2b2623;
+}
+
+.wfc-detail-row span:first-child {
+  font-weight: 600;
+
+}
+
+/* —— Text wrap tránh tràn —— */
+.wfc-text-wrap {
+  display: block;
+
+  text-align: right;
+  white-space: normal;
+  word-wrap: break-word;
+  line-height: 1.4;
+}
+
+/* Giúp header các box tách biệt */
+.wfc-info-content h4 {
+  margin: 0;
+}
+
+/* Hàng item có 2 cột: tên + giá */
+.wfc-item-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  font-size: 15px;
+}
+
+/* Giá bên phải */
+.wfc-item-price {
+  font-weight: 700;
+  color: #d2191a;
+  min-width: 90px;
+  text-align: right;
+}

@@ -1,0 +1,90 @@
+.restaurant-list-page {
+    background-color: #f8f9fa;
+    min-height: 100vh;
+    padding-bottom: 40px;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 16px;
+}
+
+/* Filter Section */
+.filter-section {
+    background: white;
+    padding: 16px;
+    border-radius: 12px;
+    margin-top: -40px;
+    /* Overlap banner slightly */
+    position: relative;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    margin-bottom: 24px;
+}
+
+.search-bar input {
+    width: 100%;
+    padding: 12px 16px;
+    border: 1px solid #eee;
+    border-radius: 8px;
+    font-size: 16px;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.search-bar input:focus {
+    border-color: #faad14;
+}
+
+.category-list {
+    display: flex;
+    gap: 12px;
+    margin-top: 16px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+}
+
+.category-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border: 1px solid #eee;
+    border-radius: 20px;
+    background: white;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s;
+}
+
+.category-item:hover {
+    background-color: #fff7e6;
+    border-color: #faad14;
+}
+
+.category-item.active {
+    background-color: #faad14;
+    color: white;
+    border-color: #faad14;
+}
+
+/* Grid */
+.section-title h2 {
+    font-size: 24px;
+    margin-bottom: 16px;
+    color: #333;
+}
+
+.restaurant-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 24px;
+}
+
+.loading,
+.no-results {
+    text-align: center;
+    padding: 40px;
+    color: #888;
+    font-size: 16px;
+}

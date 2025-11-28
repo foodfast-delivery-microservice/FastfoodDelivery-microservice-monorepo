@@ -1,0 +1,153 @@
+/* ============================== */
+/* ORDER DETAIL (NEW P-B VERSION) */
+/* ============================== */
+
+/* PAGE WRAPPER */
+.order-detail-page {
+  width: 100%;
+  background-color: #f9f9f9;
+  min-height: 100vh;
+  padding: 40px 20px;
+  font-family: "Segoe UI", sans-serif;
+  display: flex;
+  justify-content: center;
+}
+
+/* MAIN CARD */
+.order-detail-card {
+  width: 100%;
+  max-width: 900px;
+  min-height: fit-content;
+  background: #fff;
+  border-radius: 14px;
+  padding: 30px;
+  border: 1px solid #eee;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+/* ================= HEADER ================= */
+.order-detail-title {
+  font-size: 2rem;
+  font-weight: 800;
+  color: #ff7a00;
+  text-align: center;
+  margin-bottom: 25px;
+  letter-spacing: 1px;
+  border-bottom: 3px solid #ff7a00;
+  padding-bottom: 10px;
+}
+
+/* ================= ORDER INFO ================= */
+.order-info.enhanced {
+  background: #fff3e6;
+  /* cam nhạt */
+  border: 2px solid #ff7a00;
+  padding: 22px;
+  border-radius: 14px;
+  margin-bottom: 25px;
+}
+
+.order-info-left p {
+  font-size: 1.05rem;
+  margin: 10px 0;
+  font-weight: 500;
+  color: #444;
+}
+
+.order-info-left strong {
+  color: #d95c00;
+  font-weight: 700;
+}
+
+/* STATUS TAG */
+.status-tag {
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  margin-left: 6px;
+  text-transform: capitalize;
+}
+
+/* Trạng thái — giữ màu như order history */
+.status-tag.đã-giao {
+  background: #4caf50;
+  color: white;
+}
+
+.status-tag.chờ-xác-nhận {
+  background: #f1c40f;
+  color: #222;
+}
+
+.status-tag.đang-giao {
+  background: #ff9800;
+  color: white;
+}
+
+/* ================= PRODUCT LIST ================= */
+
+.section-title {
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin: 20px 0 10px;
+  color: #ff7a00;
+}
+
+.order-items-list {
+  list-style: none;
+  padding: 20px;
+  margin: 0;
+  border-radius: 12px;
+  background: #fff3e6;
+  /* cam nhạt */
+  border: 1px solid #ffbc80;
+  /* viền cam */
+}
+
+.order-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 0;
+  border-bottom: 1px dashed #ffc999;
+  transition: 0.25s ease;
+}
+
+.order-item:last-child {
+  border-bottom: none;
+}
+
+/* Hiệu ứng hover */
+.order-item:hover {
+  background: #ffe9d6;
+  /* cam highlight nhẹ */
+  border-radius: 8px;
+  padding-left: 8px;
+}
+
+/* Product image */
+.order-item-image {
+  width: 70px;
+  height: 70px;
+  border-radius: 10px;
+  object-fit: cover;
+  margin-right: 15px;
+  border: 1px solid #eee;
+  background: #f8f8f8;
+}
+
+/* ================= TOTAL ================= */
+.order-total-section {
+  margin-top: 30px;
+  text-align: right;
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #e85d04;
+  /* cam đậm */
+}
+
+/* Remove back button completely */
+.back-btn {
+  display: none !important;
+}

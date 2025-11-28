@@ -1,0 +1,105 @@
+/* src/admin/pages/OrdersDetail.css */
+
+.order-detail-page {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 25px 20px;
+    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f0f7f5;
+    min-height: 100vh;
+}
+
+.back-btn {
+    margin-bottom: 20px;
+    background-color: #0b3c23;
+    color: #fff;
+    border: none;
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+}
+
+.back-btn:hover {
+    background-color: #14532d;
+}
+
+.order-card {
+    background-color: #ffffff;
+    border-radius: 14px;
+    padding: 28px 24px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+    border: none;
+}
+
+.order-card h3 {
+    margin-top: 18px;
+    font-size: 18px;
+    font-weight: 600;
+    color: #0b2f1a;
+}
+
+.order-card p {
+    margin: 5px 0;
+    font-size: 15px;
+    color: #4b5d52;
+}
+
+.order-card b {
+    font-weight: 600;
+    color: #0b2f1a;
+}
+
+.order-items-table .ant-table {
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.order-items-table .ant-table-thead>tr>th {
+    background-color: #e3f4ea;
+    font-weight: 600;
+    color: #0b2f1a;
+    text-align: center;
+}
+
+.order-items-table .ant-table-tbody>tr>td {
+    text-align: center;
+    font-size: 14px;
+    color: #333;
+}
+
+.order-items-table .ant-table-tbody>tr:hover {
+    background-color: #daf3df;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.total-section {
+    margin-top: 28px;
+    font-size: 18px;
+    font-weight: 700;
+    text-align: right;
+    color: #0b2f1a;
+    padding-right: 10px;
+}
+
+/* Responsive */
+@media screen and (max-width: 768px) {
+    .order-detail-page {
+        padding: 15px;
+    }
+
+    .order-card {
+        padding: 20px;
+    }
+
+    .order-items-table .ant-table-thead>tr>th,
+    .order-items-table .ant-table-tbody>tr>td {
+        font-size: 12px;
+    }
+
+    .total-section {
+        font-size: 16px;
+    }
+}

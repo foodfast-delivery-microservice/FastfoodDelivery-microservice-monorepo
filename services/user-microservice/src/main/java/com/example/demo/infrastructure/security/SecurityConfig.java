@@ -49,6 +49,16 @@ public class SecurityConfig {
                         // Pattern: /api/v1/users/{id}/validate - chỉ match 1 level path variable
                         .requestMatchers(HttpMethod.GET, "/api/v1/users/*/validate")
                         .hasAnyRole("USER", "ADMIN", "MERCHANT")
+
+                        // Allow getting own profile
+                        .requestMatchers(HttpMethod.GET, "/api/v1/users/me").authenticated()
+
+                        // Allow getting list of restaurants (public)
+                        .requestMatchers(HttpMethod.GET, "/api/v1/users/restaurants").permitAll()
+
+                        // Allow getting specific user/restaurant details (public)
+                        .requestMatchers(HttpMethod.GET, "/api/v1/users/{id:[0-9]+}").permitAll()
+
                         // Các endpoint khác yêu cầu ADMIN
                         .requestMatchers(HttpMethod.POST, "/api/v1/users/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/v1/users/**").hasRole("ADMIN")

@@ -1,0 +1,59 @@
+.admin-drones-page {
+  padding: 20px;
+}
+
+.page-title {
+  font-size: 1.8rem;
+  margin-bottom: 20px;
+  color: #333;
+}
+
+.add-btn {
+  background: #1677ff;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  margin-bottom: 15px;
+}
+
+.add-btn:hover {
+  opacity: 0.85;
+}
+
+.drone-status {
+  font-weight: 600;
+}
+
+.busy {
+  color: #4096ff;
+}
+.idle {
+  color: #52c41a;
+}
+.maintenance {
+  color: #f5222d;
+}
+
+.edit-btn,
+.delete-btn {
+  border: none;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.edit-btn {
+  background: #ffc107;
+  color: #000;
+}
+.delete-btn {
+  background: #ff4d4f;
+  color: white;
+}
+
+/* 🔥 FIX SELECT DROPDOWN BỊ CHE */
+.ant-select-dropdown {
+  z-index: 99999 !important;
+}

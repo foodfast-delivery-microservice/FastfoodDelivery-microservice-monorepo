@@ -1,0 +1,224 @@
+/* ====== TỔNG THỂ TRANG ====== */
+.products-page {
+    padding: 20px;
+    font-family: 'Poppins', sans-serif;
+    background-color: #f5f6fa;
+    min-height: 100vh;
+}
+
+/* ====== Tiêu đề ====== */
+.page-title {
+    font-size: 1.8rem;
+    font-weight: 600;
+    margin-bottom: 25px;
+    color: #1f1f2e;
+}
+
+/* ====== Bộ lọc ====== */
+.filter-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    margin-bottom: 25px;
+    background: #fff;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.filter-item {
+    flex: 1;
+    min-width: 200px;
+    display: flex;
+    flex-direction: column;
+}
+
+.filter-item label {
+    font-weight: 500;
+    margin-bottom: 6px;
+    color: #333;
+}
+
+/* Slider khoảng giá */
+.price-range .ant-slider {
+    margin: 0;
+}
+
+.price-values {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 5px;
+    font-size: 0.9rem;
+    color: #555;
+}
+
+/* ====== Bảng sản phẩm ====== */
+.product-table .ant-table {
+    background: #fff;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.product-table .ant-table-thead>tr>th {
+    background-color: #1f1f2e;
+    color: #fff;
+    font-weight: 600;
+    text-align: center;
+}
+
+.product-table .ant-table-tbody>tr>td {
+    text-align: center;
+    vertical-align: middle;
+}
+
+.product-thumb {
+    width: 60px;
+    height: 60px;
+    object-fit: cover;
+    border-radius: 8px;
+}
+
+/* Nút xem chi tiết */
+.view-detail-btn {
+    padding: 6px 14px;
+    background-color: #ffb84d;
+    color: #1f1f2e;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-weight: 500;
+}
+
+.view-detail-btn:hover {
+    background-color: #e6a63b;
+    transform: translateY(-2px);
+}
+
+/* ====== Modal chi tiết ====== */
+.product-detail-modal .ant-modal-content {
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.product-detail {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.product-image {
+    flex: 1;
+    min-width: 250px;
+    text-align: center;
+}
+
+.product-image img {
+    width: 100%;
+    max-width: 300px;
+    border-radius: 12px;
+    object-fit: cover;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.product-info1 {
+    flex: 2;
+    min-width: 400px;
+}
+
+.product-info .product-name {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-bottom: 12px;
+    color: #1f1f2e;
+}
+
+.product-info p {
+    margin: 6px 0;
+    font-size: 1rem;
+    color: #555;
+}
+
+.product-ingredients ul {
+    margin: 5px 0 0 15px;
+    list-style: disc;
+    color: #555;
+
+}
+
+.product-rating span {
+    color: #ffb84d;
+    font-weight: 600;
+}
+
+/* ====== Responsive ====== */
+@media (max-width: 768px) {
+    .filter-container {
+        flex-direction: column;
+    }
+
+    .product-detail {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .product-info {
+        text-align: center;
+    }
+}
+.add-btn {
+  background-color: #357b9d;
+  color: #fff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: 0.2s;
+}
+
+.add-btn:hover {
+  background-color: #245e7a;
+}
+
+.edit-btn {
+  background-color: #ffb84d;
+  border: none;
+  color: #fff;
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.edit-btn:hover {
+  background-color: #ff9800;
+}
+
+.delete-btn {
+  background-color: #e74c3c;
+  border: none;
+  color: #fff;
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.delete-btn:hover {
+  background-color: #c0392b;
+}
+.price-range {
+  position: relative;
+  margin-top: 4px;
+}
+
+.price-values {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 4px;
+  font-size: 13px;
+  color: #666;
+  font-weight: 500;
+}

@@ -1,0 +1,181 @@
+:root {
+    --bg-color: #f9fafb;
+    --card-bg: #ffffff;
+    --text-color: #1f2937;
+    --border-color: #e5e7eb;
+    --primary-color: #3b82f6;
+    --tag-green: #22c55e;
+    --tag-orange: #f59e0b;
+    --tag-red: #ef4444;
+}
+
+body.dark-mode {
+    --bg-color: #0f172a;
+    --card-bg: #1e293b;
+    --text-color: #e2e8f0;
+    --border-color: #334155;
+    --primary-color: #38bdf8;
+    --tag-green: #4ade80;
+    --tag-orange: #fbbf24;
+    --tag-red: #f87171;
+}
+
+/* ====== GIAO DIỆN CHUNG ====== */
+.orders-page {
+    background: var(--bg-color);
+    color: var(--text-color);
+    min-height: 100vh;
+    padding: 40px 60px;
+    font-family: "Poppins", sans-serif;
+    transition: background 0.4s ease, color 0.4s ease;
+}
+
+/* ====== HEADER ====== */
+.orders-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+}
+
+.orders-header h1 {
+    color: var(--primary-color);
+    font-size: 1.9rem;
+    text-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
+}
+
+.theme-switch {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1.2rem;
+}
+
+/* ====== TÌM KIẾM ====== */
+.ant-input-affix-wrapper {
+    background: var(--card-bg) !important;
+    border: 1px solid var(--border-color) !important;
+    color: var(--text-color) !important;
+    border-radius: 10px !important;
+    transition: all 0.3s ease;
+}
+
+.ant-input-affix-wrapper:hover,
+.ant-input-affix-wrapper-focused {
+    border-color: var(--primary-color) !important;
+    box-shadow: 0 0 6px var(--primary-color);
+}
+
+/* ====== BẢNG ====== */
+.orders-table .ant-table {
+    background: var(--card-bg) !important;
+    border-radius: 12px !important;
+    overflow: hidden;
+    color: var(--text-color);
+}
+
+.orders-table .ant-table-thead>tr>th {
+    background: var(--border-color) !important;
+    color: var(--text-color) !important;
+    text-align: center;
+    font-weight: 600;
+}
+
+.orders-table .ant-table-tbody>tr>td {
+    background: var(--card-bg) !important;
+    text-align: center;
+    transition: background 0.3s ease;
+    border-bottom: 1px solid var(--border-color) !important;
+}
+
+.orders-table .ant-table-tbody>tr:hover>td {
+    background: rgba(56, 189, 248, 0.08) !important;
+    cursor: pointer;
+}
+
+/* ====== TAG ====== */
+.ant-tag {
+    font-weight: 600;
+    border-radius: 8px;
+    padding: 3px 10px;
+}
+
+.ant-tag-green {
+    background: rgba(34, 197, 94, 0.15);
+    color: var(--tag-green);
+    border: 1px solid var(--tag-green);
+}
+
+.ant-tag-orange {
+    background: rgba(251, 191, 36, 0.15);
+    color: var(--tag-orange);
+    border: 1px solid var(--tag-orange);
+}
+
+.ant-tag-volcano {
+    background: rgba(239, 68, 68, 0.15);
+    color: var(--tag-red);
+    border: 1px solid var(--tag-red);
+}
+/* ====== FILTER BAR (Style giống Products) ====== */
+.filter-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    margin-bottom: 25px;
+    background: var(--card-bg);
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    transition: background 0.3s ease, color 0.3s ease;
+}
+
+body.dark-mode .filter-container {
+    box-shadow: 0 4px 12px rgba(255, 255, 255, 0.06);
+}
+
+.filter-item {
+    flex: 1;
+    min-width: 220px;
+    display: flex;
+    flex-direction: column;
+}
+
+.filter-item label {
+    font-weight: 600;
+    margin-bottom: 6px;
+    color: var(--text-color);
+}
+
+/* Ô input + select */
+
+.filter-container .ant-input-affix-wrapper,
+.filter-container .ant-select-selector {
+    background: var(--card-bg) !important;
+    border: 1px solid var(--border-color) !important;
+    color: var(--text-color) !important;
+    border-radius: 10px !important;
+    height: 38px !important;
+    box-shadow: none !important;
+    transition: all 0.3s ease;
+}
+
+/* Hover hiệu ứng */
+.filter-container .ant-input:hover,
+.filter-container .ant-input-affix-wrapper:hover,
+.filter-container .ant-select-selector:hover {
+    border-color: var(--primary-color) !important;
+    box-shadow: 0 0 6px var(--primary-color);
+}
+
+/* Arrow của Select */
+.filter-container .ant-select-arrow {
+    color: var(--text-color) !important;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .filter-container {
+        flex-direction: column;
+    }
+}

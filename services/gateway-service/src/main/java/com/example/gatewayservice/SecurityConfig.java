@@ -33,6 +33,8 @@ public class SecurityConfig {
                 http
                                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                                 .csrf(AbstractHttpConfigurer::disable)
+                                .sessionManagement(session -> session.sessionCreationPolicy(
+                                                org.springframework.security.config.http.SessionCreationPolicy.STATELESS))
                                 .authorizeHttpRequests(auth -> auth
                                                 // Public endpoints
                                                 .requestMatchers("/api/v1/auth/**").permitAll()
@@ -43,8 +45,19 @@ public class SecurityConfig {
                                                 .requestMatchers(HttpMethod.GET, "/api/v1/users/*/validate")
                                                 .hasAnyRole("USER", "ADMIN", "MERCHANT")
 
+                                                // Allow getting own profile
+                                                .requestMatchers(HttpMethod.GET, "/api/v1/users/me").authenticated()
+
+                                                // Allow getting list of restaurants (public)
+                                                .requestMatchers(HttpMethod.GET, "/api/v1/users/restaurants")
+                                                .permitAll()
+
                                                 // PATCH endpoints - only need authentication (authorization in UseCase)
                                                 .requestMatchers(HttpMethod.PATCH, "/api/v1/users/**").authenticated()
+
+                                                // Allow getting specific user/restaurant details (public)
+                                                .requestMatchers(HttpMethod.GET, "/api/v1/users/{id:[0-9]+}")
+                                                .permitAll()
 
                                                 // Other USER endpoints require ADMIN
                                                 .requestMatchers(HttpMethod.POST, "/api/v1/users/**").hasRole("ADMIN")

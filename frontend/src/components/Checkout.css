@@ -1,0 +1,447 @@
+/* ===== TỔNG THỂ TRANG CHECKOUT ===== */
+.checkout-page {
+  width: 100%;
+  background-color: #f9f9f9;
+  min-height: 100vh;
+}
+
+/* ===== HEADER ===== */
+.checkout-header {
+  background-color: #fff;
+  padding: 20px 40px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  border-bottom: 1px solid #eee;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.checkout-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: #333;
+}
+
+.checkout-back-btn {
+  background: #f0f0f0;
+  border: 1px solid #ddd;
+  color: #555;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.checkout-back-btn:hover {
+  background: #e5e5e5;
+}
+
+/* ===== BỐ CỤC CHÍNH (GRID) ===== */
+.checkout-container {
+  display: grid;
+  /* ✅ YÊU CẦU: Cột trái (3 phần) nhỏ hơn, Cột phải (2 phần) to ra */
+  /* Tỉ lệ cũ có thể là 2fr 1fr, giờ đổi thành 3fr 2fr */
+  grid-template-columns: 3fr 2fr;
+  gap: 30px;
+  max-width: 1600px;
+  margin: 30px auto;
+  padding: 0 40px;
+}
+
+/* ===== CỘT TRÁI (INFO) ===== */
+.checkout-info {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.checkout-info-block {
+  background: #fff;
+  border-radius: 10px;
+  padding: 25px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.checkout-info-block h3 {
+  margin-top: 0;
+  margin-bottom: 10px;
+  color: #555;
+  font-size: 1rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.store-name {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #333;
+  margin: 0;
+}
+
+.store-address {
+  font-size: 1rem;
+  color: #666;
+  margin: 5px 0 0 0;
+}
+
+.address-input {
+  width: 100%;
+  padding: 12px 15px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-size: 1rem;
+}
+
+/* ===== CỘT PHẢI (SUMMARY) ===== */
+.checkout-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+
+/* Card tóm tắt đơn hàng */
+.summary-card {
+  background: #fff;
+  border-radius: 10px;
+  padding: 25px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  /* Dính lại khi cuộn */
+  position: sticky;
+  top: 30px;
+}
+
+.summary-card h3 {
+  margin-top: 0;
+  font-size: 1.2rem;
+}
+
+.summary-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0;
+  font-size: 0.95rem;
+  color: #555;
+  border-bottom: 1px dashed #eee;
+}
+
+.summary-line {
+  display: flex;
+  justify-content: space-between;
+  padding-top: 15px;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.summary-line.total {
+  font-size: 1.3rem;
+  color: #e85d04;
+  /* Màu cam đậm */
+}
+
+.summary-line.total strong {
+  font-size: 1.4rem;
+}
+
+
+/* ✅ (MỚI) Card thông tin khách hàng */
+.customer-info-card {
+  background: #fff;
+  border-radius: 10px;
+  padding: 25px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.customer-info-card h2 {
+  margin-top: 0;
+  font-size: 1.2rem;
+}
+
+/* ===== FORM STYLING ===== */
+.checkout-form .form-group-inline {
+  display: flex;
+  gap: 20px;
+}
+
+.checkout-form .form-group-inline .form-group {
+  flex: 1;
+}
+
+.checkout-form .form-group {
+  margin-bottom: 15px;
+}
+
+.checkout-form label {
+  display: block;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: #444;
+  margin-bottom: 5px;
+}
+
+.checkout-form input[type="text"],
+.checkout-form input[type="tel"],
+.checkout-form input[type="email"] {
+  width: 100%;
+  padding: 12px 15px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-size: 1rem;
+}
+
+/* Payment Section */
+.payment-section {
+  margin-top: 25px;
+  border-top: 1px solid #eee;
+  padding-top: 20px;
+}
+
+.payment-section h2 {
+  font-size: 1.2rem;
+  margin-top: 0;
+}
+
+.payment-option {
+  display: flex;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background: #fdfdfd;
+}
+
+.payment-option input[type="radio"] {
+  margin-right: 10px;
+  width: 18px;
+  height: 18px;
+}
+
+.payment-option label {
+  margin: 0;
+  font-weight: 500;
+}
+
+/* Nút đặt hàng */
+.checkout-btn-primary {
+  display: block;
+  width: 100%;
+  margin-top: 25px;
+  background: linear-gradient(90deg, #ff7a00, #ff5400);
+  color: #fff;
+  border: none;
+  padding: 15px 18px;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 1.1rem;
+  cursor: pointer;
+  box-shadow: 0 6px 12px rgba(255, 122, 0, 0.3);
+  transition: all 0.3s ease;
+}
+
+.checkout-btn-primary:hover {
+  background: linear-gradient(90deg, #ff5400, #ff7a00);
+  transform: translateY(-2px);
+}
+
+.checkout-btn-primary:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* ===================== */
+/* ✅ POPUP QR THANH TOÁN */
+/* ===================== */
+.qr-popup {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 999;
+  animation: fadeIn 0.25s ease-in-out;
+}
+
+.qr-popup-content {
+  width: 380px;
+  background: #fff;
+  padding: 25px;
+  border-radius: 14px;
+  text-align: center;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  animation: popupZoom 0.25s ease-in-out;
+}
+
+.qr-popup-content h2 {
+  margin-top: 0;
+  font-size: 1.3rem;
+  color: #333;
+  font-weight: 700;
+}
+
+.qr-image {
+  width: 230px;
+  height: 230px;
+  margin: 15px auto;
+  border-radius: 8px;
+  border: 2px solid #eee;
+  padding: 6px;
+  background: #fff;
+}
+
+.qr-note {
+  font-size: 0.95rem;
+  color: #444;
+  margin-top: 8px;
+}
+
+.qr-buttons {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 18px;
+  gap: 12px;
+}
+
+.qr-buttons button {
+  flex: 1;
+  padding: 12px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  border: none;
+  font-size: 0.95rem;
+  transition: 0.2s;
+}
+
+.btn-cancel {
+  background: #ddd;
+  color: #333;
+}
+
+.btn-cancel:hover {
+  background: #cfcfcf;
+}
+
+.btn-confirm {
+  background: #28a745;
+  color: #fff;
+}
+
+.btn-confirm:hover {
+  background: #1e8e3b;
+}
+
+/* ====================== */
+/* 🎉 POPUP SUCCESS ĐẶT HÀNG */
+/* ====================== */
+.success-popup {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  animation: fadeIn 0.25s ease-in-out;
+}
+
+.success-popup-content {
+  width: 380px;
+  background: #fff;
+  padding: 25px;
+  border-radius: 14px;
+  text-align: center;
+  animation: popupZoom 0.25s ease-in-out;
+}
+
+.success-popup-content h2 {
+  margin-top: 0;
+  font-size: 1.4rem;
+  color: #28a745;
+  font-weight: 700;
+}
+
+.success-popup-content p {
+  font-size: 1rem;
+  color: #444;
+  margin-top: 10px;
+}
+
+/* ====================== */
+/* ✨ ANIMATION */
+/* ====================== */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes popupZoom {
+  from {
+    transform: scale(0.75);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+/* ===== PHƯƠNG THỨC THANH TOÁN (CHỈ CÒN 1 MỤC: QR) ===== */
+.payment-section {
+  margin-top: 25px;
+  border-top: 1px solid #eee;
+  padding-top: 20px;
+}
+
+.payment-section h2 {
+  font-size: 1.2rem;
+  margin-top: 0;
+  margin-bottom: 15px;
+  color: #333;
+  font-weight: 700;
+}
+
+.payment-option {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
+  padding: 15px 18px;
+  border: 2px solid #ff7a00;
+  border-radius: 10px;
+  background: #fff8f3;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.payment-option:hover {
+  background: #fff0e6;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(255, 122, 0, 0.25);
+}
+
+.payment-option input[type="radio"] {
+  accent-color: #ff7a00;
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+}
+
+.payment-option label {
+  font-size: 1rem;
+  color: #333;
+  font-weight: 600;
+}
+
+.payment-option img {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+}
+
