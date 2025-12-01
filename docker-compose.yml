@@ -131,6 +131,25 @@ services:
       rabbitmq-broker:
         condition: service_started
 
+  drone-service:
+    build: ./services/Drone-microservice
+    container_name: drone-service
+    ports:
+      - "8085:8085"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-db:3306/droneservice
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: 1234
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://registry-service:8761/eureka/
+      SPRING_RABBITMQ_HOST: rabbitmq-broker
+    depends_on:
+      registry-service:
+        condition: service_started
+      mysql-db:
+        condition: service_healthy
+      rabbitmq-broker:
+        condition: service_started
+
   # 9. Frontend Application
   frontend:
     build: ./frontend

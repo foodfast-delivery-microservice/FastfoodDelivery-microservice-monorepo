@@ -98,6 +98,22 @@ public class SecurityConfig {
                                                 .hasAnyRole("MERCHANT", "ADMIN")
                                                 .requestMatchers("/api/v1/payments/**").authenticated()
 
+                                                .requestMatchers("/actuator/**").permitAll()
+
+                                                // Admin-only endpoints (Drone management)
+                                                .requestMatchers(HttpMethod.POST, "/api/drones").hasRole("ADMIN")
+                                                .requestMatchers(HttpMethod.PUT, "/api/drones/**").hasRole("ADMIN")
+                                                .requestMatchers(HttpMethod.DELETE, "/api/drones/**").hasRole("ADMIN")
+
+                                                // Admin can view all drones and missions
+                                                .requestMatchers(HttpMethod.GET, "/api/drones/**")
+                                                .hasAnyRole("ADMIN", "SERVICE")
+                                                .requestMatchers(HttpMethod.GET, "/api/missions")
+                                                .hasAnyRole("ADMIN", "SERVICE")
+
+                                                // Users can track their own orders
+                                                .requestMatchers(HttpMethod.GET, "/api/missions/order/*/tracking")
+                                                .authenticated()
                                                 .anyRequest().authenticated())
                                 .addFilterBefore(publicEndpointFilter, UsernamePasswordAuthenticationFilter.class)
                                 .addFilterAfter(jwtTokenForwardFilter, UsernamePasswordAuthenticationFilter.class)
