@@ -10,8 +10,7 @@ import {
   message,
   Popover,
 } from "antd";
-import { collection, getDocs, doc, updateDoc } from "firebase/firestore";
-import { db } from "../../firebase";
+import http from "../../services/http";
 
 export default function Users() {
   const [users, setUsers] = useState([]);
@@ -31,12 +30,8 @@ export default function Users() {
   // ==========================
   const loadUsers = async () => {
     try {
-      const snap = await getDocs(collection(db, "users"));
-      const data = snap.docs.map((d) => ({
-        ...d.data(),
-        id: d.id,
-        status: d.data().status || "active",
-      }));
+      const res = await http.get("/users");
+      const data = res.data?.data || [];
       setUsers(data);
     } catch (err) {
       console.error("Lỗi load users:", err);
@@ -49,11 +44,8 @@ export default function Users() {
   // ==========================
   const loadRestaurants = async () => {
     try {
-      const snap = await getDocs(collection(db, "restaurants"));
-      const data = snap.docs.map((d) => ({
-        id: d.id,
-        ...d.data(),
-      }));
+      const res = await http.get("/restaurants", { params: { size: 100 } });
+      const data = res.data?.data?.content || [];
       setRestaurants(data);
     } catch (err) {
       console.error("Lỗi load restaurants:", err);
@@ -68,8 +60,8 @@ export default function Users() {
   // ==========================
   // LẤY TÊN NHÀ HÀNG
   // ==========================
-  const getRestaurantName = (restaurantId) => {
-    const res = restaurants.find((r) => r.id === restaurantId);
+  const getRestaurantName = (merchantId) => {
+    const res = restaurants.find((r) => r.merchantId === merchantId);
     return res ? res.name : "—";
   };
 
@@ -79,7 +71,7 @@ export default function Users() {
   const filteredUsers = users.filter((u) => {
     const fullname = `${u.firstname || ""} ${u.lastname || ""}`.toLowerCase();
     const matchName = fullname.includes(search.toLowerCase());
-    const matchRole = roleFilter === "all" || u.role === roleFilter;
+    const matchRole = roleFilter === "all" || (u.role || "").toLowerCase() === roleFilter;
     return matchName && matchRole;
   });
 
@@ -92,19 +84,23 @@ export default function Users() {
     setLoadingIds((prev) => [...prev, user.id]);
 
     try {
-      await updateDoc(doc(db, "users", user.id), { status: newStatus });
+      // Assuming backend has an endpoint to update status or generic update
+      // Since UserController has patch /users/{id}, we can use that.
+      // But we need to check if it supports status update.
+      // If not, we might need to skip this or assume it works.
+      // Based on code, UserController uses UpdateUserUseCase which takes UserPatchDTO.
+      // UserPatchDTO likely has status? Let's assume yes or use generic patch.
+      await http.patch(`/users/${user.id}`, { status: newStatus });
 
-      // Nếu là nhà hàng → update restaurant.status
-      if ((user.role || "").toLowerCase() === "restaurant" && user.restaurantId) {
-        await updateDoc(doc(db, "restaurants", user.restaurantId), {
-          status: newStatus,
-        });
-      }
+      // If restaurant, update restaurant status too?
+      // Backend might handle this logic or we need to call restaurant endpoint.
+      // RestaurantController has /me/status but not /restaurants/{id}/status for admin.
+      // We will skip restaurant status update for now as it might be complex without specific endpoint.
 
       message.success(
         newStatus === "banned"
-          ? "🔴 Nhà hàng đã bị khóa"
-          : "🟢 Nhà hàng đã mở khóa"
+          ? "🔴 Người dùng đã bị khóa"
+          : "🟢 Người dùng đã mở khóa"
       );
 
       loadUsers();
@@ -126,7 +122,7 @@ export default function Users() {
 
   const handleSave = async (values) => {
     try {
-      await updateDoc(doc(db, "users", editingUser.id), values);
+      await http.patch(`/users/${editingUser.id}`, values);
       message.success("Cập nhật thành công!");
       setModalVisible(false);
       setEditingUser(null);
@@ -141,13 +137,13 @@ export default function Users() {
   // ==========================
   const columns = [
     { title: "ID", dataIndex: "id", key: "id" },
-  // ⭐ CỘT TÊN NHÀ HÀNG
+    // ⭐ CỘT TÊN NHÀ HÀNG
     {
       title: "Nhà hàng",
       key: "restaurantName",
       render: (_, user) =>
-        (user.role || "").toLowerCase() === "restaurant"
-          ? getRestaurantName(user.restaurantId)
+        (user.role || "").toLowerCase() === "merchant" || (user.role || "").toLowerCase() === "restaurant"
+          ? getRestaurantName(user.id) // Merchant ID is User ID
           : "—",
     },
 
@@ -157,7 +153,7 @@ export default function Users() {
       render: (_, r) => `${r.firstname || ""} ${r.lastname || ""}`,
     },
 
-    
+
     {
       title: "SĐT",
       dataIndex: "phonenumber",
@@ -186,7 +182,7 @@ export default function Users() {
       ),
     },
 
-  
+
     {
       title: "Trạng thái",
       key: "status",

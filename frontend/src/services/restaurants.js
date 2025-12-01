@@ -1,55 +1,57 @@
 import http from './http'
-import { fetchProducts } from './products'
 
-// Helper to enhance restaurant data (add fallback image if missing)
-const enhanceRestaurant = (restaurant) => {
-  return {
-    ...restaurant,
-    // Use restaurantImage if available, otherwise avatar, otherwise fallback
-    img: restaurant.restaurantImage || restaurant.avatar || '/Images/Logo.png',
-    name: restaurant.restaurantName || restaurant.fullName || restaurant.username || 'Nhà hàng',
-    address: restaurant.restaurantAddress || restaurant.address || 'Chưa cập nhật địa chỉ',
-    openingHours: restaurant.openingHours || '8:00 - 22:00',
-    rating: 4.5, // Mock rating for now
-    distance: '2.5km', // Mock distance
-    deliveryTime: '15-20 min', // Mock time
+// Helper để unwrap ApiResponse
+const unwrapData = (responseData) => {
+  // Nếu là ApiResponse wrapper: { status, message, data: T }
+  if (responseData?.data !== undefined && responseData?.status !== undefined) {
+    return responseData.data
   }
+  // Nếu trả về trực tiếp
+  return responseData
 }
 
-export const fetchRestaurants = async () => {
-  try {
-    const { data } = await http.get('/users/restaurants')
-    // API returns ApiResponse<List<CreateUserResponse>>
-    // data.data is the list
-    const list = data?.data || data || []
-    return list.map(enhanceRestaurant)
-  } catch (error) {
-    console.error('Error fetching restaurants:', error)
-    return []
+export const fetchRestaurants = async (params = {}) => {
+  const { data } = await http.get('/restaurants', { params })
+  const unwrapped = unwrapData(data)
+  // Backend trả về Page<RestaurantResponse>
+  if (Array.isArray(unwrapped)) {
+    return unwrapped
   }
+  // Nếu là Page object
+  return unwrapped?.content || []
 }
 
 export const fetchRestaurantById = async (id) => {
-  try {
-    const { data } = await http.get(`/users/${id}`)
-    // API returns ApiResponse<CreateUserResponse>
-    const restaurant = data?.data || data
-    return enhanceRestaurant(restaurant)
-  } catch (error) {
-    console.error('Error fetching restaurant detail:', error)
-    return null
+  const { data } = await http.get(`/restaurants/${id}`)
+  return unwrapData(data)
+}
+
+// Lấy restaurant theo merchantId (dùng cho trang chi tiết món)
+export const fetchRestaurantByMerchantId = async (merchantId) => {
+  if (!merchantId) return null
+  const { data } = await http.get(`/restaurants/merchants/${merchantId}`)
+  return unwrapData(data)
+}
+
+export const fetchRestaurantMenu = async (restaurantId, params = {}) => {
+  // Lấy menu từ products service với merchantId
+  // Dùng endpoint public /products/merchants/{merchantId} để guest có thể xem
+  
+  // Lấy merchantId từ restaurant
+  const restaurant = await fetchRestaurantById(restaurantId)
+  const merchantId = restaurant?.merchantId
+  
+  if (!merchantId) {
+    console.warn(`Restaurant ${restaurantId} không có merchantId`)
+    return []
   }
-}
-
-export const fetchRestaurantMenu = async (merchantId) => {
-  // Reuse product service to fetch products for this merchant
-  // Backend must support filtering by merchantId in GET /products
-  // If not, we might need to filter client-side or add backend support
-  return await fetchProducts({ merchantId })
-}
-
-export const listRestaurants = fetchRestaurants
-
-export const appendLocalRestaurant = async (restaurant) => {
-  console.warn('appendLocalRestaurant: Not implemented via API yet', restaurant)
+  
+  // Dùng endpoint public mới: /products/merchants/{merchantId}
+  // Endpoint này chỉ trả về active products (phù hợp cho guest)
+  const { data } = await http.get(`/products/merchants/${merchantId}`, { params })
+  const unwrapped = unwrapData(data)
+  if (Array.isArray(unwrapped)) {
+    return unwrapped
+  }
+  return unwrapped?.content || []
 }

@@ -9,8 +9,9 @@ export default function RestaurantLayout() {
 
   console.log("RestaurantLayout currentUser:", currentUser);
 
-  // ✅ Chặn nếu không phải restaurant
-  if (!currentUser || currentUser.role !== "restaurant") {
+  // ✅ Chặn nếu không phải MERCHANT
+  const role = (currentUser?.role || "").toLowerCase();
+  if (!currentUser || role !== "merchant") {
     return <Navigate to="/login" replace />;
   }
 

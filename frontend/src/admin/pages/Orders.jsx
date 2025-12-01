@@ -2,8 +2,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { Input, Table, Tag, Select } from "antd";
 import { useNavigate } from "react-router-dom";
-import { collection, getDocs } from "firebase/firestore";
-import { db } from "../../firebase";
+import http from "../../services/http";
 import "./Orders.css";
 
 export default function OrdersList() {
@@ -19,19 +18,25 @@ export default function OrdersList() {
   useEffect(() => {
     async function fetchOrders() {
       try {
-        const querySnapshot = await getDocs(collection(db, "orders"));
-        const data = querySnapshot.docs.map((doc) => {
-          const item = doc.data();
-          return {
-            id: doc.id,
-            ...item,
-            createdAt: item.createdAt?.seconds
-              ? new Date(item.createdAt.seconds * 1000)
-              : null,
-          };
-        });
-        setOrders(data);
-        console.log("✅ Firestore loaded orders:", data);
+        const res = await http.get("/orders", { params: { size: 100 } });
+        const data = res.data?.data?.content || [];
+
+        // Map backend data to frontend structure if needed
+        const mappedData = data.map(item => ({
+          ...item,
+          // Backend returns LocalDateTime array [yyyy, MM, dd, HH, mm, ss]
+          createdAt: Array.isArray(item.createdAt)
+            ? new Date(item.createdAt[0], item.createdAt[1] - 1, item.createdAt[2], item.createdAt[3], item.createdAt[4], item.createdAt[5])
+            : new Date(item.createdAt),
+          total: item.grandTotal, // Map grandTotal to total
+          restaurantName: "Loading...", // We might need to fetch restaurant name or it might be in response? 
+          // OrderListResponse doesn't have restaurantName, only merchantId.
+          // We might need to fetch restaurants to map names or just show ID.
+          // For now let's try to fetch restaurants separately or just show ID.
+        }));
+
+        setOrders(mappedData);
+        console.log("✅ API loaded orders:", mappedData);
       } catch (error) {
         console.error("❌ Lỗi tải đơn hàng:", error);
       }
@@ -39,13 +44,38 @@ export default function OrdersList() {
     fetchOrders();
   }, []);
 
+  // Fetch restaurants to map names
+  const [restaurants, setRestaurants] = useState([]);
+  useEffect(() => {
+    async function fetchRestaurants() {
+      try {
+        const res = await http.get("/restaurants", { params: { size: 100 } });
+        setRestaurants(res.data?.data?.content || []);
+      } catch (e) {
+        console.error("Failed to fetch restaurants", e);
+      }
+    }
+    fetchRestaurants();
+  }, []);
+
+  const getRestaurantName = (merchantId) => {
+    const r = restaurants.find(res => res.merchantId === merchantId);
+    return r ? r.name : `Merchant #${merchantId}`;
+  }
+
+
   // 🧠 Filter + sort Orders
   const filteredOrders = useMemo(() => {
     const now = new Date();
     return orders
+      .map(o => ({
+        ...o,
+        restaurantName: getRestaurantName(o.merchantId)
+      }))
       .filter((o) => {
         const matchSearch =
-          o.customer?.name?.toLowerCase().includes(search.toLowerCase()) ||
+          o.receiverName?.toLowerCase().includes(search.toLowerCase()) ||
+          o.orderCode?.toLowerCase().includes(search.toLowerCase()) ||
           o.id.toString().includes(search);
 
         const matchStatus =
@@ -55,8 +85,7 @@ export default function OrdersList() {
 
         const matchRestaurant =
           restaurantFilter === "all" ||
-          o.restaurantName === restaurantFilter ||
-          o.restaurant?.name === restaurantFilter;
+          o.restaurantName === restaurantFilter;
 
         // Filter by time
         let matchTime = true;
@@ -73,27 +102,27 @@ export default function OrdersList() {
         (a, b) =>
           (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0)
       );
-  }, [orders, search, statusFilter, timeFilter, restaurantFilter]);
+  }, [orders, search, statusFilter, timeFilter, restaurantFilter, restaurants]);
 
   // ===== Table Columns =====
   const columns = [
     {
       title: "Mã ĐH",
-      dataIndex: "id",
-      key: "id",
+      dataIndex: "orderCode", // Use orderCode from backend
+      key: "orderCode",
       render: (text, record) => (
         <span
           style={{ cursor: "pointer" }}
           onClick={() => navigate(`/admin/orders/${record.id}`)}
         >
-          {text}
+          {text || record.id}
         </span>
       ),
     },
     {
       title: "Khách hàng",
-      dataIndex: ["customer", "name"],
-      key: "customer",
+      dataIndex: "receiverName", // Use receiverName
+      key: "receiverName",
       render: (text, record) => (
         <span
           style={{ cursor: "pointer" }}
@@ -105,8 +134,8 @@ export default function OrdersList() {
     },
     {
       title: "SĐT",
-      dataIndex: ["customer", "phone"],
-      key: "phone",
+      dataIndex: "receiverPhone", // Use receiverPhone
+      key: "receiverPhone",
       render: (text, record) => (
         <span
           style={{ cursor: "pointer" }}
@@ -125,7 +154,7 @@ export default function OrdersList() {
           style={{ cursor: "pointer" }}
           onClick={() => navigate(`/admin/orders/${record.id}`)}
         >
-          {record.restaurantName || record.restaurant?.name || "—"}
+          {record.restaurantName || "—"}
         </span>
       ),
     },
@@ -162,10 +191,12 @@ export default function OrdersList() {
       render: (status = "", record) => {
         const s = status.toLowerCase();
         let color = "blue";
-        if (s.includes("đã giao")) color = "green";
-        else if (s.includes("đang xử lý") || s.includes("chờ xác nhận"))
+        if (s.includes("delivered") || s.includes("confirmed")) color = "green";
+        else if (s.includes("processing") || s.includes("pending"))
           color = "orange";
-        else if (s.includes("đang giao")) color = "geekblue";
+        else if (s.includes("delivering")) color = "geekblue";
+        else if (s.includes("cancelled")) color = "red";
+
         return (
           <Tag
             color={color}
@@ -204,10 +235,11 @@ export default function OrdersList() {
             onChange={setStatusFilter}
             options={[
               { label: "Tất cả", value: "all" },
-              { label: "Chờ xác nhận", value: "chờ xác nhận" },
-              { label: "Đang xử lý", value: "đang xử lý" },
-              { label: "Đang giao", value: "đang giao" },
-              { label: "Đã giao", value: "đã giao" },
+              { label: "Chờ xác nhận", value: "pending" },
+              { label: "Đang xử lý", value: "processing" },
+              { label: "Đang giao", value: "delivering" },
+              { label: "Đã giao", value: "delivered" },
+              { label: "Đã hủy", value: "cancelled" },
             ]}
           />
         </div>
@@ -235,7 +267,7 @@ export default function OrdersList() {
               { label: "Tất cả", value: "all" },
               ...Array.from(
                 new Set(
-                  orders.map((o) => o.restaurantName || o.restaurant?.name)
+                  orders.map((o) => getRestaurantName(o.merchantId))
                 )
               )
                 .filter(Boolean)

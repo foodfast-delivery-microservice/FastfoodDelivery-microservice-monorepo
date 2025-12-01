@@ -73,9 +73,27 @@ function RestaurantRoute({ children }) {
 
   if (loading) return <p>⏳ Đang xác thực tài khoản...</p>;
   const role = (currentUser?.role || "").toLowerCase();
-  if (!currentUser || (role !== "restaurant" && role !== "merchant")) {
+  // ✅ Chỉ cho phép MERCHANT truy cập khu vực dashboard này
+  if (!currentUser || role !== "merchant") {
     return <Navigate to="/login" replace />;
   }
+  return children;
+}
+
+/**
+ * Protected Route: Yêu cầu login để truy cập
+ * Dùng cho: Checkout, Order History, Profile
+ */
+function ProtectedRoute({ children }) {
+  const { currentUser, loading } = useAuth();
+
+  if (loading) return <p>⏳ Đang xác thực...</p>;
+  
+  if (!currentUser) {
+    // Redirect đến login và lưu đường dẫn hiện tại để quay lại sau khi login
+    return <Navigate to="/login" replace state={{ from: window.location.pathname }} />;
+  }
+  
   return children;
 }
 
@@ -169,18 +187,43 @@ function App() {
               <UserLayout cartCount={cart.reduce((s, i) => s + i.quantity, 0)} />
             }
           >
-            <Route path="/menu/:categoryKey" element={<ProductList />} />
-            <Route path="profile" element={<Profile />} />
+            {/* Public routes - Guest có thể xem */}
+            <Route path="/menu/:categoryKey" element={<ProductList onAdd={handleAdd} />} />
             <Route index element={<RestaurantList />} />
             <Route path="login" element={<Login />} />
             <Route path="register" element={<Register />} />
             <Route path="product-detail/:id" element={<ProductDetail onAdd={handleAdd} />} />
-            <Route path="cart" element={<Cart cart={cart} setCart={setCart} />} />
-            <Route path="checkout" element={<Checkout cart={cart} setCart={setCart} />} />
-            <Route path="order-history" element={<OrderHistory />} />
-            <Route path="order/:id" element={<OrderDetail />} />
-            <Route path="waiting/:orderId" element={<WaitingForConfirmation />} />
             <Route path="restaurant/:id" element={<RestaurantDetail onAdd={handleAdd} />} />
+            
+            {/* Cart - Guest có thể xem và thêm sản phẩm, nhưng cần login để checkout */}
+            <Route path="cart" element={<Cart cart={cart} setCart={setCart} />} />
+            
+            {/* Protected routes - Yêu cầu login */}
+            <Route path="checkout" element={
+              <ProtectedRoute>
+                <Checkout cart={cart} setCart={setCart} />
+              </ProtectedRoute>
+            } />
+            <Route path="profile" element={
+              <ProtectedRoute>
+                <Profile />
+              </ProtectedRoute>
+            } />
+            <Route path="order-history" element={
+              <ProtectedRoute>
+                <OrderHistory />
+              </ProtectedRoute>
+            } />
+            <Route path="order/:id" element={
+              <ProtectedRoute>
+                <OrderDetail />
+              </ProtectedRoute>
+            } />
+            <Route path="waiting/:orderId" element={
+              <ProtectedRoute>
+                <WaitingForConfirmation />
+              </ProtectedRoute>
+            } />
           </Route>
 
           {/* ADMIN */}
@@ -205,6 +248,21 @@ function App() {
           {/* RESTAURANT ADMIN */}
           <Route
             path="/restaurantadmin"
+            element={
+              <RestaurantRoute>
+                <RestaurantLayout />
+              </RestaurantRoute>
+            }
+          >
+            <Route index element={<RestaurantDashboard />} />
+            <Route path="products" element={<RestaurantProducts />} />
+            <Route path="order/:id" element={<RestaurantOrderDetail />} />
+            <Route path="drones" element={<DroneList />} />
+          </Route>
+
+          {/* MERCHANT DASHBOARD (alias, dùng chung layout với restaurantadmin) */}
+          <Route
+            path="/merchant"
             element={
               <RestaurantRoute>
                 <RestaurantLayout />

@@ -10,9 +10,14 @@ function Product({ product, onAdd }) {
         id,
         name = "Sản phẩm chưa đặt tên",
         price = 0,
-        img = "https://via.placeholder.com/150",
-        restaurant = "Không rõ nhà hàng",
+        // Dùng ảnh local để tránh lỗi mạng khi placeholder.com không load
+        img = "/Images/Logo.png",
+        restaurant,
+        restaurantName,
     } = product;
+
+    // Ưu tiên dùng restaurant -> restaurantName -> fallback
+    const displayRestaurant = restaurant || restaurantName || "Không rõ nhà hàng";
 
     const displayPrice =
         typeof price === "number"
@@ -26,13 +31,24 @@ function Product({ product, onAdd }) {
                 <div className="prd-info">
                     <h3 className="prd-name">{name}</h3>
                     <p className="prd-price">{displayPrice} ₫</p>
-                    <p className="prd-restaurant">🏠 {restaurant}</p>
+                    <p className="prd-restaurant">🏠 {displayRestaurant}</p>
                 </div>
             </Link>
             <div className="prd-actions">
                 <button
                     className="prd-add-btn"
-                    onClick={() => onAdd(product)}
+                    onClick={() => {
+                        if (onAdd && typeof onAdd === 'function') {
+                            onAdd({
+                                ...product,
+                                restaurantId: product.restaurantId || product.merchantId,
+                                // Lưu tên nhà hàng chuẩn vào cart
+                                restaurantName: displayRestaurant,
+                            });
+                        } else {
+                            console.warn('onAdd function is not provided');
+                        }
+                    }}
                 >
                     🛒 Thêm vào giỏ
                 </button>

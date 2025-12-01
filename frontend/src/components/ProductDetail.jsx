@@ -2,187 +2,295 @@
 import { useParams, Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { fetchProductById, fetchProducts } from "../services/products";
-import { fetchRestaurantById } from "../services/restaurants";
-import './ProductDetail.css';
+import { fetchRestaurantByMerchantId } from "../services/restaurants";
+import "./ProductDetail.css";
 
 function ProductDetail({ onAdd }) {
-    const { id } = useParams();
-    const [product, setProduct] = useState(null);
-    const [restaurant, setRestaurant] = useState(null);
-    const [relatedProducts, setRelatedProducts] = useState([]);
-    const [loading, setLoading] = useState(true);
+  const { id } = useParams();
+  const [product, setProduct] = useState(null);
+  const [relatedProducts, setRelatedProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [quantity, setQuantity] = useState(1);
+  const [restaurant, setRestaurant] = useState(null);
 
-    useEffect(() => {
-        const fetchProductDetail = async () => {
-            setLoading(true);
-            try {
-                // Fetch product from backend
-                const productData = await fetchProductById(id);
+  // Fetch chi tiết sản phẩm từ BE
+  useEffect(() => {
+    const fetchProductDetail = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const productData = await fetchProductById(id);
+        setProduct(productData || null);
+      } catch (err) {
+        console.error("Lỗi khi fetch chi tiết sản phẩm:", err);
+        setProduct(null);
+        setError("Không thể tải thông tin sản phẩm. Vui lòng thử lại sau.");
+      } finally {
+        setLoading(false);
+      }
+    };
 
-                if (productData) {
-                    setProduct(productData);
+    fetchProductDetail();
+  }, [id]);
 
-                    // Fetch restaurant details if merchantId exists
-                    if (productData.merchantId) {
-                        try {
-                            const restaurantData = await fetchRestaurantById(productData.merchantId);
-                            setRestaurant(restaurantData);
-                        } catch (resErr) {
-                            console.warn("Could not fetch restaurant details:", resErr);
-                            setRestaurant({ name: productData.restaurantName || "Đối tác" });
-                        }
-                    }
-                } else {
-                    setProduct(null);
-                }
-            } catch (err) {
-                console.error("Lỗi khi fetch chi tiết sản phẩm:", err);
-                setProduct(null);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchProductDetail();
-    }, [id]);
+  // Lấy thông tin nhà hàng theo merchantId
+  useEffect(() => {
+    const loadRestaurant = async () => {
+      if (!product?.merchantId) return;
 
-    useEffect(() => {
-        const fetchRelatedProducts = async () => {
-            if (product && product.category) {
-                try {
-                    // Fetch all products and filter client-side (or implement category filter in API)
-                    const allProducts = await fetchProducts();
+      try {
+        const res = await fetchRestaurantByMerchantId(product.merchantId);
+        setRestaurant(res || null);
+      } catch (err) {
+        console.warn("Không thể tải thông tin nhà hàng cho merchant", err);
+        setRestaurant(null);
+      }
+    };
 
-                    const relatedList = allProducts
-                        .filter(p => p.category === product.category && String(p.id) !== String(id))
-                        .slice(0, 4);
+    loadRestaurant();
+  }, [product?.merchantId]);
 
-                    setRelatedProducts(relatedList);
-                } catch (err) {
-                    console.error("Lỗi khi fetch sản phẩm gợi ý:", err);
-                }
-            }
-        };
-        fetchRelatedProducts();
-    }, [product, id]);
+  // Gợi ý sản phẩm cùng category (nếu BE đã có)
+  useEffect(() => {
+    const fetchRelatedProducts = async () => {
+      if (!product?.category) return;
 
-    if (loading) return <p className="productDetail__loading">⏳ Đang tải sản phẩm...</p>;
-    if (!product) return <p className="productDetail__loading">Không tìm thấy sản phẩm.</p>;
+      try {
+        const allProducts = await fetchProducts();
+        const relatedList = allProducts
+          .filter(
+            (p) =>
+              p.category === product.category && String(p.id) !== String(id)
+          )
+          .slice(0, 4);
 
-    const discountedPrice = product.discount
-        ? Math.round(product.price * (1 - product.discount / 100))
-        : product.price;
+        setRelatedProducts(relatedList);
+      } catch (err) {
+        console.error("Lỗi khi fetch sản phẩm gợi ý:", err);
+      }
+    };
 
+    fetchRelatedProducts();
+  }, [product, id]);
+
+  if (loading) {
     return (
-        <div className="productDetail">
-            <div className="productDetail__container">
-                <div className="productDetail__image">
-                    <img src={product.img} alt={product.name} />
-
-                </div>
-
-                <div className="productDetail__info">
-                    <div className="productDetail__heading">
-                        <h2 className="productDetail__name">{product.name}</h2>
-                        <div className="productDetail__rating">
-                            <span className="stars">⭐ {product.rating || 4.5}</span>
-                            <span className="reviews">({product.reviews || 100} đánh giá)</span>
-                        </div>
-                    </div>
-
-                    <div className="productDetail__price">
-                        {product.discount > 0 ? (
-                            <>
-                                <p className="price--discounted">{discountedPrice.toLocaleString()}₫</p>
-                                <p className="price--original">{product.price.toLocaleString()}₫</p>
-                                <span className="price--badge">-{product.discount}%</span>
-                            </>
-                        ) : (
-                            <p className="price--discounted">{product.price.toLocaleString()}₫</p>
-                        )}
-                    </div>
-
-
-
-                    {restaurant && (
-                        <div className="productDetail__restaurantCard">
-                            <div>
-
-                                <h4>{restaurant.name}</h4>
-                                {restaurant.address && <p className="restaurant-address">{restaurant.address}</p>}
-                            </div>
-
-                        </div>
-                    )}
-
-                    <p className="productDetail__desc">{product.description}</p>
-
-                    {product.ingredients && product.ingredients.length > 0 && (
-                        <div className="productDetail__ingredients">
-                            <h4>Nguyên liệu nổi bật</h4>
-                            <ul>
-                                {product.ingredients.map((item, i) => (
-                                    <li key={i}>{item}</li>
-                                ))}
-                            </ul>
-                        </div>
-                    )}
-
-                    <div className="productDetail__actions">
-                        <button
-                            className="productDetail__addBtn"
-                            onClick={() =>
-                                onAdd({
-                                    ...product,
-                                    restaurantId: product.merchantId || null,
-                                    restaurantName: restaurant?.name || product.restaurantName || "Chưa xác định",
-                                })
-                            }
-                        >
-                            🛒 Thêm vào giỏ hàng
-                        </button>
-
-                    </div>
-
-                </div>
-            </div>
-
-            <div className="relatedProducts">
-                <h3>Gợi ý cho bạn</h3>
-                <div className="relatedProducts__grid">
-                    {relatedProducts.length > 0 ? (
-                        relatedProducts.map((item) => (
-                            <Link
-                                key={item.id}
-                                to={`/product-detail/${item.id}`}
-                                className="relatedProducts__link"
-                            >
-                                <div className="relatedProducts__item">
-                                    <img src={item.img} alt={item.name} />
-                                    <h4>{item.name}</h4>
-                                    <p>{item.price.toLocaleString()}₫</p>
-                                    <button
-                                        className="relatedProducts__addBtn"
-                                        onClick={(e) => {
-                                            e.preventDefault();
-                                            onAdd({
-                                                ...item,
-                                                restaurantId: item.merchantId || null,
-                                                restaurantName: "N/A"
-                                            });
-                                        }}
-                                    >
-                                        🛒 Thêm
-                                    </button>
-                                </div>
-                            </Link>
-                        ))
-                    ) : (
-                        <p>Không có sản phẩm tương tự.</p>
-                    )}
-                </div>
-            </div>
-        </div>
+      <p className="productDetail__loading">⏳ Đang tải thông tin sản phẩm...</p>
     );
+  }
+
+  if (!product) {
+    return (
+      <p className="productDetail__loading">
+        {error || "Không tìm thấy sản phẩm."}
+      </p>
+    );
+  }
+
+  // Map dữ liệu theo field BE hiện có
+  const {
+    name,
+    description,
+    price,
+    stock,
+    category,
+    active,
+    merchantId,
+    imageUrl,
+  } = product;
+
+  const isInactive = active === false;
+  const outOfStock = typeof stock === "number" && stock <= 0;
+  const maxQuantity =
+    typeof stock === "number" && stock > 0 ? Math.floor(stock) : 99;
+
+  const displayImage = imageUrl || product.img;
+
+  const canAddToCart = !isInactive && !outOfStock && maxQuantity > 0;
+
+  const totalPrice = (price || 0) * (quantity || 1);
+
+  const handleDecrease = () => {
+    setQuantity((prev) => Math.max(1, prev - 1));
+  };
+
+  const handleIncrease = () => {
+    setQuantity((prev) => {
+      const next = prev + 1;
+      return next > maxQuantity ? maxQuantity : next;
+    });
+  };
+
+  const handleAddToCart = () => {
+    if (!canAddToCart) return;
+
+    const baseProductForCart = {
+      ...product,
+      img: displayImage || product.img,
+      restaurantId: merchantId || product.merchantId || null,
+      restaurantName:
+        restaurant?.name || product.restaurantName || "Đối tác",
+    };
+
+    // Gửi số lượng lựa chọn sang App (App sẽ cộng dồn hoặc set 1 tuỳ logic)
+    for (let i = 0; i < quantity; i += 1) {
+      onAdd(baseProductForCart);
+    }
+  };
+
+  return (
+    <div className="productDetail">
+      <div className="productDetail__container">
+        <div className="productDetail__image">
+          {displayImage ? (
+            <img src={displayImage} alt={name} />
+          ) : (
+            <div className="productDetail__imageFallback">No Image</div>
+          )}
+        </div>
+
+        <div className="productDetail__info">
+          <div className="productDetail__heading">
+            <h2 className="productDetail__name">{name}</h2>
+
+            <div className="productDetail__meta">
+              {category && (
+                <span className="productDetail__categoryTag">
+                  {category === "FOOD"
+                    ? "Món ăn"
+                    : category === "DRINK"
+                    ? "Đồ uống"
+                    : category}
+                </span>
+              )}
+
+              {typeof stock === "number" && (
+                <span className="productDetail__stock">
+                  {outOfStock
+                    ? "Tạm hết hàng"
+                    : stock <= 10
+                    ? `Sắp hết • Còn ${stock} phần`
+                    : `Còn ${stock} phần`}
+                </span>
+              )}
+
+              {isInactive && (
+                <span className="productDetail__badge productDetail__badge--inactive">
+                  Tạm ngưng bán
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div className="productDetail__price">
+            <p className="price--discounted">
+              {Number(price || 0).toLocaleString()}₫
+            </p>
+          </div>
+
+          <p className="productDetail__desc">{description}</p>
+
+          <div className="productDetail__actions">
+            <div className="productDetail__qtyRow">
+              <div className="productDetail__qtyControl">
+                <button
+                  type="button"
+                  onClick={handleDecrease}
+                  disabled={!canAddToCart || quantity <= 1}
+                >
+                  -
+                </button>
+                <span>{quantity}</span>
+                <button
+                  type="button"
+                  onClick={handleIncrease}
+                  disabled={!canAddToCart || quantity >= maxQuantity}
+                >
+                  +
+                </button>
+              </div>
+
+              <div className="productDetail__total">
+                <span>Tạm tính</span>
+                <strong>{totalPrice.toLocaleString()}₫</strong>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              className="productDetail__addBtn"
+              onClick={handleAddToCart}
+              disabled={!canAddToCart}
+            >
+              {outOfStock
+                ? "Hết hàng"
+                : isInactive
+                ? "Tạm ngưng bán"
+                : "🛒 Thêm vào giỏ hàng"}
+            </button>
+
+            {merchantId && (
+              <p className="productDetail__merchantHint">
+                {restaurant?.name
+                  ? `Nhà hàng: ${restaurant.name}`
+                  : product.restaurantName
+                  ? `Nhà hàng: ${product.restaurantName}`
+                  : "Món thuộc đối tác"}
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="relatedProducts">
+        <h3>Gợi ý cho bạn</h3>
+        <div className="relatedProducts__grid">
+          {relatedProducts.length > 0 ? (
+            relatedProducts.map((item) => {
+              const itemImage = item.imageUrl || item.img;
+              return (
+                <Link
+                  key={item.id}
+                  to={`/product-detail/${item.id}`}
+                  className="relatedProducts__link"
+                >
+                  <div className="relatedProducts__item">
+                    {itemImage ? (
+                      <img src={itemImage} alt={item.name} />
+                    ) : (
+                      <div className="relatedProducts__imageFallback">
+                        No Image
+                      </div>
+                    )}
+                    <h4>{item.name}</h4>
+                    <p>{Number(item.price || 0).toLocaleString()}₫</p>
+                    <button
+                      type="button"
+                      className="relatedProducts__addBtn"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        onAdd({
+                          ...item,
+                          img: itemImage,
+                          restaurantId: item.merchantId || null,
+                          restaurantName: "Đối tác",
+                        });
+                      }}
+                    >
+                      🛒 Thêm
+                    </button>
+                  </div>
+                </Link>
+              );
+            })
+          ) : (
+            <p>Không có sản phẩm tương tự.</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default ProductDetail;

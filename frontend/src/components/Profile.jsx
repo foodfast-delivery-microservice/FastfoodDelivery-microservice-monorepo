@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import "./Profile.css";
 import { message } from "antd";
 import { getProfile, updateProfile } from "../services/auth";
+import AddressManager from "./AddressManager";
 
 export default function Profile() {
   const [userData, setUserData] = useState(null);
@@ -60,6 +61,8 @@ export default function Profile() {
           {saving ? "Đang lưu..." : "Lưu thay đổi"}
         </button>
       </div>
+
+      <AddressManager />
     </div>
   );
 }

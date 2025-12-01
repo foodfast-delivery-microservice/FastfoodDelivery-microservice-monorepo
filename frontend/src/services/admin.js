@@ -1,13 +1,25 @@
 import http from './http'
 
+// Helper để unwrap ApiResponse
+const unwrapData = (responseData) => {
+  if (responseData?.data !== undefined && responseData?.status !== undefined) {
+    return responseData.data
+  }
+  return responseData
+}
+
 export const getUsers = async (params = {}) => {
   const { data } = await http.get('/users', { params })
-  return data
+  const unwrapped = unwrapData(data)
+  if (Array.isArray(unwrapped)) {
+    return unwrapped
+  }
+  return unwrapped?.content || []
 }
 
 export const updateUserStatus = async (userId, active) => {
   const { data } = await http.patch(`/users/${userId}`, { active })
-  return data
+  return unwrapData(data)
 }
 
 export const deleteUser = async (userId) => {
@@ -16,24 +28,33 @@ export const deleteUser = async (userId) => {
 
 export const getOrders = async (params = {}) => {
   const { data } = await http.get('/orders', { params })
-  return data
+  const unwrapped = unwrapData(data)
+  if (Array.isArray(unwrapped)) {
+    return unwrapped
+  }
+  return unwrapped?.content || []
 }
 
 export const getOrderDetails = async (orderId) => {
   const { data } = await http.get(`/orders/${orderId}`)
-  return data
+  return unwrapData(data)
 }
 
 export const getMerchantStatistics = async (merchantId, params = {}) => {
   const { data } = await http.get(`/payments/merchants/${merchantId}/statistics`, {
     params,
   })
-  return data
+  return unwrapData(data)
 }
 
 export const getKpis = async (params = {}) => {
   const { data } = await http.get('/admin/dashboard/kpis', { params })
-  return data
+  return unwrapData(data)
 }
+
+
+
+
+
 
 

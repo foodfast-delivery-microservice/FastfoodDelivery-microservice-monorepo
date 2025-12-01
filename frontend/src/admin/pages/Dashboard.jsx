@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import "./Dashboard.css";
-import { collection, getDocs } from "firebase/firestore";
-import { db } from "../../firebase";
+import http from "../../services/http";
 import { message } from "antd";
 
 import {
@@ -49,26 +48,24 @@ export default function RestaurantDashboard() {
       setLoading(true);
 
       // Fetch restaurants
-      const restaurantsSnap = await getDocs(collection(db, "restaurants"));
-      const restaurantList = restaurantsSnap.docs.map((d) => ({
-        id: d.id,
-        ...d.data(),
-      }));
+      const restaurantsRes = await http.get("/restaurants", {
+        params: { size: 100 }
+      });
+      const restaurantList = restaurantsRes.data?.data?.content || [];
       setRestaurants(restaurantList);
 
-      // Fetch orders
-      const ordersSnap = await getDocs(collection(db, "orders"));
-      const oData = ordersSnap.docs.map((d) => ({
-        id: d.id,
-        ...d.data(),
-      }));
+      // Fetch orders (fetching a large batch for stats - in real app should use stats endpoint)
+      const ordersRes = await http.get("/orders", {
+        params: { size: 1000 }
+      });
+      const oData = ordersRes.data?.data?.content || [];
 
       let filteredOrders = oData;
 
       // If filter by restaurant
       if (restaurantFilter !== "all") {
         filteredOrders = filteredOrders.filter(
-          (o) => String(o.restaurantId) === String(restaurantFilter)
+          (o) => String(o.merchantId) === String(restaurantFilter)
         );
       }
 
@@ -76,17 +73,17 @@ export default function RestaurantDashboard() {
 
       // === STATS ===
       const delivered = filteredOrders.filter((o) =>
-        (o.status || "").toLowerCase().includes("đã giao")
+        (o.status || "").toLowerCase().includes("delivered") || (o.status || "").toLowerCase().includes("đã giao")
       );
       const delivering = filteredOrders.filter((o) =>
-        (o.status || "").toLowerCase().includes("đang giao")
+        (o.status || "").toLowerCase().includes("delivering") || (o.status || "").toLowerCase().includes("đang giao")
       );
       const processing = filteredOrders.filter((o) =>
-        (o.status || "").toLowerCase().includes("xử lý")
+        (o.status || "").toLowerCase().includes("processing") || (o.status || "").toLowerCase().includes("pending") || (o.status || "").toLowerCase().includes("confirmed")
       );
 
       const totalRevenue = delivered.reduce(
-        (sum, o) => sum + Number(o.total || o.totalPrice || 0),
+        (sum, o) => sum + Number(o.grandTotal || 0),
         0
       );
 
@@ -125,7 +122,11 @@ export default function RestaurantDashboard() {
 
     const toMillis = (createdAt) => {
       if (!createdAt) return 0;
-      if (createdAt.seconds) return createdAt.seconds * 1000;
+      // Handle array format [yyyy, MM, dd, HH, mm, ss] or string
+      if (Array.isArray(createdAt)) {
+        const date = new Date(createdAt[0], createdAt[1] - 1, createdAt[2], createdAt[3], createdAt[4], createdAt[5]);
+        return date.getTime();
+      }
       const ms = new Date(createdAt).getTime();
       return Number.isFinite(ms) ? ms : 0;
     };
@@ -152,8 +153,9 @@ export default function RestaurantDashboard() {
       }
 
       // Revenue only for delivered orders
-      if ((o.status || "").toLowerCase().includes("đã giao")) {
-        daily[date].revenue += Number(o.total || o.totalPrice || 0);
+      const status = (o.status || "").toLowerCase();
+      if (status.includes("delivered") || status.includes("đã giao")) {
+        daily[date].revenue += Number(o.grandTotal || 0);
       }
 
       daily[date].count += 1;
@@ -211,7 +213,7 @@ export default function RestaurantDashboard() {
           >
             <option value="all">Tất cả</option>
             {restaurants.map((r) => (
-              <option key={r.id} value={r.id}>
+              <option key={r.id} value={r.merchantId}>
                 {r.name}
               </option>
             ))}

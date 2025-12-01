@@ -5,6 +5,7 @@ package com.example.order_service.infrastructure.messaging;
 import com.example.order_service.domain.model.EventStatus;
 import com.example.order_service.domain.model.OutboxEvent;
 import com.example.order_service.domain.repository.OutboxEventRepository;
+import com.example.order_service.infrastructure.event.OrderCreatedEventPayload;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
@@ -21,6 +22,7 @@ public class OutboxEventRelay {
 
     private final OutboxEventRepository outboxEventRepository;
     private final RabbitTemplate rabbitTemplate;
+    private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
 
     // Tên Exchange (sàn giao dịch)
     public static final String ORDER_EXCHANGE = "order_exchange";
@@ -61,10 +63,27 @@ public class OutboxEventRelay {
                 }
 
                 // 3. Gửi event lên RabbitMQ
+                Object payloadToSend = event.getPayload();
+
+                // Để tránh JSON bị "double encode" (\"{...}\"),
+                // với OrderCreated ta parse JSON thành object rồi mới gửi.
+                if ("OrderCreated".equals(event.getType())) {
+                    try {
+                        payloadToSend = objectMapper.readValue(
+                                event.getPayload(),
+                                OrderCreatedEventPayload.class
+                        );
+                    } catch (Exception ex) {
+                        log.error("Failed to deserialize OrderCreated payload for event id={}", event.getId(), ex);
+                        // Nếu lỗi, fallback gửi raw JSON string như cũ
+                        payloadToSend = event.getPayload();
+                    }
+                }
+
                 rabbitTemplate.convertAndSend(
                         ORDER_EXCHANGE,
                         routingKey,
-                        event.getPayload() // Gửi nội dung JSON đi
+                        payloadToSend
                 );
 
                 // 4. Gửi thành công, cập nhật trạng thái

@@ -4,6 +4,21 @@ import { getOrderById } from "../services/orders";
 import { fetchProductById } from "../services/products";
 import "./OrderDetail.css";
 
+const formatMoney = (value, currency = "VND") => {
+  const amount = Number(value || 0);
+  if (Number.isNaN(amount)) return "0";
+
+  if (currency === "VND") {
+    return `${amount.toLocaleString("vi-VN")}₫`;
+  }
+
+  return amount.toLocaleString("vi-VN", {
+    style: "currency",
+    currency,
+    minimumFractionDigits: 0,
+  });
+};
+
 export default function OrderDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -31,11 +46,49 @@ export default function OrderDetail() {
           return;
         }
 
+        const rawDelivery = orderData.deliveryAddress || orderData.shippingAddress || {};
+        const deliveryParts = [
+          rawDelivery.addressLine1,
+          rawDelivery.ward,
+          rawDelivery.district,
+          rawDelivery.city,
+        ].filter(Boolean);
+
         const formattedOrder = {
           ...orderData,
           date: orderData.createdAt ? new Date(orderData.createdAt) : null,
+          code: orderData.orderCode || `ORD-${orderData.id}`,
+          currency: orderData.currency || "VND",
+          note: orderData.note || orderData.customerNote || "",
           // Ensure items array exists
-          items: orderData.items || orderData.orderItems || []
+          items: orderData.items || orderData.orderItems || [],
+          subtotal:
+            orderData.subtotal ?? orderData.totalBeforeDiscount ?? orderData.totalAmount ?? 0,
+          shippingFee: orderData.shippingFee ?? orderData.deliveryFee ?? 0,
+          discount: orderData.discount ?? orderData.totalDiscount ?? 0,
+          grandTotal:
+            orderData.grandTotal ?? orderData.totalAmount ?? orderData.total ?? 0,
+          deliveryInfo: {
+            receiverName:
+              rawDelivery.receiverName ||
+              orderData.customer?.name ||
+              "Khách hàng",
+            receiverPhone:
+              rawDelivery.receiverPhone ||
+              orderData.customer?.phone ||
+              rawDelivery.phoneNumber ||
+              "",
+            addressLine1:
+              rawDelivery.addressLine1 ||
+              rawDelivery.address ||
+              rawDelivery.addressLine2 ||
+              "",
+            fullAddress:
+              deliveryParts.join(", ") ||
+              rawDelivery.address ||
+              rawDelivery.addressLine1 ||
+              "N/A",
+          },
         };
 
         setOrder(formattedOrder);
@@ -92,19 +145,58 @@ export default function OrderDetail() {
         {/* ================== INFO ================== */}
         <div className="order-info enhanced">
           <div className="order-info-left">
-            <p><strong>Mã đơn:</strong> #{order.id}</p>
-            <p><strong>Ngày đặt:</strong> {order.date?.toLocaleString("vi-VN")}</p>
+            <p>
+              <strong>Mã đơn:</strong> {order.code}
+              <span className="order-id-hint"> (#{order.id})</span>
+            </p>
+            <p>
+              <strong>Ngày đặt:</strong>{" "}
+              {order.date
+                ? order.date.toLocaleString("vi-VN", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    day: "2-digit",
+                    month: "2-digit",
+                    year: "numeric",
+                  })
+                : "N/A"}
+            </p>
 
             <p>
               <strong>Trạng thái:</strong>
-              <span className={`status-tag ${order.status.replace(/\s+/g, "-").toLowerCase()}`}>
+              <span
+                className={`status-tag ${order.status
+                  .replace(/\s+/g, "-")
+                  .toLowerCase()}`}
+              >
                 {order.status}
               </span>
             </p>
 
-            <p><strong>Nhà hàng:</strong> {order.restaurantName || "Đối tác"}</p>
+            <p>
+              <strong>Nhà hàng:</strong> {order.restaurantName || "Đối tác"}
+            </p>
 
-            <p><strong>Giao đến:</strong> {order.deliveryAddress?.address || order.customer?.address || "N/A"}</p>
+            <p>
+              <strong>Người nhận:</strong>{" "}
+              {order.deliveryInfo?.receiverName || "Khách hàng"}
+            </p>
+            <p>
+              <strong>Số điện thoại:</strong>{" "}
+              {order.deliveryInfo?.receiverPhone || "N/A"}
+            </p>
+            <p>
+              <strong>Giao đến:</strong>{" "}
+              {order.deliveryInfo?.fullAddress ||
+                order.deliveryInfo?.addressLine1 ||
+                "N/A"}
+            </p>
+
+            {order.note && (
+              <p>
+                <strong>Ghi chú:</strong> {order.note}
+              </p>
+            )}
           </div>
         </div>
 
@@ -131,7 +223,7 @@ export default function OrderDetail() {
               </div>
 
               <span className="item-price">
-                {(item.unitPrice * item.quantity).toLocaleString()}₫
+                {formatMoney(item.unitPrice * item.quantity, order.currency)}
               </span>
             </li>
           ))}
@@ -139,8 +231,27 @@ export default function OrderDetail() {
 
 
         {/* ================== TOTAL ================== */}
-        <div className="order-total-section">
-          Tổng tiền: <strong>{(order.totalAmount || order.total)?.toLocaleString()}₫</strong>
+        <div className="order-payment-breakdown">
+          <div className="order-payment-row">
+            <span>Tạm tính</span>
+            <span>{formatMoney(order.subtotal, order.currency)}</span>
+          </div>
+          {!!order.discount && (
+            <div className="order-payment-row">
+              <span>Giảm giá</span>
+              <span>-{formatMoney(order.discount, order.currency)}</span>
+            </div>
+          )}
+          <div className="order-payment-row">
+            <span>Phí giao hàng</span>
+            <span>{formatMoney(order.shippingFee, order.currency)}</span>
+          </div>
+          <div className="order-payment-total">
+            <span>Tổng cộng</span>
+            <strong>
+              {formatMoney(order.grandTotal, order.currency)}
+            </strong>
+          </div>
         </div>
 
       </div>

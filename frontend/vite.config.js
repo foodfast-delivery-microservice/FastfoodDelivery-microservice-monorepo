@@ -9,9 +9,7 @@ const __dirname = path.dirname(__filename)
 export default defineConfig({
   plugins: [react()],
   resolve: {
-    alias: {
-      'firebase/firestore': path.resolve(__dirname, './src/shims/firestore.js'),
-    },
+    alias: {},
   },
   server: {
     fs: {

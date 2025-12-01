@@ -21,11 +21,17 @@ public class SecurityConfig {
 
         private final JwtTokenForwardFilter jwtTokenForwardFilter;
         private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
+        private final PublicEndpointFilter publicEndpointFilter;
+        private final PublicEndpointBearerTokenResolver publicEndpointBearerTokenResolver;
 
         public SecurityConfig(JwtTokenForwardFilter jwtTokenForwardFilter,
-                        JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint) {
+                        JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint,
+                        PublicEndpointFilter publicEndpointFilter,
+                        PublicEndpointBearerTokenResolver publicEndpointBearerTokenResolver) {
                 this.jwtTokenForwardFilter = jwtTokenForwardFilter;
                 this.jwtAuthenticationEntryPoint = jwtAuthenticationEntryPoint;
+                this.publicEndpointFilter = publicEndpointFilter;
+                this.publicEndpointBearerTokenResolver = publicEndpointBearerTokenResolver;
         }
 
         @Bean
@@ -37,8 +43,18 @@ public class SecurityConfig {
                                                 org.springframework.security.config.http.SessionCreationPolicy.STATELESS))
                                 .authorizeHttpRequests(auth -> auth
                                                 // Public endpoints
+                                                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                                                 .requestMatchers("/api/v1/auth/**").permitAll()
                                                 .requestMatchers(HttpMethod.GET, "/api/v1/products/**").permitAll()
+
+                                                // Restaurant endpoints
+                                                .requestMatchers("/api/v1/restaurants/me/**")
+                                                .hasAnyRole("MERCHANT", "ADMIN")
+                                                .requestMatchers(HttpMethod.PUT, "/api/v1/restaurants/me")
+                                                .hasAnyRole("MERCHANT", "ADMIN")
+                                                .requestMatchers(HttpMethod.PATCH, "/api/v1/restaurants/me/**")
+                                                .hasAnyRole("MERCHANT", "ADMIN")
+                                                .requestMatchers(HttpMethod.GET, "/api/v1/restaurants/**").permitAll()
 
                                                 // USER endpoints - specific patterns FIRST
                                                 // Validation endpoint for inter-service calls
@@ -47,10 +63,6 @@ public class SecurityConfig {
 
                                                 // Allow getting own profile
                                                 .requestMatchers(HttpMethod.GET, "/api/v1/users/me").authenticated()
-
-                                                // Allow getting list of restaurants (public)
-                                                .requestMatchers(HttpMethod.GET, "/api/v1/users/restaurants")
-                                                .permitAll()
 
                                                 // PATCH endpoints - only need authentication (authorization in UseCase)
                                                 .requestMatchers(HttpMethod.PATCH, "/api/v1/users/**").authenticated()
@@ -65,7 +77,11 @@ public class SecurityConfig {
                                                 .requestMatchers(HttpMethod.DELETE, "/api/v1/users/**").hasRole("ADMIN")
 
                                                 // PRODUCT endpoints - specific patterns first
-                                                .requestMatchers("/api/v1/products/merchants/**")
+                                                // Public endpoint: GET /products/merchants/{merchantId} - for guests
+                                                .requestMatchers(HttpMethod.GET, "/api/v1/products/merchants/{merchantId:[0-9]+}")
+                                                .permitAll()
+                                                // Authenticated endpoint: GET /products/merchants/me - for merchant
+                                                .requestMatchers("/api/v1/products/merchants/me")
                                                 .hasAnyRole("MERCHANT", "ADMIN")
                                                 .requestMatchers(HttpMethod.POST, "/api/v1/products/**")
                                                 .hasAnyRole("ADMIN", "MERCHANT")
@@ -83,13 +99,20 @@ public class SecurityConfig {
                                                 .requestMatchers("/api/v1/payments/**").authenticated()
 
                                                 .anyRequest().authenticated())
-                                .exceptionHandling(exception -> exception
-                                                .authenticationEntryPoint(jwtAuthenticationEntryPoint))
-
+                                .addFilterBefore(publicEndpointFilter, UsernamePasswordAuthenticationFilter.class)
                                 .addFilterAfter(jwtTokenForwardFilter, UsernamePasswordAuthenticationFilter.class)
 
                                 .oauth2ResourceServer(oauth2 -> oauth2
-                                                .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthConverter)));
+                                                .bearerTokenResolver(publicEndpointBearerTokenResolver)
+                                                .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthConverter))
+                                                .authenticationEntryPoint(
+                                                                new PublicEndpointAwareAuthenticationEntryPoint(
+                                                                                jwtAuthenticationEntryPoint)))
+
+                                .exceptionHandling(exception -> exception
+                                                .authenticationEntryPoint(
+                                                                new PublicEndpointAwareAuthenticationEntryPoint(
+                                                                                jwtAuthenticationEntryPoint)));
 
                 return http.build();
         }

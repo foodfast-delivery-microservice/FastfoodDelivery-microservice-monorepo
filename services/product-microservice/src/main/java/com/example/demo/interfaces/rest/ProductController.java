@@ -143,6 +143,27 @@ public class ProductController {
         return ResponseEntity.status(HttpStatus.OK).body(result);
     }
 
+    /**
+     * Public endpoint: Get products by merchantId (for guests)
+     * Only returns active products
+     */
+    @GetMapping("/merchants/{merchantId}")
+    public ResponseEntity<ApiResponse<List<ProductResponse>>> getProductsByMerchantId(
+            @PathVariable Long merchantId) {
+        // Public endpoint - only return active products
+        List<ProductResponse> responses = getMerchantProductsUseCase.execute(merchantId, false);
+
+        ApiResponse<List<ProductResponse>> result = new ApiResponse<>(
+                HttpStatus.OK,
+                "get merchant products",
+                responses,
+                null);
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Authenticated endpoint: Get merchant's own products (includes inactive if requested)
+     */
     @GetMapping("/merchants/me")
     public ResponseEntity<ApiResponse<List<ProductResponse>>> getMerchantProducts(
             @AuthenticationPrincipal Jwt jwt,

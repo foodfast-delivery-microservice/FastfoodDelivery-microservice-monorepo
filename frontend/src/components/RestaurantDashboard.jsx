@@ -1,14 +1,6 @@
 import React, { useEffect, useMemo, useState, useCallback } from "react";
 import "./RestaurantDashboard.css";
-import {
-  collection,
-  getDocs,
-  doc,
-  updateDoc,
-  query,
-  where,
-} from "firebase/firestore";
-import { db } from "../firebase";
+import http from "../services/http";
 import { useAuth } from "../context/AuthContext";
 import { message } from "antd";
 import {
@@ -49,65 +41,48 @@ export default function RestaurantDashboard() {
 
   const [chartData, setChartData] = useState([]);
 
+  // Trạng thái đang chọn / đang cập nhật cho từng đơn
+  const [statusDraft, setStatusDraft] = useState({});
+  const [updatingStatus, setUpdatingStatus] = useState({});
+
   const fetchAll = useCallback(async () => {
     try {
       setLoading(true);
 
-      let ordersSnap, dronesSnap;
+      let ordersRes;
 
-      if (role === "restaurant" && currentUser?.restaurantId) {
-        const ordersQuery = query(
-          collection(db, "orders"),
-          where("restaurantId", "==", currentUser.restaurantId)
-        );
-        const dronesQuery = query(
-          collection(db, "drones"),
-          where("restaurantId", "==", currentUser.restaurantId)
-        );
-        [ordersSnap, dronesSnap] = await Promise.all([
-          getDocs(ordersQuery),
-          getDocs(dronesQuery),
-        ]);
+      // Fetch Orders
+      if (role === "merchant" || role === "restaurant") {
+        ordersRes = await http.get("/orders/merchants/me", { params: { size: 1000 } });
       } else {
-        [ordersSnap, dronesSnap] = await Promise.all([
-          getDocs(collection(db, "orders")),
-          getDocs(collection(db, "drones")),
-        ]);
+        ordersRes = await http.get("/orders", { params: { size: 1000 } });
       }
 
-      const oData = ordersSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
-      const dData = dronesSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      // Backend trả PageResponse trực tiếp, không bọc trong ApiResponse
+      const oData = ordersRes.data?.content || [];
 
-        const filteredOrders =
-        role === "restaurant"
-          ? oData.filter((o) => o.restaurantId === currentUser.restaurantId)
-          : oData;
+      // Drones are not yet supported in backend
+      setDrones([]);
 
-        const filteredDrones =
-        role === "restaurant"
-          ? dData.filter((d) => d.restaurantId === currentUser.restaurantId)
-          : dData;
+      setOrders(oData);
 
-      setOrders(filteredOrders);
-      setDrones(filteredDrones);
-
-      const delivered = filteredOrders.filter((o) =>
-        (o.status || "").toLowerCase().includes("đã giao")
+      const delivered = oData.filter((o) =>
+        (o.status || "").toLowerCase().includes("delivered") || (o.status || "").toLowerCase().includes("đã giao")
       );
-      const delivering = filteredOrders.filter((o) =>
-        (o.status || "").toLowerCase().includes("đang giao")
+      const delivering = oData.filter((o) =>
+        (o.status || "").toLowerCase().includes("delivering") || (o.status || "").toLowerCase().includes("đang giao")
       );
-      const processing = filteredOrders.filter((o) =>
-        (o.status || "").toLowerCase().includes("xử lý")
+      const processing = oData.filter((o) =>
+        (o.status || "").toLowerCase().includes("processing") || (o.status || "").toLowerCase().includes("pending") || (o.status || "").toLowerCase().includes("confirmed")
       );
 
       const totalRevenue = delivered.reduce(
-        (sum, o) => sum + (o.total || o.totalPrice || 0),
+        (sum, o) => sum + Number(o.grandTotal || 0),
         0
       );
 
       setStats({
-        totalOrders: filteredOrders.length,
+        totalOrders: oData.length,
         totalRevenue,
         delivering: delivering.length,
         processing: processing.length,
@@ -117,11 +92,10 @@ export default function RestaurantDashboard() {
       const dailyStats = {};
       delivered.forEach((o) => {
         let dateObj;
-        if (o.createdAt?.seconds) {
-          dateObj = new Date(o.createdAt.seconds * 1000);
-        } else if (o.date) {
-          const [day, month, year] = o.date.split("/").map(Number);
-          dateObj = new Date(year, month - 1, day);
+        if (Array.isArray(o.createdAt)) {
+          dateObj = new Date(o.createdAt[0], o.createdAt[1] - 1, o.createdAt[2], o.createdAt[3], o.createdAt[4], o.createdAt[5]);
+        } else if (o.createdAt) {
+          dateObj = new Date(o.createdAt);
         } else {
           dateObj = new Date();
         }
@@ -137,7 +111,7 @@ export default function RestaurantDashboard() {
             count: 0,
           };
         }
-        dailyStats[dateKey].revenue += o.total || o.totalPrice || 0;
+        dailyStats[dateKey].revenue += Number(o.grandTotal || 0);
         dailyStats[dateKey].count += 1;
       });
 
@@ -162,8 +136,9 @@ export default function RestaurantDashboard() {
 
   const toMillis = (createdAt) => {
     if (!createdAt) return null;
-    if (createdAt.seconds) return createdAt.seconds * 1000;
-    if (createdAt instanceof Date) return createdAt.getTime();
+    if (Array.isArray(createdAt)) {
+      return new Date(createdAt[0], createdAt[1] - 1, createdAt[2], createdAt[3], createdAt[4], createdAt[5]).getTime();
+    }
     const t = new Date(createdAt).getTime();
     return Number.isFinite(t) ? t : null;
   };
@@ -186,13 +161,13 @@ export default function RestaurantDashboard() {
       if (statusFilter === "all") return true;
       const s = normalizeStatus(o.status || "");
       if (statusFilter === "processing")
-        return s.includes("xử lý") || s.includes("processing") || s === "confirmed";
+        return s.includes("xử lý") || s.includes("processing") || s === "confirmed" || s === "pending";
       if (statusFilter === "delivering")
         return s.includes("đang giao") || s.includes("delivering");
       if (statusFilter === "delivered")
         return s.includes("đã giao") || s.includes("delivered");
       if (statusFilter === "other") {
-        const isProc = s.includes("xử lý") || s.includes("processing") || s === "confirmed";
+        const isProc = s.includes("xử lý") || s.includes("processing") || s === "confirmed" || s === "pending";
         const isDeliv = s.includes("đang giao") || s.includes("delivering");
         const isDone = s.includes("đã giao") || s.includes("delivered");
         return !isProc && !isDeliv && !isDone;
@@ -224,52 +199,38 @@ export default function RestaurantDashboard() {
   );
 
   const handleAssignDrone = async (orderId) => {
-    const droneId = selectedDrone[orderId];
-    if (!droneId) {
-      alert("⚠️ Vui lòng chọn drone trước khi xác nhận giao.");
-      return;
-    }
-
-    try {
-      const order = orders.find((o) => String(o.id) === String(orderId));
-      const drone = findDroneById(droneId);
-      if (!order || !drone) {
-        alert("Không tìm thấy order hoặc drone.");
-        return;
-      }
-
-      await updateDoc(doc(db, "drones", drone.id), {
-        status: "Đang giao",
-        currentOrderId: order.id,
-        restaurantId: order.restaurantId || null,
-        destination: order.customer?.address || null,
-      });
-
-      await updateDoc(doc(db, "orders", order.id), {
-        status: "Đang giao",
-        droneId: drone.id,
-      });
-
-      alert(`✅ Đã gán ${drone.name} giao đơn #${order.id}`);
-      await refreshData();
-    } catch (err) {
-      console.error("Lỗi khi gán drone:", err);
-      alert("❌ Có lỗi khi gán drone.");
-    }
+    alert("Tính năng gán Drone đang được phát triển trên hệ thống mới.");
   };
 
   const formatStatusBadge = (status) => {
     if (!status) return <span className="badge other">—</span>;
     const s = status.toLowerCase();
-    if (s.includes("giao")) {
+    if (s.includes("giao") || s.includes("delivering")) {
       if (s === "đang giao" || s.includes("delivering"))
         return <span className="badge delivering">Đang giao</span>;
       if (s === "đã giao" || s.includes("delivered"))
         return <span className="badge done">Đã giao</span>;
     }
-    if (s === "confirmed" || s.includes("xử lý") || s.includes("processing"))
+    if (s === "confirmed" || s.includes("xử lý") || s.includes("processing") || s === "pending")
       return <span className="badge pending">Đang xử lý</span>;
     return <span className="badge other">{status}</span>;
+  };
+
+  // ====== MERCHANT: Cập nhật trạng thái đơn ======
+  const handleUpdateStatus = async (orderId, newStatus) => {
+    try {
+      setUpdatingStatus((prev) => ({ ...prev, [orderId]: true }));
+      await http.put(`/orders/merchants/me/${orderId}/status`, {
+        status: newStatus,
+      });
+      message.success("Cập nhật trạng thái đơn hàng thành công");
+      await refreshData();
+    } catch (err) {
+      console.error("Lỗi cập nhật trạng thái đơn:", err);
+      message.error("Không thể cập nhật trạng thái đơn hàng");
+    } finally {
+      setUpdatingStatus((prev) => ({ ...prev, [orderId]: false }));
+    }
   };
 
   if (loading) return <p>⏳ Đang tải dữ liệu...</p>;
@@ -431,26 +392,24 @@ export default function RestaurantDashboard() {
 
                 {/* KHÁCH */}
                 <td>
-                  <div className="cust-name">{order.customer?.name}</div>
-                  <div className="small">{order.customer?.phone}</div>
+                  <div className="cust-name">{order.receiverName}</div>
+                  <div className="small">{order.receiverPhone}</div>
                 </td>
 
                 {/* ĐỊA CHỈ */}
-                <td>{order.customer?.address}</td>
+                <td>{order.fullAddress}</td>
 
                 {/* ⭐⭐⭐ SẢN PHẨM + GIÁ ⭐⭐⭐ */}
                 <td>
                   <ul className="product-list">
-                    {order.items?.map((item) => (
-                      <li key={item.id}>
-                        <div>
-                          <strong>{item.name}</strong> × {item.quantity}
-                        </div>
-                        <span className="prod-price">
-                          {(item.price * item.quantity).toLocaleString()}₫
-                        </span>
-                      </li>
-                    ))}
+                    <li>
+                      <div>
+                        <strong>{order.itemCount} sản phẩm</strong>
+                      </div>
+                      <span className="prod-price">
+                        {Number(order.grandTotal).toLocaleString()}₫
+                      </span>
+                    </li>
                   </ul>
                 </td>
 
@@ -477,35 +436,49 @@ export default function RestaurantDashboard() {
                           [order.id]: e.target.value,
                         }))
                       }
+                      disabled={true}
                     >
-                      <option value="">Chọn drone</option>
-                      {drones
-                        .filter((d) => d.status === "Rảnh")
-                        .map((d) => (
-                          <option key={d.id} value={d.id}>
-                            {d.name} ({d.battery}%)
-                          </option>
-                        ))}
+                      <option value="">Chọn drone (Bảo trì)</option>
                     </select>
                   )}
                 </td>
 
                 {/* ACTION BUTTON */}
                 <td>
-                  {oStatus === "Đã giao" ? (
-                    <button className="btn disabled" disabled>
-                      Đã xử lí
-                    </button>
-                  ) : oStatus === "Đang giao" ? (
-                    <span>Đang giao</span>
+                  {/* Chỉ cho phép merchant thao tác qua endpoint riêng */}
+                  {role === "merchant" ? (
+                    <div className="status-actions">
+                      <select
+                        value={statusDraft[order.id] || order.status || "PENDING"}
+                        onChange={(e) =>
+                          setStatusDraft((prev) => ({
+                            ...prev,
+                            [order.id]: e.target.value,
+                          }))
+                        }
+                      >
+                        <option value="PENDING">Chờ xác nhận</option>
+                        <option value="CONFIRMED">Đã xác nhận</option>
+                        <option value="PAID">Đã thanh toán</option>
+                        <option value="SHIPPED">Đang giao</option>
+                        <option value="DELIVERED">Đã giao</option>
+                        <option value="CANCELLED">Hủy đơn</option>
+                      </select>
+                      <button
+                        className="btn primary"
+                        disabled={updatingStatus[order.id]}
+                        onClick={() =>
+                          handleUpdateStatus(
+                            order.id,
+                            statusDraft[order.id] || order.status || "PENDING"
+                          )
+                        }
+                      >
+                        {updatingStatus[order.id] ? "Đang lưu..." : "Cập nhật"}
+                      </button>
+                    </div>
                   ) : (
-                    <button
-                      className="btn primary"
-                      onClick={() => handleAssignDrone(order.id)}
-                      disabled={!selectedDrone[order.id]}
-                    >
-                      Giao drone
-                    </button>
+                    <span>—</span>
                   )}
                 </td>
               </tr>

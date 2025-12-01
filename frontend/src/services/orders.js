@@ -1,20 +1,31 @@
 import http from './http'
 
+// Helper để unwrap ApiResponse
+const unwrapData = (responseData) => {
+  // Nếu là ApiResponse wrapper: { status, message, data: T }
+  if (responseData?.data !== undefined && responseData?.status !== undefined) {
+    return responseData.data
+  }
+  // Nếu trả về trực tiếp
+  return responseData
+}
+
 const unwrapPage = (payload) => {
-  if (!payload) return []
-  if (Array.isArray(payload)) return payload
-  if (Array.isArray(payload.content)) return payload.content
+  const unwrapped = unwrapData(payload)
+  if (!unwrapped) return []
+  if (Array.isArray(unwrapped)) return unwrapped
+  if (Array.isArray(unwrapped.content)) return unwrapped.content
   return []
 }
 
 export const createOrder = async (payload) => {
   const { data } = await http.post('/orders', payload)
-  return data
+  return unwrapData(data)
 }
 
 export const getOrderById = async (orderId) => {
   const { data } = await http.get(`/orders/${orderId}`)
-  return data
+  return unwrapData(data)
 }
 
 export const listMyOrders = async (params = {}) => {
@@ -29,17 +40,22 @@ export const listMerchantOrders = async (params = {}) => {
 
 export const listAllOrders = async (params = {}) => {
   const { data } = await http.get('/orders', { params })
-  return data
+  return unwrapData(data)
 }
 
 export const updateOrderStatus = async (orderId, status) => {
   const { data } = await http.put(`/orders/${orderId}/status`, { status })
-  return data
+  return unwrapData(data)
 }
 
 export const requestRefund = async (orderId, payload) => {
   const { data } = await http.post(`/orders/${orderId}/refund`, payload)
-  return data
+  return unwrapData(data)
 }
+
+
+
+
+
 
 

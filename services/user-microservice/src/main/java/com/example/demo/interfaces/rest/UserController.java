@@ -145,17 +145,12 @@ public class UserController {
 
     private final com.example.demo.domain.repository.UserRepository userRepository;
 
-    private final GetRestaurantsUseCase getRestaurantsUseCase;
-
+    @Deprecated
     @GetMapping("/restaurants")
-    public ResponseEntity<ApiResponse<List<CreateUserResponse>>> getRestaurants() {
-        List<CreateUserResponse> restaurants = getRestaurantsUseCase.execute();
-        ApiResponse<List<CreateUserResponse>> result = new ApiResponse<>(
-                HttpStatus.OK,
-                "got all restaurants",
-                restaurants,
-                null);
-        return ResponseEntity.ok(result);
+    public ResponseEntity<Void> getRestaurants() {
+        return ResponseEntity.status(HttpStatus.MOVED_PERMANENTLY)
+                .header(org.springframework.http.HttpHeaders.LOCATION, "/api/v1/restaurants")
+                .build();
     }
 
     @GetMapping("/me")

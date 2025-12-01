@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useLocation } from "react-router-dom";
 import { fetchProducts } from "../services/products";
+import { fetchRestaurants } from "../services/restaurants";
 
 import Product from "./Product";
 import Banner from "./Banner";
@@ -28,11 +29,41 @@ function ProductList({ onAdd, defaultCategory = "All" }) {
     useEffect(() => {
         const loadProducts = async () => {
             try {
-                // Fetch products from backend API
-                const fetched = await fetchProducts();
+                // Fetch products + restaurants song song để gắn tên quán cho từng món
+                const [fetchedProducts, restaurantList] = await Promise.all([
+                    fetchProducts(),
+                    fetchRestaurants({ size: 200 }),
+                ]);
 
-                // Filter active products
-                const safeProducts = fetched.filter(p => p.active);
+                const restaurantsByMerchant = {};
+                (restaurantList || []).forEach((r) => {
+                    if (!r) return;
+                    if (r.merchantId) {
+                        restaurantsByMerchant[r.merchantId] = r;
+                    }
+                });
+
+                // Filter active products và gắn thông tin nhà hàng
+                const safeProducts = (fetchedProducts || [])
+                    .filter((p) => p && p.active)
+                    .map((product) => {
+                        const restaurantInfo = restaurantsByMerchant[product.merchantId] || {};
+                        return {
+                            ...product,
+                            img: product.img || product.image || product.imageUrl,
+                            restaurantId:
+                                restaurantInfo.id ||
+                                product.restaurantId ||
+                                product.merchantId,
+                            restaurant: restaurantInfo.name || product.restaurant,
+                            restaurantName:
+                                restaurantInfo.name ||
+                                product.restaurantName ||
+                                "Không rõ nhà hàng",
+                            restaurantAddress:
+                                restaurantInfo.address || product.restaurantAddress,
+                        };
+                    });
 
                 setProducts(safeProducts);
 

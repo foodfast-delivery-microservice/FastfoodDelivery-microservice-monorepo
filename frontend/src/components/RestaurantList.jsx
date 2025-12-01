@@ -12,14 +12,11 @@ const RestaurantList = () => {
 
     const bannerImages = ["/Images/1.png", "/Images/Banner2.png", "/Images/Banner3.png"];
 
-    // Mock categories for now (until we have a Category API)
+    // Categories matching backend Restaurant.category enum
     const categories = [
         { id: 'All', name: 'Tất cả', icon: '🍽️' },
-        { id: 'Rice', name: 'Cơm', icon: '🍚' },
-        { id: 'Noodle', name: 'Bún/Phở', icon: '🍜' },
-        { id: 'FastFood', name: 'Đồ ăn nhanh', icon: '🍔' },
-        { id: 'Drink', name: 'Đồ uống', icon: '🥤' },
-        { id: 'Snack', name: 'Ăn vặt', icon: '🍟' },
+        { id: 'FOOD', name: 'Đồ ăn', icon: '🍔' },
+        { id: 'DRINK', name: 'Đồ uống', icon: '🥤' },
     ];
 
     useEffect(() => {
@@ -40,10 +37,24 @@ const RestaurantList = () => {
 
     // Filter logic
     const filteredRestaurants = restaurants.filter(r => {
-        const matchSearch = r.name.toLowerCase().includes(searchTerm.toLowerCase());
-        // For now, we don't have category on User entity, so we skip category filter or mock it
-        // Let's assume all restaurants are shown for "All", and filter by name only for now
-        return matchSearch;
+        const matchSearch = r.name?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false;
+        
+        // Filter by category
+        let matchCategory = true;
+        if (selectedCategory && selectedCategory !== 'All') {
+            if (selectedCategory === 'FOOD') {
+                // "Đồ ăn" = hiển thị FOOD hoặc BOTH (vì BOTH có cả đồ ăn)
+                matchCategory = r.category === 'FOOD' || r.category === 'BOTH';
+            } else if (selectedCategory === 'DRINK') {
+                // "Đồ uống" = hiển thị DRINK hoặc BOTH (vì BOTH có cả đồ uống)
+                matchCategory = r.category === 'DRINK' || r.category === 'BOTH';
+            } else {
+                // Các category khác: match chính xác
+                matchCategory = r.category === selectedCategory;
+            }
+        }
+        
+        return matchSearch && matchCategory;
     });
 
     return (

@@ -3,9 +3,7 @@ import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { FaUserCircle } from "react-icons/fa";
 import { useAuth } from "../context/AuthContext";
-import { collection, getDocs } from "../shims/firestore";
-const db = null; // Mock db for shim
-
+import http from "../services/http";
 import "./Header.css";
 
 function Header({ cartCount }) {
@@ -14,12 +12,14 @@ function Header({ cartCount }) {
   const [categories, setCategories] = useState([]);
   const { currentUser, logout } = useAuth();
 
-  // 🧷 Load categories từ Firestore
+  // 🧷 Load categories từ API
   useEffect(() => {
     const loadCategories = async () => {
       try {
-        const snap = await getDocs(collection(db, "products"));
-        const list = snap.docs.map((d) => d.data());
+        // Fetch products to get categories
+        // Ideally backend should have /products/categories endpoint
+        const res = await http.get("/products");
+        const list = res.data?.data || [];
 
         const all = [...new Set(list.map((p) => p.category?.trim()))]
           .filter((c) => c && c !== "");
@@ -81,7 +81,7 @@ function Header({ cartCount }) {
       <div className="header-right">
         <button onClick={() => navigate("/")}>Trang chủ</button>
 
-        {/* 🔥 MENU DROPDOWN — CATEGORIES FROM FIRESTORE */}
+        {/* 🔥 MENU DROPDOWN — CATEGORIES FROM API */}
         <div className="menu-dropdown">
           <button onClick={() => navigate("/menu/All")}>Thực đơn</button>
 

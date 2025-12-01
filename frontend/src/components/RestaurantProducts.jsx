@@ -1,18 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  collection,
-  getDocs,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  doc,
-} from "firebase/firestore";
-import { db } from "../firebase";
-import { useAuth } from "../context/AuthContext"; // ✅ Dùng AuthContext
+import http from "../services/http";
+import { useAuth } from "../context/AuthContext";
 import "./RestaurantProducts.css";
 
 export default function RestaurantProducts() {
-  const { currentUser } = useAuth(); // ✅ user hiện tại
+  const { currentUser } = useAuth();
   const role = (currentUser?.role || "").toLowerCase();
   const [products, setProducts] = useState([]);
   const [restaurants, setRestaurants] = useState([]);
@@ -22,41 +14,76 @@ export default function RestaurantProducts() {
   const [editingProduct, setEditingProduct] = useState(null);
   const [showForm, setShowForm] = useState(false);
 
+  // Helper để unwrap ApiResponse
+  const unwrapData = (responseData) => {
+    // Nếu là ApiResponse wrapper: { status, message, data: T }
+    if (responseData?.data !== undefined && responseData?.status !== undefined) {
+      return responseData.data
+    }
+    // Nếu trả về trực tiếp
+    return responseData
+  }
+
   // ✅ Lấy sản phẩm
   const fetchProducts = useCallback(async () => {
     try {
-      const snap = await getDocs(collection(db, "products"));
-      const data = snap.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
+      setLoading(true);
+      const endpoint = role === "admin" ? "/products" : "/products/merchants/me";
+      console.log(`🔄 [RestaurantProducts] Fetching products from: ${endpoint}, role: ${role}`);
+      
+      const res = await http.get(endpoint);
+      console.log("📦 [RestaurantProducts] Raw response:", res.data);
 
-      // ✅ lọc theo nhà hàng nếu không phải admin
-      const filteredData =
-        role === "admin"
-          ? data
-          : data.filter((p) => p.restaurantId === currentUser?.restaurantId);
-
-      setProducts(filteredData);
+      // Unwrap ApiResponse format
+      const unwrapped = unwrapData(res.data);
+      console.log("📦 [RestaurantProducts] Unwrapped data:", unwrapped);
+      
+      // Backend có thể trả về array hoặc Page object
+      let products = [];
+      if (Array.isArray(unwrapped)) {
+        products = unwrapped;
+      } else if (unwrapped?.content) {
+        products = unwrapped.content;
+      } else if (unwrapped) {
+        products = [unwrapped]; // Single product
+      }
+      
+      console.log(`✅ [RestaurantProducts] Loaded ${products.length} products`);
+      setProducts(products);
     } catch (err) {
-      console.error("❌ Lỗi lấy sản phẩm:", err);
+      console.error("❌ [RestaurantProducts] Lỗi lấy sản phẩm:", err);
+      console.error("❌ [RestaurantProducts] Error details:", {
+        message: err.message,
+        status: err.response?.status,
+        statusText: err.response?.statusText,
+        data: err.response?.data
+      });
+      setProducts([]); // Set empty array on error
     } finally {
       setLoading(false);
     }
-  }, [currentUser?.restaurantId, role]);
+  }, [role]);
 
   // ✅ Lấy danh sách nhà hàng (chỉ admin cần)
   const fetchRestaurants = useCallback(async () => {
     if (role !== "admin") return;
     try {
-      const snap = await getDocs(collection(db, "restaurants"));
-      const data = snap.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      setRestaurants(data);
+      const res = await http.get("/restaurants", { params: { size: 100 } });
+      const unwrapped = unwrapData(res.data);
+      
+      // Backend trả về Page object hoặc array
+      let restaurants = [];
+      if (Array.isArray(unwrapped)) {
+        restaurants = unwrapped;
+      } else if (unwrapped?.content) {
+        restaurants = unwrapped.content;
+      }
+      
+      setRestaurants(restaurants);
     } catch (err) {
       console.error("❌ Lỗi lấy nhà hàng:", err);
+      console.error("Response error:", err.response?.data || err.message);
+      setRestaurants([]);
     }
   }, [role]);
 
@@ -82,60 +109,49 @@ export default function RestaurantProducts() {
   const handleDelete = async (id) => {
     if (!window.confirm("Bạn có chắc muốn xóa sản phẩm này không?")) return;
     try {
-      await deleteDoc(doc(db, "products", id));
+      await http.delete(`/products/${id}`);
       setProducts((prev) => prev.filter((p) => p.id !== id));
       alert("🗑️ Đã xóa sản phẩm!");
     } catch (err) {
       console.error("❌ Lỗi xóa:", err);
+      alert("Xóa sản phẩm thất bại");
     }
   };
 
   // 💾 Thêm / sửa sản phẩm
- const handleSave = async (e) => {
-  e.preventDefault();
+  const handleSave = async (e) => {
+    e.preventDefault();
 
-  const selectedRestaurantId =
-    role === "admin"
-      ? e.target.restaurantId.value
-      : currentUser?.restaurantId;
+    const selectedMerchantId =
+      role === "admin"
+        ? e.target.restaurantId.value
+        : currentUser?.id; // Merchant ID is User ID
 
-  // ⭐ Lấy tên nhà hàng đúng field Firestore của bạn: name
-  let restaurantName = "";
-  if (role === "admin") {
-    const restaurant = restaurants.find((r) => r.id === selectedRestaurantId);
-    restaurantName = restaurant ? restaurant.name : "";
-  } else {
-    // Nhà hàng đăng nhập → đã có trong user: restaurantName hoặc name?
-    restaurantName = currentUser?.restaurantName || currentUser?.name || "";
-  }
+    const productData = {
+      name: e.target.name.value,
+      price: Number(e.target.price.value),
+      image: e.target.img.value,
+      category: e.target.category.value,
+      description: e.target.description.value,
+      merchantId: selectedMerchantId,
+    };
 
-  const productData = {
-    name: e.target.name.value,
-    price: Number(e.target.price.value),
-    img: e.target.img.value,
-    category: e.target.category.value,
-    description: e.target.description.value,
-    restaurantId: selectedRestaurantId,
-    restaurant: restaurantName,   // ⭐⭐ LƯU ĐÚNG FIELD restaurant ⭐⭐
-  };
+    try {
+      if (editingProduct) {
+        await http.put(`/products/${editingProduct.id}`, productData);
+      } else {
+        await http.post("/products", productData);
+      }
 
-  try {
-    if (editingProduct) {
-      await updateDoc(doc(db, "products", editingProduct.id), productData);
-    } else {
-      await addDoc(collection(db, "products"), productData);
+      setShowForm(false);
+      setEditingProduct(null);
+      fetchProducts();
+      alert("✅ Lưu sản phẩm thành công!");
+    } catch (err) {
+      console.error("❌ Lỗi lưu:", err);
+      alert("Lỗi lưu sản phẩm");
     }
-
-    setShowForm(false);
-    setEditingProduct(null);
-    fetchProducts();
-    alert("✅ Lưu sản phẩm thành công!");
-  } catch (err) {
-    console.error("❌ Lỗi lưu:", err);
-  }
-};
-
-
+  };
 
   if (loading) return <p className="rsp-loading">⏳ Đang tải sản phẩm...</p>;
 
@@ -170,8 +186,6 @@ export default function RestaurantProducts() {
             ))}
           </select>
         </div>
-
-    
       </div>
 
       <div className="table-meta">
@@ -190,7 +204,7 @@ export default function RestaurantProducts() {
               <th>Tên sản phẩm</th>
               <th>Danh mục</th>
               <th>Giá</th>
-                {role === "admin" && <th>Nhà hàng</th>}
+              {role === "admin" && <th>Nhà hàng</th>}
               <th>Hành động</th>
             </tr>
           </thead>
@@ -198,19 +212,23 @@ export default function RestaurantProducts() {
             {filteredProducts.map((p) => (
               <tr key={p.id}>
                 <td>
-                  <img src={p.img} alt={p.name} className="rsp-img" />
+                  <img src={p.image} alt={p.name} className="rsp-img" onError={(e) => e.target.src = 'https://via.placeholder.com/50'} />
                 </td>
                 <td>{p.name}</td>
                 <td>{p.category}</td>
-                <td>{p.price.toLocaleString()}₫</td>
+                <td>{p.price?.toLocaleString()}₫</td>
                 {role === "admin" && (
-                  <td>{p.restaurantId || "Không xác định"}</td>
+                  <td>{p.merchantId || "Không xác định"}</td>
                 )}
                 <td>
                   <button
                     className="rsp-btn-edit"
                     onClick={() => {
-                      setEditingProduct(p);
+                      setEditingProduct({
+                        ...p,
+                        img: p.image,
+                        restaurantId: p.merchantId
+                      });
                       setShowForm(true);
                     }}
                   >
@@ -229,97 +247,97 @@ export default function RestaurantProducts() {
         </table>
       )}
 
-     {showForm && (
-  <div
-    className="rsp-modal-overlay"
-    onClick={(e) => {
-      if (e.target.classList.contains("rsp-modal-overlay")) {
-        setShowForm(false);
-      }
-    }}
-  >
-    <div className="rsp-modal-content">
-      <button
-        className="rsp-close"
-        onClick={() => setShowForm(false)}
-      >
-        ✖
-      </button>
-
-      <form className="rsp-form" onSubmit={handleSave}>
-        <h3>{editingProduct ? "✏️ Sửa sản phẩm" : "➕ Thêm sản phẩm"}</h3>
-
-        <label>Tên sản phẩm</label>
-        <input
-          name="name"
-          placeholder="Tên sản phẩm"
-          defaultValue={editingProduct?.name || ""}
-          required
-        />
-
-        <label>Giá</label>
-        <input
-          name="price"
-          type="number"
-          placeholder="Giá"
-          defaultValue={editingProduct?.price || ""}
-          required
-        />
-
-        <label>Link ảnh</label>
-        <input
-          name="img"
-          placeholder="Link ảnh"
-          defaultValue={editingProduct?.img || ""}
-        />
-
-        <label>Danh mục</label>
-        <input
-          name="category"
-          placeholder="VD: Món chính, Nước uống..."
-          defaultValue={editingProduct?.category || ""}
-        />
-
-        <label>Mô tả</label>
-        <textarea
-          name="description"
-          placeholder="Mô tả sản phẩm"
-          defaultValue={editingProduct?.description || ""}
-        />
-
-        {role === "admin" && (
-          <>
-            <label>Nhà hàng</label>
-            <select
-              name="restaurantId"
-              defaultValue={editingProduct?.restaurantId || ""}
+      {showForm && (
+        <div
+          className="rsp-modal-overlay"
+          onClick={(e) => {
+            if (e.target.classList.contains("rsp-modal-overlay")) {
+              setShowForm(false);
+            }
+          }}
+        >
+          <div className="rsp-modal-content">
+            <button
+              className="rsp-close"
+              onClick={() => setShowForm(false)}
             >
-              <option value="">-- Chọn nhà hàng --</option>
-              {restaurants.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.name}
-                </option>
-              ))}
-            </select>
-          </>
-        )}
+              ✖
+            </button>
 
-        <div className="rsp-form-actions">
-          <button type="submit" className="rsp-btn-save">
-            💾 Lưu
-          </button>
-          <button
-            type="button"
-            className="rsp-btn-cancel"
-            onClick={() => setShowForm(false)}
-          >
-            ❌ Hủy
-          </button>
+            <form className="rsp-form" onSubmit={handleSave}>
+              <h3>{editingProduct ? "✏️ Sửa sản phẩm" : "➕ Thêm sản phẩm"}</h3>
+
+              <label>Tên sản phẩm</label>
+              <input
+                name="name"
+                placeholder="Tên sản phẩm"
+                defaultValue={editingProduct?.name || ""}
+                required
+              />
+
+              <label>Giá</label>
+              <input
+                name="price"
+                type="number"
+                placeholder="Giá"
+                defaultValue={editingProduct?.price || ""}
+                required
+              />
+
+              <label>Link ảnh</label>
+              <input
+                name="img"
+                placeholder="Link ảnh"
+                defaultValue={editingProduct?.img || ""}
+              />
+
+              <label>Danh mục</label>
+              <input
+                name="category"
+                placeholder="VD: Món chính, Nước uống..."
+                defaultValue={editingProduct?.category || ""}
+              />
+
+              <label>Mô tả</label>
+              <textarea
+                name="description"
+                placeholder="Mô tả sản phẩm"
+                defaultValue={editingProduct?.description || ""}
+              />
+
+              {role === "admin" && (
+                <>
+                  <label>Nhà hàng</label>
+                  <select
+                    name="restaurantId"
+                    defaultValue={editingProduct?.restaurantId || ""}
+                  >
+                    <option value="">-- Chọn nhà hàng --</option>
+                    {restaurants.map((r) => (
+                      <option key={r.id} value={r.merchantId}>
+                        {r.name}
+                      </option>
+                    ))}
+                  </select>
+                </>
+              )}
+
+              <div className="rsp-form-actions">
+                <button type="submit" className="rsp-btn-save">
+                  💾 Lưu
+                </button>
+                <button
+                  type="button"
+                  className="rsp-btn-cancel"
+                  onClick={() => setShowForm(false)}
+                >
+                  ❌ Hủy
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
-      </form>
-    </div>
-  </div>
-)}
+      )}
 
     </div>
   );

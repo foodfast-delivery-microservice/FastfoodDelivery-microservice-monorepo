@@ -1,15 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import "./RestaurantOrderDetail.css";
-import {
-    doc,
-    getDoc,
-    getDocs,
-    updateDoc,
-    collection,
-    query,
-    where,
-} from "firebase/firestore";
-import { db } from "../firebase";
+import http from "../services/http";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
@@ -24,18 +15,28 @@ export default function RestaurantOrderDetail() {
 
     const fetchOrder = useCallback(async () => {
         try {
-            const snap = await getDoc(doc(db, "orders", id));
-            if (!snap.exists()) {
+            const res = await http.get(`/orders/${id}`);
+            const data = res.data?.data;
+
+            if (!data) {
                 alert("Đơn hàng không tồn tại");
                 navigate("/restaurant/orders");
                 return;
             }
-            setOrder({ id, ...snap.data() });
+
+            setOrder({
+                ...data,
+                total: data.grandTotal,
+                // Map items if available, or handle empty
+                items: data.items || []
+            });
         } catch (err) {
             console.error("Lỗi load order:", err);
         }
     }, [id, navigate]);
 
+    // Drone functionality is disabled for now
+    /*
     const fetchDrones = useCallback(async () => {
         try {
             if (!currentUser.restaurantId) return;
@@ -53,13 +54,16 @@ export default function RestaurantOrderDetail() {
             console.error("Lỗi load drone:", err);
         }
     }, [currentUser]);
+    */
 
     useEffect(() => {
         fetchOrder();
-        fetchDrones();
-    }, [fetchOrder, fetchDrones]);
+        // fetchDrones();
+    }, [fetchOrder]);
 
     const assignDrone = async () => {
+        alert("Tính năng gán Drone đang được phát triển trên hệ thống mới.");
+        /*
         if (!selectedDrone) {
             alert("Vui lòng chọn drone");
             return;
@@ -85,6 +89,7 @@ export default function RestaurantOrderDetail() {
             console.error("Lỗi gán drone:", err);
             alert("Không thể gán drone");
         }
+        */
     };
 
     if (!order) return <p>⏳ Đang tải chi tiết đơn...</p>;
@@ -95,28 +100,30 @@ export default function RestaurantOrderDetail() {
                 ⬅ Quay lại
             </button>
 
-            <h2>📦 Chi tiết đơn hàng #{order.id}</h2>
+            <h2>📦 Chi tiết đơn hàng #{order.orderCode || order.id}</h2>
 
             <div className="info-box">
                 <h3> Khách hàng</h3>
-                <p><b>Tên:</b> {order.customer?.name}</p>
-                <p><b>SĐT:</b> {order.customer?.phone}</p>
-                <p><b>Địa chỉ:</b> {order.customer?.address}</p>
+                <p><b>Tên:</b> {order.receiverName}</p>
+                <p><b>SĐT:</b> {order.receiverPhone}</p>
+                <p><b>Địa chỉ:</b> {order.fullAddress}</p>
             </div>
 
             <div className="info-box">
                 <h3> Sản phẩm</h3>
-                <ul className="order-items-list">
-                    {order.items?.map((i) => (
-                        <li key={i.id} className="order-item">
-                            <span className="item-name">{i.name}</span>
-                            <span className="item-qty">× {i.quantity}</span>
-                            <span className="item-price">{i.price?.toLocaleString()}₫</span>
-
-                        </li>
-                    ))}
-                </ul>
-
+                {order.items && order.items.length > 0 ? (
+                    <ul className="order-items-list">
+                        {order.items.map((i, index) => (
+                            <li key={index} className="order-item">
+                                <span className="item-name">{i.name}</span>
+                                <span className="item-qty">× {i.quantity}</span>
+                                <span className="item-price">{i.price?.toLocaleString()}₫</span>
+                            </li>
+                        ))}
+                    </ul>
+                ) : (
+                    <p><i>Chi tiết sản phẩm không có sẵn.</i></p>
+                )}
             </div>
 
             <div className="info-box">
@@ -129,13 +136,15 @@ export default function RestaurantOrderDetail() {
             <div className="info-box">
                 <h3> Giao bằng drone</h3>
 
-                {order.status === "Đã giao" ? (
+                {order.status === "delivered" || order.status === "Đã giao" ? (
                     <p>Đơn đã giao xong.</p>
                 ) : (
                     <>
+                        <p><i>Tính năng đang bảo trì</i></p>
                         <select
                             value={selectedDrone}
                             onChange={(e) => setSelectedDrone(e.target.value)}
+                            disabled
                         >
                             <option value="">-- Chọn drone --</option>
                             {drones.map((d) => (
@@ -145,7 +154,7 @@ export default function RestaurantOrderDetail() {
                             ))}
                         </select>
 
-                        <button className="assign-btn" onClick={assignDrone}>
+                        <button className="assign-btn" onClick={assignDrone} disabled>
                             Gán drone đi giao
                         </button>
                     </>

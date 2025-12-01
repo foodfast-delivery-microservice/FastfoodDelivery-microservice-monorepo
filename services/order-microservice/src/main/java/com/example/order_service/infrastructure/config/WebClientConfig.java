@@ -77,4 +77,45 @@ public class WebClientConfig {
                 .clientConnector(new ReactorClientHttpConnector(httpClient))
                 .build();
     }
+
+    /**
+     * WebClient dùng để gọi AddressKit (Cas AddressKit - danh mục hành chính).
+     * Không cần load balancing vì đây là dịch vụ bên ngoài, truy cập qua Internet.
+     * Xem tài liệu: https://addresskit.cas.so/
+     */
+    @Bean
+    public WebClient addressKitWebClient() {
+        HttpClient httpClient = HttpClient.create()
+                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 2000) // Connect timeout: 2s
+                .responseTimeout(Duration.ofSeconds(3)) // Response timeout: 3s
+                .doOnConnected(conn ->
+                        conn.addHandlerLast(new ReadTimeoutHandler(3, TimeUnit.SECONDS))
+                                .addHandlerLast(new WriteTimeoutHandler(3, TimeUnit.SECONDS))
+                );
+
+        return WebClient.builder()
+                .baseUrl("https://addresskit.cas.so")
+                .clientConnector(new ReactorClientHttpConnector(httpClient))
+                .build();
+    }
+
+    /**
+     * WebClient dùng để gọi Nominatim (OpenStreetMap) cho geocoding.
+     */
+    @Bean
+    public WebClient nominatimWebClient() {
+        HttpClient httpClient = HttpClient.create()
+                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 2000)
+                .responseTimeout(Duration.ofSeconds(3))
+                .doOnConnected(conn ->
+                        conn.addHandlerLast(new ReadTimeoutHandler(3, TimeUnit.SECONDS))
+                                .addHandlerLast(new WriteTimeoutHandler(3, TimeUnit.SECONDS))
+                );
+
+        return WebClient.builder()
+                .baseUrl("https://nominatim.openstreetmap.org")
+                .clientConnector(new ReactorClientHttpConnector(httpClient))
+                .defaultHeader("User-Agent", "FastfoodDelivery/1.0 (support@fastfooddelivery.com)")
+                .build();
+    }
 }

@@ -50,6 +50,40 @@
   font-weight: 700;
 }
 
+.productDetail__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0 16px;
+  align-items: center;
+}
+
+.productDetail__categoryTag {
+  background: #fff4e6;
+  color: #d97706;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.productDetail__stock {
+  font-size: 0.9rem;
+  color: #444;
+}
+
+.productDetail__badge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.productDetail__badge--inactive {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
 .productDetail__rating {
   font-size: 1rem;
   color: #666;
@@ -86,6 +120,67 @@
   color: #444;
 }
 
+.productDetail__qtyRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 24px;
+  gap: 16px;
+}
+
+.productDetail__qtyControl {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #fff5eb;
+  border-radius: 999px;
+  padding: 6px 10px;
+}
+
+.productDetail__qtyControl button {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: #ff7a00;
+  color: #fff;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.productDetail__qtyControl button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.productDetail__qtyControl span {
+  min-width: 28px;
+  text-align: center;
+  font-weight: 600;
+  color: #333;
+}
+
+.productDetail__total {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-size: 0.95rem;
+}
+
+.productDetail__total span {
+  color: #666;
+}
+
+.productDetail__total strong {
+  color: #e85d04;
+  font-size: 1.3rem;
+  margin-top: 2px;
+}
+
 .productDetail__ingredients {
   background: #fff5eb;
   padding: 16px 20px;
@@ -109,6 +204,31 @@
 
 .productDetail__addBtn:hover {
   transform: translateY(-3px);
+}
+
+.productDetail__addBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.productDetail__merchantHint {
+  margin-top: 10px;
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.productDetail__imageFallback {
+  width: 100%;
+  max-width: 450px;
+  height: 260px;
+  border-radius: 16px;
+  background: #f3f4f6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #9ca3af;
+  font-weight: 500;
 }
 
 .productDetail__progress {
@@ -272,6 +392,18 @@
 .relatedProducts__addBtn:hover {
   transform: scale(1.07);
   box-shadow: 0 5px 16px rgba(255, 123, 0, 0.4);
+}
+
+.relatedProducts__imageFallback {
+  width: 100%;
+  height: 160px;
+  border-radius: 14px;
+  background: #f3f4f6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #9ca3af;
+  font-size: 0.9rem;
 }
 /* Nổi bật tên nhà hàng */
 .productDetail__restaurantCard {

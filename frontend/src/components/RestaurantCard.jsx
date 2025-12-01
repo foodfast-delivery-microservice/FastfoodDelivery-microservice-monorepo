@@ -8,7 +8,7 @@ const RestaurantCard = ({ restaurant }) => {
             <div className="restaurant-card">
                 <div className="restaurant-image-container">
                     <img
-                        src={restaurant.img}
+                        src={restaurant.image || restaurant.img || '/Images/Logo.png'}
                         alt={restaurant.name}
                         className="restaurant-image"
                         onError={(e) => { e.target.src = '/Images/Logo.png'; }}

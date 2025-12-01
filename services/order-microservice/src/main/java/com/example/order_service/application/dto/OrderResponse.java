@@ -43,6 +43,11 @@ public class OrderResponse {
         private String city;
         private BigDecimal lat;
         private BigDecimal lng;
+        private String provinceCode;
+        private String provinceName;
+        private String communeCode;
+        private String communeName;
+        private String normalizedDistrictName;
         private String fullAddress;
     }
 

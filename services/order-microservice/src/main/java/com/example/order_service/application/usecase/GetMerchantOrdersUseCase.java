@@ -1,5 +1,6 @@
 package com.example.order_service.application.usecase;
 
+import com.example.order_service.application.dto.OrderItemResponse;
 import com.example.order_service.application.dto.OrderListRequest;
 import com.example.order_service.application.dto.OrderListResponse;
 import com.example.order_service.application.dto.PageResponse;
@@ -106,6 +107,19 @@ public class GetMerchantOrdersUseCase {
     }
 
     private OrderListResponse mapToOrderListResponse(Order order) {
+        // Map order items to OrderItemResponse
+        List<OrderItemResponse> orderItems = order.getOrderItems().stream()
+                .map(item -> OrderItemResponse.builder()
+                        .id(item.getId())
+                        .productId(item.getProductId())
+                        .merchantId(item.getMerchantId())
+                        .productName(item.getProductName())
+                        .unitPrice(item.getUnitPrice())
+                        .quantity(item.getQuantity())
+                        .lineTotal(item.getLineTotal())
+                        .build())
+                .collect(Collectors.toList());
+
         return OrderListResponse.builder()
                 .id(order.getId())
                 .orderCode(order.getOrderCode())
@@ -123,6 +137,7 @@ public class GetMerchantOrdersUseCase {
                 .receiverPhone(order.getDeliveryAddress().getReceiverPhone())
                 .fullAddress(order.getDeliveryAddress().getFullAddress())
                 .itemCount(order.getOrderItems().size())
+                .orderItems(orderItems) // Thêm items list
                 .build();
     }
 }

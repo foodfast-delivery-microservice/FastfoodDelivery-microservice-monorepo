@@ -9,6 +9,9 @@ import com.example.demo.interfaces.rest.dto.user.CreateUserRequest;
 import com.example.demo.interfaces.rest.dto.user.CreateUserResponse;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
 public class CreateUserUseCase {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
@@ -36,9 +39,10 @@ public class CreateUserUseCase {
         }
 
         // Determine approved status: use provided value, or default based on role
-        // MERCHANT roles need admin approval (false), others are approved by default (true)
-        boolean approved = createUserRequest.getApproved() != null 
-                ? createUserRequest.getApproved() 
+        // MERCHANT roles need admin approval (false), others are approved by default
+        // (true)
+        boolean approved = createUserRequest.getApproved() != null
+                ? createUserRequest.getApproved()
                 : role != User.UserRole.MERCHANT;
 
         User user = new User();

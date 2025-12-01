@@ -32,6 +32,29 @@ public class DeliveryAddress {
     @Column(name = "city", nullable = false, length = 100)
     private String city;
 
+    /**
+     * Administrative codes/names normalized from AddressKit (NSO data)
+     * These fields are optional and used for analytics/joining with other systems.
+     */
+    @Column(name = "province_code", length = 20)
+    private String provinceCode;
+
+    @Column(name = "province_name", length = 100)
+    private String provinceName;
+
+    @Column(name = "commune_code", length = 20)
+    private String communeCode;
+
+    @Column(name = "commune_name", length = 100)
+    private String communeName;
+
+    /**
+     * Optional: normalized district name (for cases where the new model still
+     * distinguishes districts or for backward compatibility with legacy data).
+     */
+    @Column(name = "normalized_district_name", length = 100)
+    private String normalizedDistrictName;
+
     @Column(name = "lat", precision = 10, scale = 7)
     private java.math.BigDecimal lat;
 

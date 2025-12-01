@@ -308,6 +308,49 @@ public class OrderController {
         return ResponseEntity.ok(response);
     }
 
+    // ========== CUSTOMER ENDPOINTS ==========
+
+    /**
+     * CUSTOMER: Xem đơn hàng của mình
+     * GET /api/v1/orders/my-orders
+     */
+    @GetMapping("/my-orders")
+    public ResponseEntity<PageResponse<OrderListResponse>> getMyOrders(
+            @AuthenticationPrincipal Jwt jwt,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String orderCode,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fromDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime toDate,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "DESC") String sortDirection) {
+
+        Long userId = jwtTokenService.extractUserId(jwt);
+        if (userId == null) {
+            throw new ResponseStatusException(org.springframework.http.HttpStatus.UNAUTHORIZED,
+                    "Cannot extract userId from token");
+        }
+
+        log.info("Getting orders for user: {} with filters - status: {}, orderCode: {}, fromDate: {}, toDate: {}",
+                userId, status, orderCode, fromDate, toDate);
+
+        OrderListRequest request = OrderListRequest.builder()
+                .userId(userId)
+                .status(status)
+                .orderCode(orderCode)
+                .fromDate(fromDate)
+                .toDate(toDate)
+                .page(page)
+                .size(size)
+                .sortBy(sortBy)
+                .sortDirection(sortDirection)
+                .build();
+
+        PageResponse<OrderListResponse> response = getOrderListUseCase.execute(request);
+        return ResponseEntity.ok(response);
+    }
+
     // ========== MERCHANT ENDPOINTS ==========
 
     /**

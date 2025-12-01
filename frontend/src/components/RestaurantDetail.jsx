@@ -4,7 +4,7 @@ import { fetchRestaurantById, fetchRestaurantMenu } from '../services/restaurant
 import Product from './Product';
 import './RestaurantDetail.css'; // We'll create this CSS next
 
-const RestaurantDetail = () => {
+const RestaurantDetail = ({ onAdd }) => {
   const { id } = useParams();
   const [restaurant, setRestaurant] = useState(null);
   const [menu, setMenu] = useState([]);
@@ -14,11 +14,12 @@ const RestaurantDetail = () => {
     const loadData = async () => {
       try {
         setLoading(true);
-        const [resData, menuData] = await Promise.all([
-          fetchRestaurantById(id),
-          fetchRestaurantMenu(id)
-        ]);
+        // Lấy restaurant trước để có merchantId
+        const resData = await fetchRestaurantById(id);
         setRestaurant(resData);
+        
+        // Sau đó lấy menu với merchantId từ restaurant
+        const menuData = await fetchRestaurantMenu(id);
         setMenu(menuData);
       } catch (error) {
         console.error('Failed to load restaurant detail:', error);
@@ -50,7 +51,7 @@ const RestaurantDetail = () => {
         <div className="header-container">
           <div className="header-image">
             <img
-              src={restaurant.img}
+              src={restaurant.image || restaurant.img || '/Images/Logo.png'}
               alt={restaurant.name}
               onError={(e) => { e.target.src = '/Images/Logo.png'; }}
             />
@@ -86,7 +87,17 @@ const RestaurantDetail = () => {
               <h3 className="category-title">{category}</h3>
               <div className="product-grid">
                 {items.map(product => (
-                  <Product key={product.id} product={product} />
+                  <Product 
+                    key={product.id} 
+                    product={{
+                      ...product,
+                      img: product.image || product.img,
+                      restaurant: restaurant?.name || product.restaurantName,
+                      restaurantId: restaurant?.merchantId || product.merchantId,
+                      restaurantName: restaurant?.name || product.restaurantName
+                    }} 
+                    onAdd={onAdd}
+                  />
                 ))}
               </div>
             </div>

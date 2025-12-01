@@ -17,5 +17,13 @@ public class DeliveryAddressResponse {
     private String ward;
     private String district;
     private String city;
+
+    // Normalized administrative fields (if available)
+    private String provinceCode;
+    private String provinceName;
+    private String communeCode;
+    private String communeName;
+    private String normalizedDistrictName;
+
     private String fullAddress;
 }

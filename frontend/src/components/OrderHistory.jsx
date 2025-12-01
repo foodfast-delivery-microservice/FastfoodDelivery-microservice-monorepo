@@ -25,14 +25,39 @@ function OrderHistory() {
         const userOrders = await listMyOrders();
 
         // Map API response to component state structure
-        const formattedOrders = userOrders.map((order) => ({
+        // Backend OrderListResponse có: id, orderCode, status, grandTotal, itemCount, createdAt, receiverName, receiverPhone, fullAddress
+        // KHÔNG có items list (chỉ có itemCount)
+        console.log('📦 [OrderHistory] Raw orders from backend:', userOrders);
+        
+        const formattedOrders = userOrders.map((order) => {
+          console.log('📦 [OrderHistory] Processing order:', order);
+          return {
           id: String(order.id), // Ensure ID is string for routing
-          ...order,
+            orderCode: order.orderCode,
+            status: order.status || "PENDING",
+            // Map grandTotal to total/totalAmount for compatibility
+            total: order.grandTotal ? parseFloat(order.grandTotal) : null,
+            totalAmount: order.grandTotal ? parseFloat(order.grandTotal) : null,
+            grandTotal: order.grandTotal ? parseFloat(order.grandTotal) : null,
+            // Backend OrderListResponse giờ đã có orderItems
+            items: order.orderItems || order.items || [],
+            itemCount: order.itemCount || 0,
+            // Delivery info
+            receiverName: order.receiverName,
+            receiverPhone: order.receiverPhone,
+            fullAddress: order.fullAddress,
+            // Date
+            createdAt: order.createdAt,
           date: order.createdAt ? new Date(order.createdAt) : null,
-          // Backend returns 'items' or 'orderItems', ensure compatibility
-          items: order.items || order.orderItems || [],
-          status: order.status || "PENDING"
-        }));
+            // Other fields
+            currency: order.currency,
+            subtotal: order.subtotal ? parseFloat(order.subtotal) : null,
+            discount: order.discount ? parseFloat(order.discount) : null,
+            shippingFee: order.shippingFee ? parseFloat(order.shippingFee) : null,
+          };
+        });
+        
+        console.log('📦 [OrderHistory] Formatted orders:', formattedOrders);
 
         // Ưu tiên hiển thị trạng thái
         // Backend status might be uppercase (PENDING, DELIVERING, DELIVERED)
@@ -93,8 +118,9 @@ function OrderHistory() {
               </div>
 
               <div className="order-body">
+                {order.items && order.items.length > 0 ? (
                 <ul className="order-items-list">
-                  {order.items?.map((item, index) => (
+                    {order.items.map((item, index) => (
                     <li
                       key={`${order.id}-${index}`}
                       className="order-item clickable-item"
@@ -104,18 +130,25 @@ function OrderHistory() {
                       }}
                     >
                       <span>{item.quantity}x {item.productName || item.name}</span>
-                      <span>{(item.price * item.quantity).toLocaleString()}₫</span>
+                        <span>{(item.unitPrice || item.price) * item.quantity ? 
+                          ((item.unitPrice || item.price) * item.quantity).toLocaleString() + "₫" : 
+                          (item.lineTotal ? parseFloat(item.lineTotal).toLocaleString() + "₫" : "N/A")}</span>
                     </li>
                   ))}
                 </ul>
+                ) : (
+                  <p style={{ padding: "10px", color: "#666", fontStyle: "italic" }}>
+                    {order.itemCount ? `${order.itemCount} sản phẩm` : "Không có thông tin sản phẩm"}
+                  </p>
+                )}
               </div>
 
               <div className="order-footer">
                 <div className="order-total">
                   <strong>
                     Tổng tiền:{" "}
-                    {order?.totalAmount || order?.total
-                      ? (order.totalAmount || order.total).toLocaleString() + "₫"
+                    {order?.grandTotal || order?.totalAmount || order?.total
+                      ? (order.grandTotal || order.totalAmount || order.total).toLocaleString("vi-VN") + "₫"
                       : "Đang cập nhật"}
                   </strong>
                 </div>

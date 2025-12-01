@@ -45,6 +45,12 @@ public class SecurityConfig {
                         .requestMatchers("/api/internal/**").permitAll()
 
                         .requestMatchers("/api/v1/auth/**").permitAll()
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
+                        .requestMatchers("/api/v1/restaurants/me/**").hasAnyRole("MERCHANT", "ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/restaurants/me").hasAnyRole("MERCHANT", "ADMIN")
+                        .requestMatchers(HttpMethod.PATCH, "/api/v1/restaurants/me/**").hasAnyRole("MERCHANT", "ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/restaurants/**").permitAll()
                         // Validation endpoint cho phép USER role (cho Order Service)
                         // Pattern: /api/v1/users/{id}/validate - chỉ match 1 level path variable
                         .requestMatchers(HttpMethod.GET, "/api/v1/users/*/validate")
@@ -52,9 +58,6 @@ public class SecurityConfig {
 
                         // Allow getting own profile
                         .requestMatchers(HttpMethod.GET, "/api/v1/users/me").authenticated()
-
-                        // Allow getting list of restaurants (public)
-                        .requestMatchers(HttpMethod.GET, "/api/v1/users/restaurants").permitAll()
 
                         // Allow getting specific user/restaurant details (public)
                         .requestMatchers(HttpMethod.GET, "/api/v1/users/{id:[0-9]+}").permitAll()

@@ -6,13 +6,17 @@ import com.example.demo.interfaces.rest.dto.user.CreateUserResponse;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
 public class GetAllUsersUseCase {
     private final UserRepository userRepository;
 
     public GetAllUsersUseCase(UserRepository userRepository) {
         this.userRepository = userRepository;
     }
-    public List<CreateUserResponse> execute(){
+
+    public List<CreateUserResponse> execute() {
         return userRepository.findAll()
                 .stream()
                 .map(CreateUserResponse::fromEntity)

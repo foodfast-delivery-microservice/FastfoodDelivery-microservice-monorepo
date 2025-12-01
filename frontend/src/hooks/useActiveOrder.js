@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
-import { collection, query, where, onSnapshot } from "../shims/firestore";
-const db = null; // Mock db for shim
+import http from "../services/http";
 import { useAuth } from "../context/AuthContext";
 
 export default function useActiveOrder() {
@@ -8,28 +7,38 @@ export default function useActiveOrder() {
   const [activeOrder, setActiveOrder] = useState(null);
 
   useEffect(() => {
-    const userId = currentUser?.id ?? currentUser?.uid;
+    const userId = currentUser?.id;
     if (!userId) return;
 
-    // Các trạng thái còn đang diễn ra
-    const activeStatuses = ["Chờ xác nhận", "Đang giao"];
+    const fetchActiveOrder = async () => {
+      try {
+        // Fetch orders with status pending/processing/delivering
+        // We might need a specific endpoint or filter.
+        // For now, let's try to fetch recent orders and check status.
+        // Or if backend supports status filter array.
+        // Let's assume we fetch latest orders and check client side for now.
+        const res = await http.get("/orders", { params: { userId, size: 5, sort: "createdAt,desc" } });
+        const orders = res.data?.data?.content || [];
 
-    const q = query(
-      collection(db, "orders"),
-      where("userId", "==", userId),
-      where("status", "in", activeStatuses)
-    );
+        const active = orders.find(o =>
+          ["pending", "processing", "delivering", "chờ xác nhận", "đang giao", "đang xử lý"].includes(o.status?.toLowerCase())
+        );
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      if (!snapshot.empty) {
-        const order = snapshot.docs[0];
-        setActiveOrder({ id: order.id, ...order.data() });
-      } else {
-        setActiveOrder(null);
+        if (active) {
+          setActiveOrder(active);
+        } else {
+          setActiveOrder(null);
+        }
+      } catch (err) {
+        console.error("Failed to fetch active order", err);
       }
-    });
+    };
 
-    return () => unsubscribe();
+    fetchActiveOrder();
+
+    // Poll every 10 seconds
+    const interval = setInterval(fetchActiveOrder, 10000);
+    return () => clearInterval(interval);
   }, [currentUser]);
 
   return activeOrder;

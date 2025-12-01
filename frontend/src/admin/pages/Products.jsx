@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Table, Input, Select, Slider, Modal, message, Spin } from "antd";
-import { collection, getDocs, addDoc, doc, deleteDoc, updateDoc } from "firebase/firestore";
-import { db } from "../../firebase";
+import http from "../../services/http";
 import "./Products.css";
 
 export default function AdminProducts() {
@@ -23,7 +22,7 @@ export default function AdminProducts() {
     id: "",
     name: "",
     category: "",
-    restaurantId: "",
+    restaurantId: "", // This will store merchantId
     price: 0,
     img: "",
     description: "",
@@ -31,8 +30,8 @@ export default function AdminProducts() {
 
   const fetchProducts = useCallback(async () => {
     try {
-      const snapshot = await getDocs(collection(db, "products"));
-      const productsData = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      const res = await http.get("/products");
+      const productsData = res.data?.data || [];
       setData(productsData);
       setFilteredData(productsData);
     } catch (err) {
@@ -45,11 +44,8 @@ export default function AdminProducts() {
 
   const fetchRestaurants = useCallback(async () => {
     try {
-      const snapshot = await getDocs(collection(db, "restaurants"));
-      const restaurantData = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
+      const res = await http.get("/restaurants", { params: { size: 100 } });
+      const restaurantData = res.data?.data?.content || [];
       console.log("🔥 Loaded restaurants:", restaurantData);
       setRestaurantsList(restaurantData);
     } catch (err) {
@@ -67,8 +63,8 @@ export default function AdminProducts() {
   }, [fetchProducts, fetchRestaurants]);
 
   // ===== HELPER =====
-  const getRestaurantName = useCallback((id) => {
-    const found = restaurantsList.find((r) => r.id === id);
+  const getRestaurantName = useCallback((merchantId) => {
+    const found = restaurantsList.find((r) => r.merchantId === merchantId);
     return found ? found.name : "Không rõ";
   }, [restaurantsList]);
 
@@ -78,7 +74,7 @@ export default function AdminProducts() {
       const matchName = item.name?.toLowerCase().includes(searchText.toLowerCase());
       const matchCategory = category === "Tất cả" || item.category === category;
       const matchRestaurant =
-        restaurantFilter === "Tất cả" || getRestaurantName(item.restaurantId) === restaurantFilter;
+        restaurantFilter === "Tất cả" || getRestaurantName(item.merchantId) === restaurantFilter;
       const matchPrice = item.price >= priceRange[0] && item.price <= priceRange[1];
       return matchName && matchCategory && matchRestaurant && matchPrice;
     });
@@ -87,67 +83,77 @@ export default function AdminProducts() {
 
   // ===== CRUD =====
   const handleAdd = async () => {
-  console.log("📦 Dữ liệu form gửi:", form);
+    console.log("📦 Dữ liệu form gửi:", form);
 
-  // ✅ Kiểm tra dữ liệu đầu vào
-  if (!form.name.trim()) return message.warning("⚠️ Vui lòng nhập tên sản phẩm!");
-  if (!form.restaurantId) return message.warning("⚠️ Vui lòng chọn nhà hàng!");
-if (form.price === "" || isNaN(Number(form.price)))
-  return message.warning("⚠️ Vui lòng nhập giá hợp lệ!");
+    // ✅ Kiểm tra dữ liệu đầu vào
+    if (!form.name.trim()) return message.warning("⚠️ Vui lòng nhập tên sản phẩm!");
+    if (!form.restaurantId) return message.warning("⚠️ Vui lòng chọn nhà hàng!");
+    if (form.price === "" || isNaN(Number(form.price)))
+      return message.warning("⚠️ Vui lòng nhập giá hợp lệ!");
 
-  try {
-    const restaurant = restaurantsList.find((r) => r.id === form.restaurantId);
-    if (!restaurant) {
-      message.error("❌ Nhà hàng không hợp lệ!");
-      return;
+    try {
+      const restaurant = restaurantsList.find((r) => r.merchantId === form.restaurantId);
+      if (!restaurant) {
+        message.error("❌ Nhà hàng không hợp lệ!");
+        return;
+      }
+
+      const productData = {
+        name: form.name.trim(),
+        category: form.category.trim() || "Khác",
+        merchantId: form.restaurantId, // Using merchantId
+        price: Number(form.price),
+        image: form.img.trim() || "",
+        description: form.description.trim() || "",
+      };
+
+      console.log("🚀 Gửi lên API:", productData);
+
+      await http.post("/products", productData);
+      message.success(`✅ Đã thêm sản phẩm "${form.name}" cho ${restaurant.name}!`);
+
+      // Reset form
+      setShowAddModal(false);
+      setForm({
+        id: "",
+        name: "",
+        category: "",
+        restaurantId: "",
+        price: 0,
+        img: "",
+        description: "",
+      });
+
+      fetchProducts();
+    } catch (err) {
+      console.error("🔥 Lỗi khi thêm sản phẩm:", err);
+      message.error("❌ Có lỗi xảy ra khi thêm sản phẩm!");
     }
-
-    const productData = {
-      name: form.name.trim(),
-      category: form.category.trim() || "Khác",
-      restaurantId: form.restaurantId,
-      restaurantName: restaurant.name, // ✅ thêm tên nhà hàng để tiện xem
-      price: Number(form.price),
-      img: form.img.trim() || "",
-      description: form.description.trim() || "",
-      createdAt: new Date().toISOString(),
-    };
-
-    console.log("🚀 Gửi lên Firestore:", productData);
-
-    await addDoc(collection(db, "products"), productData);
-    message.success(`✅ Đã thêm sản phẩm "${form.name}" cho ${restaurant.name}!`);
-
-    // Reset form
-    setShowAddModal(false);
-    setForm({
-      id: "",
-      name: "",
-      category: "",
-      restaurantId: "",
-      price: 0,
-      img: "",
-      description: "",
-    });
-
-    fetchProducts();
-  } catch (err) {
-    console.error("🔥 Lỗi khi thêm sản phẩm:", err);
-    message.error("❌ Có lỗi xảy ra khi thêm sản phẩm!");
-  }
-};
+  };
 
 
   const handleDelete = async (id) => {
     if (!window.confirm("Bạn có chắc muốn xóa sản phẩm này không?")) return;
-    await deleteDoc(doc(db, "products", id));
-    message.success("🗑️ Đã xóa sản phẩm!");
-    fetchProducts();
+    try {
+      await http.delete(`/products/${id}`);
+      message.success("🗑️ Đã xóa sản phẩm!");
+      fetchProducts();
+    } catch (err) {
+      console.error("🔥 Lỗi xóa sản phẩm:", err);
+      message.error("❌ Xóa sản phẩm thất bại!");
+    }
   };
 
   const handleEdit = async () => {
     try {
-      await updateDoc(doc(db, "products", form.id), form);
+      const updateData = {
+        name: form.name,
+        price: form.price,
+        category: form.category,
+        image: form.img,
+        description: form.description
+      };
+      await http.put(`/products/${form.id}`, updateData);
       message.success("✏️ Đã cập nhật sản phẩm!");
       setShowEditModal(false);
       fetchProducts();
@@ -161,12 +167,12 @@ if (form.price === "" || isNaN(Number(form.price)))
   const columns = [
     {
       title: "Hình ảnh",
-      dataIndex: "img",
-      render: (img) => <img src={img} alt="product" className="product-thumb" />,
+      dataIndex: "image", // Backend uses 'image'
+      render: (img) => <img src={img || form.img} alt="product" className="product-thumb" onError={(e) => e.target.src = 'https://via.placeholder.com/50'} />,
     },
     { title: "Tên sản phẩm", dataIndex: "name", sorter: (a, b) => a.name.localeCompare(b.name) },
     { title: "Danh mục", dataIndex: "category" },
-    { title: "Nhà hàng", render: (_, record) => getRestaurantName(record.restaurantId) },
+    { title: "Nhà hàng", render: (_, record) => getRestaurantName(record.merchantId) },
     {
       title: "Giá (VND)",
       dataIndex: "price",
@@ -181,7 +187,11 @@ if (form.price === "" || isNaN(Number(form.price)))
           <button
             className="edit-btn"
             onClick={() => {
-              setForm(record);
+              setForm({
+                ...record,
+                img: record.image, // Map backend 'image' to frontend 'img'
+                restaurantId: record.merchantId
+              });
               setShowEditModal(true);
             }}
           >
@@ -288,10 +298,10 @@ if (form.price === "" || isNaN(Number(form.price)))
           style={{ width: "100%" }}
           placeholder="Chọn nhà hàng"
           loading={loadingRestaurants}
-          getPopupContainer={(trigger) => trigger.parentNode} // ✅ FIX LỖI dropdown không hiện
+          getPopupContainer={(trigger) => trigger.parentNode}
         >
           {restaurantsList.map((r) => (
-            <Select.Option key={r.id} value={r.id}>
+            <Select.Option key={r.id} value={r.merchantId}>
               {r.name}
             </Select.Option>
           ))}
