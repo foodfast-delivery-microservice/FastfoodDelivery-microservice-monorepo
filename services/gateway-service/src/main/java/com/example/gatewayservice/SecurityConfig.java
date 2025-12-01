@@ -82,6 +82,22 @@ public class SecurityConfig {
                                                 .hasAnyRole("MERCHANT", "ADMIN")
                                                 .requestMatchers("/api/v1/payments/**").authenticated()
 
+                                                .requestMatchers("/actuator/**").permitAll()
+
+                                                // Admin-only endpoints (Drone management)
+                                                .requestMatchers(HttpMethod.POST, "/api/drones").hasRole("ADMIN")
+                                                .requestMatchers(HttpMethod.PUT, "/api/drones/**").hasRole("ADMIN")
+                                                .requestMatchers(HttpMethod.DELETE, "/api/drones/**").hasRole("ADMIN")
+
+                                                // Admin can view all drones and missions
+                                                .requestMatchers(HttpMethod.GET, "/api/drones/**")
+                                                .hasAnyRole("ADMIN", "SERVICE")
+                                                .requestMatchers(HttpMethod.GET, "/api/missions")
+                                                .hasAnyRole("ADMIN", "SERVICE")
+
+                                                // Users can track their own orders
+                                                .requestMatchers(HttpMethod.GET, "/api/missions/order/*/tracking")
+                                                .authenticated()
                                                 .anyRequest().authenticated())
                                 .exceptionHandling(exception -> exception
                                                 .authenticationEntryPoint(jwtAuthenticationEntryPoint))
@@ -89,6 +105,47 @@ public class SecurityConfig {
                                 .addFilterAfter(jwtTokenForwardFilter, UsernamePasswordAuthenticationFilter.class)
 
                                 .oauth2ResourceServer(oauth2 -> oauth2
+                                                .authenticationEntryPoint(jwtAuthenticationEntryPoint)
+                                                .bearerTokenResolver(request -> {
+                                                        // Skip JWT validation for public endpoints
+                                                        String path = request.getRequestURI();
+                                                        String method = request.getMethod();
+
+                                                        // Public auth endpoints
+                                                        if (path.startsWith("/api/v1/auth/")) {
+                                                                return null;
+                                                        }
+
+                                                        // Public product GET endpoints
+                                                        if (path.startsWith("/api/v1/products/")
+                                                                        && "GET".equals(method)) {
+                                                                return null;
+                                                        }
+
+                                                        // Public user endpoints
+                                                        if (path.equals("/api/v1/users/restaurants")
+                                                                        && "GET".equals(method)) {
+                                                                return null;
+                                                        }
+
+                                                        if (path.matches("/api/v1/users/\\d+")
+                                                                        && "GET".equals(method)) {
+                                                                return null;
+                                                        }
+
+                                                        // Actuator endpoints
+                                                        if (path.startsWith("/actuator/")) {
+                                                                return null;
+                                                        }
+
+                                                        // For all other endpoints, extract the bearer token
+                                                        String authorization = request.getHeader("Authorization");
+                                                        if (authorization != null
+                                                                        && authorization.startsWith("Bearer ")) {
+                                                                return authorization.substring(7);
+                                                        }
+                                                        return null;
+                                                })
                                                 .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthConverter)));
 
                 return http.build();
