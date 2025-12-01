@@ -102,9 +102,10 @@ public class DroneController {
     /**
      * Update drone battery level (for testing/maintenance)
      */
+    // todo check lại endpoint này
     @PutMapping("/{id}/battery")
     public ResponseEntity<Void> updateBattery(
-            @PathVariable Long id,
+                @PathVariable Long id,
             @RequestParam Integer level) {
 
         return droneRepository.findById(id)

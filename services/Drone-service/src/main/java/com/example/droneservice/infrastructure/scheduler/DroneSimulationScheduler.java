@@ -7,6 +7,7 @@ import com.example.droneservice.domain.repository.DroneMissionRepository;
 import com.example.droneservice.infrastructure.config.RabbitMQConfig;
 import com.example.droneservice.infrastructure.event.DeliveryCompletedEvent;
 import com.example.droneservice.infrastructure.event.DroneStatusUpdateEvent;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
@@ -33,6 +34,7 @@ public class DroneSimulationScheduler {
      * Run every 2 seconds (2000ms)
      * Simulates movement for all active missions
      */
+    @Transactional
     @Scheduled(fixedRate = 2000)
     public void simulateActiveMissions() {
         // Find all active missions (ASSIGNED or IN_PROGRESS)

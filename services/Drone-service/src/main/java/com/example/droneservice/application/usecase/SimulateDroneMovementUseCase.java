@@ -94,22 +94,33 @@ public class SimulateDroneMovementUseCase {
      * Determine the target coordinates based on mission status
      */
     private GpsCoordinate determineTarget(DroneMission mission, Drone drone) {
-        return switch (mission.getStatus()) {
-            case ASSIGNED, IN_PROGRESS -> {
-                // First, go to pickup location
-                double distanceToPickup = HaversineDistanceCalculator.calculate(
-                        drone.getCurrentLatitude(), drone.getCurrentLongitude(),
-                        mission.getPickupLatitude(), mission.getPickupLongitude());
+        // 1. Ưu tiên cao nhất: Đang quay về -> Mục tiêu là Base
+        // (Bất kể Mission status là gì, nếu Drone state là RETURNING thì phải về)
+        if (drone.getState() == State.RETURNING) {
+            return new GpsCoordinate(drone.getBaseLatitude(), drone.getBaseLongitude());
+        }
 
-                if (distanceToPickup > ARRIVAL_THRESHOLD_KM) {
-                    yield new GpsCoordinate(mission.getPickupLatitude(), mission.getPickupLongitude());
-                } else {
-                    // Already at pickup, go to delivery
+        // 2. Xử lý dựa trên Mission Status và Drone State
+        return switch (mission.getStatus()) {
+
+            // Trường hợp mới nhận nhiệm vụ: Chắc chắn phải đi lấy hàng
+            case ASSIGNED ->
+                    new GpsCoordinate(mission.getPickupLatitude(), mission.getPickupLongitude());
+
+            case IN_PROGRESS -> {
+                // Logic quan trọng: Phân định rõ đang đi Lấy hay đi Giao
+                if (drone.getState() == State.DELIVERING) {
+                    // Nếu trạng thái là ĐANG GIAO -> Bay đến nhà khách
                     yield new GpsCoordinate(mission.getDeliveryLatitude(), mission.getDeliveryLongitude());
+                } else {
+                    // Nếu trạng thái chưa phải DELIVERING (ví dụ vẫn là IDLE, LOADING...)
+                    // -> Nghĩa là chưa lấy hàng xong -> Bay đến quán
+                    yield new GpsCoordinate(mission.getPickupLatitude(), mission.getPickupLongitude());
                 }
             }
-            case COMPLETED -> null; // Mission complete, no movement needed
-            case CANCELLED -> null;
+
+            // Các trạng thái kết thúc -> Không cần di chuyển (hoặc đã xử lý ở RETURNING trên cùng)
+            case COMPLETED, CANCELLED -> null;
         };
     }
 
@@ -117,10 +128,12 @@ public class SimulateDroneMovementUseCase {
      * Handle arrival at target location
      */
     private void handleArrival(DroneMission mission, Drone drone) {
+        // get current location of drone
         GpsCoordinate currentPos = new GpsCoordinate(
                 drone.getCurrentLatitude(),
                 drone.getCurrentLongitude());
 
+        // calculate distance to pickup and delivery
         // Check which location we arrived at
         double distanceToPickup = HaversineDistanceCalculator.calculate(
                 currentPos.getLatitude(), currentPos.getLongitude(),
@@ -134,13 +147,20 @@ public class SimulateDroneMovementUseCase {
                 currentPos.getLatitude(), currentPos.getLongitude(),
                 drone.getBaseLatitude(), drone.getBaseLongitude());
 
+
+        // todo check where the drone is
+
+        // case 1: Drone is at pickup location
         if (distanceToPickup <= ARRIVAL_THRESHOLD_KM) {
             log.info("Drone {} arrived at PICKUP location for order {}",
                     drone.getSerialNumber(), mission.getOrderId());
             mission.setStatus(Status.IN_PROGRESS);
             missionRepository.save(mission);
 
-        } else if (distanceToDelivery <= ARRIVAL_THRESHOLD_KM) {
+        } 
+        
+        // case 2: Drone is at delivery location
+        else if (distanceToDelivery <= ARRIVAL_THRESHOLD_KM) {
             log.info("Drone {} DELIVERED order {}",
                     drone.getSerialNumber(), mission.getOrderId());
 
@@ -148,7 +168,10 @@ public class SimulateDroneMovementUseCase {
             drone.setState(State.RETURNING);
             droneRepository.save(drone);
 
-        } else if (distanceToBase <= ARRIVAL_THRESHOLD_KM) {
+        }
+        
+        // case 3: Drone is at base location
+        else if (distanceToBase <= ARRIVAL_THRESHOLD_KM) {
             log.info("Drone {} returned to BASE. Mission {} completed",
                     drone.getSerialNumber(), mission.getId());
 
