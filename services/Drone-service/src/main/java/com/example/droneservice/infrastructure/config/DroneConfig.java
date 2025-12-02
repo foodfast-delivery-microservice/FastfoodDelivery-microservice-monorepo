@@ -30,5 +30,7 @@ public class DroneConfig {
     }
 
     @Bean
-    public GetDroneByIdUseCase getDroneByIdUseCase() {return new GetDroneByIdUseCase(droneRepository);}
+    public GetDroneByIdUseCase getDroneByIdUseCase() {
+        return new GetDroneByIdUseCase(droneRepository);
+    }
 }

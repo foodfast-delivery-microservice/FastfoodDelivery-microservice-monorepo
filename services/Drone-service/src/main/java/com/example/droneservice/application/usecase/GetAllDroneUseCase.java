@@ -12,7 +12,7 @@ import java.util.stream.Collectors;
 public class GetAllDroneUseCase {
     private final DroneRepository droneRepository;
 
-    public List<DroneResponse> execute (){
+    public List<DroneResponse> execute() {
         return droneRepository.findAll()
                 .stream()
                 .map(drone -> new DroneResponse(

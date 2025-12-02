@@ -132,7 +132,7 @@ services:
         condition: service_started
 
   drone-service:
-    build: ./services/Drone-microservice
+    build: ./services/Drone-service
     container_name: drone-service
     ports:
       - "8085:8085"

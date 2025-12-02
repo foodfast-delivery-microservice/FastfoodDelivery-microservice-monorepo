@@ -30,72 +30,96 @@ public class GetAvailableDroneUseCase {
     /**
      * Find an available drone for the given route
      * 
-     * @param pickupLat   Pickup location latitude
-     * @param pickupLon   Pickup location longitude
-     * @param deliveryLat Delivery location latitude
-     * @param deliveryLon Delivery location longitude
+     * Validation: Chỉ gán drone nếu đủ pin để hoàn thành toàn bộ lộ trình:
+     * Base → Pickup → Delivery → Base
+     *
+     * @param pickupLat   Pickup location latitude (nhà hàng)
+     * @param pickupLon   Pickup location longitude (nhà hàng)
+     * @param deliveryLat Delivery location latitude (khách hàng)
+     * @param deliveryLon Delivery location longitude (khách hàng)
      * @return Optional containing available drone, or empty if none available
      */
     public Optional<Drone> execute(Double pickupLat, Double pickupLon,
-            Double deliveryLat, Double deliveryLon) {
+                                   Double deliveryLat, Double deliveryLon) {
 
-        log.info("Searching for available drone for route: pickup({}, {}) -> delivery({}, {})",
+        log.info("🔍 Searching for available drone for route: pickup({}, {}) -> delivery({}, {})",
                 pickupLat, pickupLon, deliveryLat, deliveryLon);
 
-        // Get all idle drones
+        // Get all idle drones (có thể mở rộng để bao gồm CHARGING nếu đủ pin)
         var idleDrones = droneRepository.findByState(State.IDLE);
 
         if (idleDrones.isEmpty()) {
-            log.warn("No idle drones available");
+            log.warn("⚠️ No idle drones available");
             return Optional.empty();
         }
 
-        // Find drone with sufficient battery
+        log.info("📊 Checking {} idle drones for battery sufficiency", idleDrones.size());
+
+        // Find drone with sufficient battery for complete route
         for (Drone drone : idleDrones) {
+            // Validate base coordinates
+            if (drone.getBaseLatitude() == null || drone.getBaseLongitude() == null) {
+                log.warn("⚠️ Drone {} has no base coordinates, skipping", drone.getSerialNumber());
+                continue;
+            }
+
+            // Calculate total distance: Base → Pickup → Delivery → Base
             double requiredBattery = calculateRequiredBattery(
                     drone.getBaseLatitude(), drone.getBaseLongitude(),
                     pickupLat, pickupLon,
                     deliveryLat, deliveryLon);
 
-            if (drone.getBatteryLevel() >= requiredBattery + MINIMUM_BATTERY_RESERVE) {
-                log.info("Found available drone: {} (Battery: {}%, Required: {}%)",
-                        drone.getSerialNumber(), drone.getBatteryLevel(), requiredBattery);
+            // Total battery needed = required + reserve
+            double totalBatteryNeeded = requiredBattery + MINIMUM_BATTERY_RESERVE;
+            int currentBattery = drone.getBatteryLevel();
+
+            if (currentBattery >= totalBatteryNeeded) {
+                log.info("✅ Found available drone: {} (Battery: {}%, Required: {:.1f}%, Reserve: {}%, Total needed: {:.1f}%)",
+                        drone.getSerialNumber(), currentBattery, requiredBattery, 
+                        MINIMUM_BATTERY_RESERVE, totalBatteryNeeded);
                 return Optional.of(drone);
             } else {
-                log.debug("Drone {} has insufficient battery: {}% (Required: {}%)",
-                        drone.getSerialNumber(), drone.getBatteryLevel(), requiredBattery);
+                log.debug("❌ Drone {} has insufficient battery: {}% (Required: {:.1f}% + Reserve: {}% = {:.1f}%)",
+                        drone.getSerialNumber(), currentBattery, requiredBattery, 
+                        MINIMUM_BATTERY_RESERVE, totalBatteryNeeded);
             }
         }
 
-        log.warn("No drones with sufficient battery found");
+        log.warn("❌ No drones with sufficient battery found for this route");
         return Optional.empty();
     }
 
     /**
-     * Calculate total battery required for the mission:
-     * Base -> Pickup -> Delivery -> Base
+     * Calculate total battery required for the complete mission route:
+     * Base → Pickup (nhà hàng) → Delivery (khách hàng) → Base
+     * 
+     * Tổng quãng đường = Base→Pickup + Pickup→Delivery + Delivery→Base
+     * Pin cần thiết = Tổng quãng đường × 2% mỗi km
      */
     private double calculateRequiredBattery(Double baseLat, Double baseLon,
-            Double pickupLat, Double pickupLon,
-            Double deliveryLat, Double deliveryLon) {
+                                            Double pickupLat, Double pickupLon,
+                                            Double deliveryLat, Double deliveryLon) {
 
-        // Distance from base to pickup
+        // 1. Distance from base to pickup (nhà hàng)
         double baseToPickup = HaversineDistanceCalculator.calculate(
                 baseLat, baseLon, pickupLat, pickupLon);
 
-        // Distance from pickup to delivery
+        // 2. Distance from pickup to delivery (khách hàng)
         double pickupToDelivery = HaversineDistanceCalculator.calculate(
                 pickupLat, pickupLon, deliveryLat, deliveryLon);
 
-        // Distance from delivery back to base
+        // 3. Distance from delivery back to base
         double deliveryToBase = HaversineDistanceCalculator.calculate(
                 deliveryLat, deliveryLon, baseLat, baseLon);
 
+        // Tổng quãng đường = Base→Pickup + Pickup→Delivery + Delivery→Base
         double totalDistance = baseToPickup + pickupToDelivery + deliveryToBase;
+        
+        // Pin cần thiết = Tổng quãng đường × 2% mỗi km
         double requiredBattery = totalDistance * BATTERY_CONSUMPTION_PER_KM;
 
-        log.debug(
-                "Route distances - Base->Pickup: {:.2f}km, Pickup->Delivery: {:.2f}km, Delivery->Base: {:.2f}km, Total: {:.2f}km, Battery: {:.1f}%",
+        log.info(
+                "📏 Route calculation - Base→Pickup: {:.2f}km, Pickup→Delivery: {:.2f}km, Delivery→Base: {:.2f}km, Total: {:.2f}km, Required Battery: {:.1f}%",
                 baseToPickup, pickupToDelivery, deliveryToBase, totalDistance, requiredBattery);
 
         return requiredBattery;

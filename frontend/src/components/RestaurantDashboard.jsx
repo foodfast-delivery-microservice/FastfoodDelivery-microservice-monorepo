@@ -3,6 +3,8 @@ import "./RestaurantDashboard.css";
 import http from "../services/http";
 import { useAuth } from "../context/AuthContext";
 import { message } from "antd";
+import { fetchRestaurantByMerchantId } from "../services/restaurants";
+import { getDrones, assignDroneToOrder } from "../services/droneApi";
 import {
   LineChart,
   Line,
@@ -17,6 +19,45 @@ import {
 } from "recharts";
 import { useNavigate } from "react-router-dom";
 
+const toNumber = (value) => {
+  if (value === null || value === undefined) return null;
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : null;
+  }
+  const parsed = parseFloat(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const geocodeAddress = async (address) => {
+  if (!address) return null;
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(
+      address
+    )}`;
+    const response = await fetch(url, {
+      headers: {
+        "Accept-Language": "vi",
+        "User-Agent": "FastFoodDeliveryDashboard/1.0",
+      },
+    });
+    if (!response.ok) {
+      console.warn("Geocoding request failed", response.status);
+      return null;
+    }
+    const payload = await response.json();
+    if (!Array.isArray(payload) || payload.length === 0) {
+      return null;
+    }
+    const lat = toNumber(payload[0]?.lat);
+    const lng = toNumber(payload[0]?.lon);
+    if (lat === null || lng === null) return null;
+    return { lat, lng };
+  } catch (err) {
+    console.error("Geocoding error:", err);
+    return null;
+  }
+};
+
 export default function RestaurantDashboard() {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
@@ -26,6 +67,7 @@ export default function RestaurantDashboard() {
   const [drones, setDrones] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedDrone, setSelectedDrone] = useState({});
+  const [assigningDrone, setAssigningDrone] = useState({});
 
   const [statusFilter, setStatusFilter] = useState("all");
   const [droneFilter, setDroneFilter] = useState("all");
@@ -45,9 +87,154 @@ export default function RestaurantDashboard() {
   const [statusDraft, setStatusDraft] = useState({});
   const [updatingStatus, setUpdatingStatus] = useState({});
 
+  const resolveRestaurantCoordinates = useCallback(async (orderDetail) => {
+    console.log("🏪 [resolveRestaurantCoordinates] orderDetail:", orderDetail);
+    
+    // BƯỚC 1: Thử lấy từ restaurant object trong order detail (nếu có)
+    const restaurant = orderDetail?.restaurant || {};
+    let lat = toNumber(restaurant.lat) ?? toNumber(restaurant.latitude);
+    let lng = toNumber(restaurant.lng) ?? toNumber(restaurant.longitude);
+    
+    if (lat !== null && lng !== null) {
+      console.log("✅ [resolveRestaurantCoordinates] Found coordinates from restaurant object in order detail");
+      return { lat, lng };
+    }
+    
+    // BƯỚC 2: Lấy merchantId từ order và fetch restaurant info từ API
+    const merchantId = orderDetail?.merchantId;
+    if (merchantId) {
+      console.log("🏪 [resolveRestaurantCoordinates] Fetching restaurant info for merchantId:", merchantId);
+      try {
+        const restaurantInfo = await fetchRestaurantByMerchantId(merchantId);
+        console.log("🏪 [resolveRestaurantCoordinates] Restaurant info from API:", restaurantInfo);
+        
+        if (restaurantInfo) {
+          // Thử lấy tọa độ từ restaurant info
+          lat = toNumber(restaurantInfo.lat) ?? toNumber(restaurantInfo.latitude);
+          lng = toNumber(restaurantInfo.lng) ?? toNumber(restaurantInfo.longitude);
+          
+          if (lat !== null && lng !== null) {
+            console.log("✅ [resolveRestaurantCoordinates] Found coordinates from restaurant API:", { lat, lng });
+            return { lat, lng };
+          }
+          
+          // Nếu không có tọa độ, thử geocode từ address
+          const restaurantAddress = restaurantInfo.address || "";
+          if (restaurantAddress) {
+            const cleanedAddress = restaurantAddress
+              .replace(/,\s*Not Specified/gi, '')
+              .replace(/,\s*,/g, ',')
+              .replace(/,\s*$/, '')
+              .trim();
+            
+            console.log("🏪 [resolveRestaurantCoordinates] Attempting geocode for restaurant address:", cleanedAddress);
+            const coords = await geocodeAddress(cleanedAddress);
+            if (coords) {
+              console.log("✅ [resolveRestaurantCoordinates] Geocoded successfully from restaurant address:", coords);
+              return coords;
+            } else {
+              console.warn("⚠️ [resolveRestaurantCoordinates] Geocoding failed for restaurant address:", cleanedAddress);
+            }
+          }
+        }
+      } catch (err) {
+        console.error("❌ [resolveRestaurantCoordinates] Error fetching restaurant info:", err);
+      }
+    }
+    
+    // BƯỚC 3: Fallback - thử lấy từ restaurantAddress trong order detail (nếu có)
+    const restaurantAddress = orderDetail?.restaurantAddress || orderDetail?.restaurant?.address || "";
+    console.log("🏪 [resolveRestaurantCoordinates] Fallback - Restaurant address from order:", restaurantAddress);
+    
+    if (restaurantAddress) {
+      const cleanedAddress = restaurantAddress
+        .replace(/,\s*Not Specified/gi, '')
+        .replace(/,\s*,/g, ',')
+        .replace(/,\s*$/, '')
+        .trim();
+      
+      if (cleanedAddress) {
+        console.log("🏪 [resolveRestaurantCoordinates] Attempting geocode for fallback address:", cleanedAddress);
+        const coords = await geocodeAddress(cleanedAddress);
+        if (coords) {
+          console.log("✅ [resolveRestaurantCoordinates] Geocoded successfully from fallback address:", coords);
+          return coords;
+        } else {
+          console.warn("⚠️ [resolveRestaurantCoordinates] Geocoding failed for fallback address:", cleanedAddress);
+        }
+      }
+    }
+    
+    console.error("❌ [resolveRestaurantCoordinates] Could not resolve restaurant coordinates");
+    return null;
+  }, []);
+
+  const resolveDeliveryCoordinates = useCallback(async (orderDetail, fallbackAddress) => {
+    console.log("📍 [resolveDeliveryCoordinates] orderDetail:", orderDetail);
+    console.log("📍 [resolveDeliveryCoordinates] fallbackAddress:", fallbackAddress);
+    
+    const delivery = orderDetail?.deliveryAddress || {};
+    console.log("📍 [resolveDeliveryCoordinates] delivery object:", delivery);
+    
+    let lat =
+      toNumber(delivery.lat) ??
+      toNumber(delivery.latitude) ??
+      toNumber(delivery.deliveryLatitude);
+    let lng =
+      toNumber(delivery.lng) ??
+      toNumber(delivery.longitude) ??
+      toNumber(delivery.lon) ??
+      toNumber(delivery.deliveryLongitude);
+
+    console.log("📍 [resolveDeliveryCoordinates] Parsed lat/lng:", lat, lng);
+
+    if (lat !== null && lng !== null) {
+      console.log("✅ [resolveDeliveryCoordinates] Found coordinates from deliveryAddress");
+      return { lat, lng };
+    }
+
+    // Try geocoding from fullAddress - clean up address first
+    let addressToGeocode = delivery.fullAddress || fallbackAddress || orderDetail?.fullAddress;
+    
+    // Clean up address: remove "Not Specified" and normalize
+    if (addressToGeocode) {
+      addressToGeocode = addressToGeocode
+        .replace(/,\s*Not Specified/gi, '') // Remove "Not Specified"
+        .replace(/,\s*,/g, ',') // Remove double commas
+        .replace(/,\s*$/, '') // Remove trailing comma
+        .trim();
+    }
+    
+    // Fallback: try addressLine1 if fullAddress is not good
+    if (!addressToGeocode || addressToGeocode.includes('Not Specified')) {
+      addressToGeocode = delivery.addressLine1 || orderDetail?.note;
+    }
+    
+    console.log("📍 [resolveDeliveryCoordinates] Attempting geocode for:", addressToGeocode);
+    
+    if (addressToGeocode) {
+      const coords = await geocodeAddress(addressToGeocode);
+      if (coords) {
+        console.log("✅ [resolveDeliveryCoordinates] Geocoded successfully:", coords);
+        return coords;
+      } else {
+        console.warn("⚠️ [resolveDeliveryCoordinates] Geocoding failed for:", addressToGeocode);
+      }
+    }
+
+    console.error("❌ [resolveDeliveryCoordinates] Could not resolve coordinates");
+    return null;
+  }, []);
+
   const fetchAll = useCallback(async () => {
     try {
       setLoading(true);
+
+      const dronesPromise = getDrones().catch((err) => {
+        console.error("Lỗi tải danh sách drone:", err);
+        message.warning("Không thể tải danh sách drone");
+        return [];
+      });
 
       let ordersRes;
 
@@ -60,11 +247,15 @@ export default function RestaurantDashboard() {
 
       // Backend trả PageResponse trực tiếp, không bọc trong ApiResponse
       const oData = ordersRes.data?.content || [];
-
-      // Drones are not yet supported in backend
-      setDrones([]);
-
       setOrders(oData);
+
+      const droneList = await dronesPromise;
+      const normalizedDrones = (droneList || []).map((d) => ({
+        ...d,
+        name: d.serialNumber || d.model || `Drone #${d.id}`,
+        battery: d.batteryLevel ?? 0,
+      }));
+      setDrones(normalizedDrones);
 
       const delivered = oData.filter((o) =>
         (o.status || "").toLowerCase().includes("delivered") || (o.status || "").toLowerCase().includes("đã giao")
@@ -129,6 +320,131 @@ export default function RestaurantDashboard() {
   useEffect(() => {
     fetchAll();
   }, [fetchAll]);
+
+  const handleAssignDrone = useCallback(
+    async (order) => {
+      console.log("🚁 [Drone] Bắt đầu gán drone cho order:", order?.id);
+      const orderId = order?.id;
+      if (!orderId) {
+        console.warn("🚁 [Drone] Không có orderId");
+        return;
+      }
+      
+      const chosenDroneId = selectedDrone[orderId];
+      console.log("🚁 [Drone] Drone đã chọn:", chosenDroneId);
+      
+      if (!chosenDroneId) {
+        message.warning("Vui lòng chọn drone trước khi gán");
+        return;
+      }
+
+      const drone = drones.find((d) => String(d.id) === String(chosenDroneId));
+      if (!drone) {
+        console.error("🚁 [Drone] Không tìm thấy drone với ID:", chosenDroneId);
+        message.error("Không tìm thấy drone đã chọn");
+        return;
+      }
+
+      console.log("🚁 [Drone] Drone được chọn:", drone);
+
+      setAssigningDrone((prev) => ({ ...prev, [orderId]: true }));
+
+      try {
+        console.log("🚁 [Drone] Đang lấy chi tiết đơn hàng...");
+        const detailRes = await http.get(`/orders/${orderId}`);
+        const detail = detailRes.data?.data || detailRes.data;
+        if (!detail) {
+          throw new Error("Không thể tải chi tiết đơn hàng");
+        }
+
+        console.log("🚁 [Drone] Chi tiết đơn:", detail);
+        console.log("🚁 [Drone] Order detail structure:", JSON.stringify(detail, null, 2));
+
+        // BƯỚC 1: Lấy tọa độ nhà hàng (pickup location) - QUAN TRỌNG!
+        console.log("🏪 [Drone] Đang resolve tọa độ nhà hàng (pickup location)...");
+        const pickupCoords = await resolveRestaurantCoordinates(detail);
+        console.log("🏪 [Drone] Restaurant (pickup) coordinates:", pickupCoords);
+
+        if (!pickupCoords) {
+          const useDefault = window.confirm(
+            "Không thể xác định tọa độ nhà hàng từ địa chỉ.\n" +
+            "Bạn có muốn sử dụng tọa độ mặc định (trung tâm TP.HCM) để tiếp tục?"
+          );
+          if (!useDefault) {
+            message.error("Đã hủy gán drone. Vui lòng cập nhật địa chỉ nhà hàng có tọa độ GPS.");
+            return;
+          }
+          message.warning("Đang sử dụng tọa độ mặc định cho nhà hàng.");
+        }
+
+        // BƯỚC 2: Lấy tọa độ giao hàng (delivery location)
+        console.log("📍 [Drone] Đang resolve tọa độ giao hàng...");
+        const deliveryCoords = await resolveDeliveryCoordinates(
+          detail,
+          order?.fullAddress || detail?.fullAddress
+        );
+
+        console.log("📍 [Drone] Delivery coordinates:", deliveryCoords);
+
+        // Sử dụng tọa độ mặc định nếu không tìm được
+        const defaultCoords = { lat: 10.776389, lng: 106.700806 }; // Trung tâm TP.HCM
+        const finalPickupCoords = pickupCoords || defaultCoords;
+        const finalDeliveryCoords = deliveryCoords || defaultCoords;
+
+        if (!pickupCoords || !deliveryCoords) {
+          const missing = [];
+          if (!pickupCoords) missing.push("nhà hàng");
+          if (!deliveryCoords) missing.push("giao hàng");
+          message.warning(`Đang sử dụng tọa độ mặc định cho: ${missing.join(", ")}`);
+        }
+
+        // Tạo payload với tọa độ nhà hàng làm pickup location
+        const payload = {
+          orderId,
+          pickupLatitude: finalPickupCoords.lat,
+          pickupLongitude: finalPickupCoords.lng,
+          deliveryLatitude: finalDeliveryCoords.lat,
+          deliveryLongitude: finalDeliveryCoords.lng,
+        };
+
+        console.log("🚁 [Drone] Gọi API assignDroneToOrder với payload:", payload);
+        console.log("🏪 [Drone] Pickup (nhà hàng):", finalPickupCoords);
+        console.log("📍 [Drone] Delivery (giao hàng):", finalDeliveryCoords);
+        
+        const result = await assignDroneToOrder(payload);
+        
+        console.log("🚁 [Drone] Kết quả từ API:", result);
+
+        message.success(
+          `✅ Đã gán drone ${drone.serialNumber || drone.name || drone.id} cho đơn #${orderId}\n` +
+          `🚁 Drone sẽ đi: Base → Nhà hàng → Giao hàng → Base`
+        );
+        setSelectedDrone((prev) => ({ ...prev, [orderId]: "" }));
+        
+        console.log("🚁 [Drone] Đang refresh dữ liệu...");
+          await fetchAll();
+          console.log("🚁 [Drone] Hoàn tất!");
+        } catch (err) {
+          console.error("❌ [Drone] Lỗi gán drone:", err);
+          console.error("❌ [Drone] Error details:", {
+            response: err?.response?.data,
+            status: err?.response?.status,
+            stack: err?.stack
+          });
+        
+          const errorMessage =
+          err?.response?.data?.message ||
+          err?.response?.data?.error ||
+          err?.message ||
+          "Không thể gán drone. Vui lòng kiểm tra console để biết chi tiết.";
+        
+        message.error(`❌ ${errorMessage}`);
+      } finally {
+        setAssigningDrone((prev) => ({ ...prev, [orderId]: false }));
+        }
+      },
+      [drones, selectedDrone, fetchAll, resolveRestaurantCoordinates, resolveDeliveryCoordinates]
+    );
 
   const refreshData = async () => await fetchAll();
 
@@ -197,10 +513,6 @@ export default function RestaurantDashboard() {
     (currentPage - 1) * pageSize,
     currentPage * pageSize
   );
-
-  const handleAssignDrone = async (orderId) => {
-    alert("Tính năng gán Drone đang được phát triển trên hệ thống mới.");
-  };
 
   const formatStatusBadge = (status) => {
     if (!status) return <span className="badge other">—</span>;
@@ -373,6 +685,14 @@ export default function RestaurantDashboard() {
             const assignedDrone = order.droneId
               ? findDroneById(order.droneId)
               : null;
+            const normalizedStatus = (oStatus || "").toLowerCase();
+            const isDelivering =
+              normalizedStatus.includes("đang giao") ||
+              normalizedStatus.includes("delivering");
+            const isDelivered =
+              normalizedStatus.includes("đã giao") ||
+              normalizedStatus.includes("delivered");
+            const assignmentValue = selectedDrone[order.id] || "";
 
             const createdAtMs = toMillis(order.createdAt);
             const createdAtTxt = createdAtMs
@@ -421,25 +741,59 @@ export default function RestaurantDashboard() {
 
                 {/* DRONE */}
                 <td>
-                  {oStatus === "Đã giao" || oStatus === "Đang giao" ? (
+                  {isDelivered || isDelivering ? (
                     assignedDrone ? (
-                      <strong>{assignedDrone.name}</strong>
+                      <div className="drone-status">
+                        <strong>{assignedDrone.name}</strong>
+                        <p>Pin: {assignedDrone.battery ?? "—"}%</p>
+                      </div>
                     ) : (
                       <span>—</span>
                     )
                   ) : (
-                    <select
-                      value={selectedDrone[order.id] || ""}
-                      onChange={(e) =>
-                        setSelectedDrone((prev) => ({
-                          ...prev,
-                          [order.id]: e.target.value,
-                        }))
-                      }
-                      disabled={true}
-                    >
-                      <option value="">Chọn drone (Bảo trì)</option>
-                    </select>
+                    <div className="drone-assign">
+                      <select
+                        value={assignmentValue}
+                        onChange={(e) => {
+                          console.log("🚁 [Drone] Dropdown changed:", e.target.value, "for order:", order.id);
+                          setSelectedDrone((prev) => ({
+                            ...prev,
+                            [order.id]: e.target.value,
+                          }));
+                        }}
+                        disabled={!drones.length || assigningDrone[order.id]}
+                      >
+                        <option value="">{drones.length === 0 ? "Không có drone khả dụng" : "Chọn drone khả dụng"}</option>
+                        {drones.map((d) => (
+                          <option key={d.id} value={d.id}>
+                            {d.name} ({d.battery ?? 0}%) - {d.state || "UNKNOWN"}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        className="btn primary"
+                        disabled={
+                          !assignmentValue || assigningDrone[order.id] || !drones.length
+                        }
+                        onClick={() => {
+                          console.log("🚁 [Drone] Button clicked for order:", order.id);
+                          console.log("🚁 [Drone] assignmentValue:", assignmentValue);
+                          console.log("🚁 [Drone] assigningDrone:", assigningDrone[order.id]);
+                          handleAssignDrone(order);
+                        }}
+                        title={
+                          !drones.length
+                            ? "Không có drone khả dụng"
+                            : !assignmentValue
+                            ? "Vui lòng chọn drone"
+                            : assigningDrone[order.id]
+                            ? "Đang xử lý..."
+                            : "Gán drone cho đơn hàng này"
+                        }
+                      >
+                        {assigningDrone[order.id] ? "Đang gán..." : "Gán drone"}
+                      </button>
+                    </div>
                   )}
                 </td>
 

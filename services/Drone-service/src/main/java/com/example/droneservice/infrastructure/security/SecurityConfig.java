@@ -34,23 +34,23 @@ public class SecurityConfig {
         }
 
         http.authorizeHttpRequests(auth -> auth
-                // Public endpoints
-                .requestMatchers("/actuator/**").permitAll()
+                        // Public endpoints
+                        .requestMatchers("/actuator/**").permitAll()
 
-                // Admin-only endpoints (Drone management)
-                .requestMatchers(HttpMethod.POST, "/api/drones").hasRole("ADMIN")
-                .requestMatchers(HttpMethod.PUT, "/api/drones/**").hasRole("ADMIN")
-                .requestMatchers(HttpMethod.DELETE, "/api/drones/**").hasRole("ADMIN")
+                        // Admin-only endpoints (Drone management)
+                        .requestMatchers(HttpMethod.POST, "/api/drones").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/drones/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/drones/**").hasRole("ADMIN")
 
-                // Admin can view all drones and missions
-                .requestMatchers(HttpMethod.GET, "/api/drones/**").hasAnyRole("ADMIN", "SERVICE")
-                .requestMatchers(HttpMethod.GET, "/api/missions").hasAnyRole("ADMIN", "SERVICE")
+                        // Admin can view all drones and missions
+                        .requestMatchers(HttpMethod.GET, "/api/drones/**").hasAnyRole("ADMIN", "SERVICE")
+                        .requestMatchers(HttpMethod.GET, "/api/missions").hasAnyRole("ADMIN", "SERVICE")
 
-                // Users can track their own orders
-                .requestMatchers(HttpMethod.GET, "/api/missions/order/*/tracking").authenticated()
+                        // Users can track their own orders
+                        .requestMatchers(HttpMethod.GET, "/api/missions/order/*/tracking").authenticated()
 
-                // All other endpoints require authentication
-                .anyRequest().authenticated())
+                        // All other endpoints require authentication
+                        .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthConverter)))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 

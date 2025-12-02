@@ -108,14 +108,48 @@ public class UpdateOrderStatusUseCase {
         }
     }
 
+    /**
+     * Validate order status transitions theo flow chuẩn nghiệp vụ:
+     * 
+     * FLOW CHÍNH (Chỉ Drone Delivery):
+     * PENDING → CONFIRMED → PAID → PROCESSING → DELIVERING → DELIVERED
+     * 
+     * RULES:
+     * 1. Thanh toán chỉ chấp nhận QR (duy nhất phương thức thanh toán)
+     * 2. PROCESSING là bắt buộc sau PAID (chuẩn bị hàng)
+     * 3. DELIVERING là duy nhất phương thức giao hàng (drone delivery)
+     * 4. SHIPPED không được dùng trong flow chính (chỉ giữ lại để tương thích)
+     */
     private void validateStatusTransition(OrderStatus currentStatus, OrderStatus newStatus) {
         Map<OrderStatus, OrderStatus[]> validTransitions = new HashMap<>();
+        
+        // 1. PENDING: Order mới tạo, chờ merchant xác nhận
         validTransitions.put(OrderStatus.PENDING, new OrderStatus[]{OrderStatus.CONFIRMED, OrderStatus.CANCELLED});
-        validTransitions.put(OrderStatus.CONFIRMED, new OrderStatus[]{OrderStatus.PAID, OrderStatus.SHIPPED, OrderStatus.CANCELLED});
-        validTransitions.put(OrderStatus.PAID, new OrderStatus[]{OrderStatus.SHIPPED, OrderStatus.CANCELLED});
-        validTransitions.put(OrderStatus.SHIPPED, new OrderStatus[]{OrderStatus.DELIVERED, OrderStatus.CANCELLED});
+        
+        // 2. CONFIRMED: Merchant đã xác nhận, chờ thanh toán
+        validTransitions.put(OrderStatus.CONFIRMED, new OrderStatus[]{OrderStatus.PAID, OrderStatus.CANCELLED});
+        
+        // 3. PAID: Đã thanh toán, BẮT BUỘC phải qua PROCESSING để chuẩn bị hàng
+        validTransitions.put(OrderStatus.PAID, new OrderStatus[]{OrderStatus.PROCESSING, OrderStatus.CANCELLED});
+        
+        // 4. PROCESSING: Đang chuẩn bị hàng, sau đó gán drone để giao hàng
+        //    - DELIVERING: Gán drone để giao hàng (duy nhất phương thức giao hàng)
+        validTransitions.put(OrderStatus.PROCESSING, new OrderStatus[]{OrderStatus.DELIVERING, OrderStatus.CANCELLED});
+        
+        // 5. DELIVERING: Drone đang giao hàng (chỉ dùng cho drone delivery)
+        validTransitions.put(OrderStatus.DELIVERING, new OrderStatus[]{OrderStatus.DELIVERED, OrderStatus.CANCELLED});
+        
+        // 6. SHIPPED: Không được dùng trong flow chính (chỉ giữ lại để tương thích)
+        //    Hệ thống chỉ dùng drone delivery, không có traditional shipping
+        // validTransitions.put(OrderStatus.SHIPPED, new OrderStatus[]{OrderStatus.DELIVERED, OrderStatus.CANCELLED});
+        
+        // 7. DELIVERED: Đã giao hàng thành công
         validTransitions.put(OrderStatus.DELIVERED, new OrderStatus[]{OrderStatus.REFUNDED});
+        
+        // 8. CANCELLED: Đã hủy (không thể thay đổi)
         validTransitions.put(OrderStatus.CANCELLED, new OrderStatus[]{});
+        
+        // 9. REFUNDED: Đã hoàn tiền (không thể thay đổi)
         validTransitions.put(OrderStatus.REFUNDED, new OrderStatus[]{});
 
         OrderStatus[] allowedTransitions = validTransitions.get(currentStatus);
@@ -130,6 +164,18 @@ public class UpdateOrderStatusUseCase {
         switch (newStatus) {
             case CONFIRMED:
                 order.confirm();
+                break;
+            case PROCESSING:
+                // Order đang được xử lý (chuẩn bị hàng)
+                // Ghi nhận thời điểm bắt đầu xử lý để phục vụ báo cáo/thống kê SLA
+                order.setStatus(OrderStatus.PROCESSING);
+                if (order.getProcessingStartedAt() == null) {
+                    order.setProcessingStartedAt(LocalDateTime.now());
+                }
+                break;
+            case DELIVERING:
+                // Order đang được giao bởi drone
+                order.setStatus(OrderStatus.DELIVERING);
                 break;
             case SHIPPED:
                 order.markAsShipped();
@@ -198,6 +244,7 @@ public class UpdateOrderStatusUseCase {
                 .grandTotal(order.getGrandTotal())
                 .note(order.getNote())
                 .createdAt(order.getCreatedAt())
+                .processingStartedAt(order.getProcessingStartedAt())
                 .deliveryAddress(mapToDeliveryAddressResponse(order.getDeliveryAddress()))
                 .orderItems(order.getOrderItems().stream()
                         .map(this::mapToOrderItemResponse)
@@ -246,9 +293,25 @@ public class UpdateOrderStatusUseCase {
 
         order.setStatus(OrderStatus.PAID);
         orderRepository.save(order);
-
+        
         // tạo outbox event nếu muốn sync sang service khác (inventory, delivery,…)
         createStatusChangeEvent(order, OrderStatus.PAID, "Payment successful");
+        
+        // Sau khi thanh toán, tự động chuyển sang PROCESSING để chuẩn bị hàng
+        // (Theo flow chuẩn: PAID → PROCESSING)
+        // Note: Theo PRD section 10.3, hiện tại dùng Option 2 (Auto)
+        // Có thể chuyển sang Option 1 (Manual) nếu merchant cần kiểm soát tốt hơn
+        try {
+            order.setStatus(OrderStatus.PROCESSING);
+            order.setProcessingStartedAt(LocalDateTime.now());
+            orderRepository.save(order);
+            log.info("✅ Order {} automatically moved to PROCESSING after payment. Processing started at: {}", 
+                    orderId, order.getProcessingStartedAt());
+            createStatusChangeEvent(order, OrderStatus.PROCESSING, "Tự động chuyển sang chuẩn bị hàng sau khi thanh toán");
+        } catch (Exception e) {
+            log.warn("⚠️ Could not auto-move order {} to PROCESSING: {}", orderId, e.getMessage());
+            // Không throw exception để không rollback việc mark as PAID
+        }
         
         // Create OrderPaidEvent for stock deduction
         createOrderPaidEvent(order);

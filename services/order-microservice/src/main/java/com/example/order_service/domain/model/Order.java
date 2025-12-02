@@ -63,6 +63,9 @@ public class Order {
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
+    @Column(name = "processing_started_at")
+    private LocalDateTime processingStartedAt;
+
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @Builder.Default
     private List<OrderItem> orderItems = new ArrayList<>();
@@ -93,10 +96,11 @@ public class Order {
     }
 
     public boolean canBeCancelled() {
+        // Chỉ cho phép hủy khi chưa bắt đầu giao hàng
         return status == OrderStatus.PENDING 
             || status == OrderStatus.CONFIRMED 
             || status == OrderStatus.PAID
-            || status == OrderStatus.SHIPPED;
+            || status == OrderStatus.PROCESSING;
     }
 
     public void cancel() {
@@ -114,17 +118,20 @@ public class Order {
     }
 
     public void markAsShipped() {
-        if (status != OrderStatus.CONFIRMED && status != OrderStatus.PAID) {
+        // Chỉ cho phép từ PROCESSING → SHIPPED (traditional delivery)
+        // Flow chuẩn: PAID → PROCESSING → SHIPPED
+        if (status != OrderStatus.PROCESSING) {
             throw new IllegalStateException(
-                String.format("Only confirmed or paid orders can be shipped. Current status: %s", status)
+                String.format("Only processing orders can be shipped. Current status: %s. Flow: PAID → PROCESSING → SHIPPED", status)
             );
         }
         this.status = OrderStatus.SHIPPED;
     }
 
     public void markAsDelivered() {
-        if (status != OrderStatus.SHIPPED) {
-            throw new IllegalStateException("Only shipped orders can be delivered");
+        if (status != OrderStatus.SHIPPED && status != OrderStatus.DELIVERING) {
+            throw new IllegalStateException(
+                    String.format("Only shipped or delivering orders can be delivered. Current status: %s", status));
         }
         this.status = OrderStatus.DELIVERED;
     }

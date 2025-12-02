@@ -1,7 +1,8 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import "./Dashboard.css";
 import http from "../../services/http";
 import { message } from "antd";
+import { getSystemKPIs } from "../../services/statisticsApi";
 
 import {
   LineChart,
@@ -22,6 +23,12 @@ export default function RestaurantDashboard() {
   const [restaurants, setRestaurants] = useState([]);
 
   const [loading, setLoading] = useState(true);
+  const [kpis, setKpis] = useState(null);
+  const [errors, setErrors] = useState({
+    restaurants: null,
+    orders: null,
+    kpis: null,
+  });
 
   // === FILTER STATE (new) ===
   const [restaurantFilter, setRestaurantFilter] = useState("all");
@@ -44,42 +51,123 @@ export default function RestaurantDashboard() {
   // 🔥 FETCH DATA
   // ================================
   const fetchAll = useCallback(async () => {
+    const serializeError = (err) => {
+      if (!err) return null;
+      return {
+        message: err?.message,
+        status: err?.response?.status,
+        details: err?.response?.data || err?.stack,
+      };
+    };
+
+    const logApi = (label, payload) => {
+      if (process.env.NODE_ENV === "production") return;
+      // eslint-disable-next-line no-console
+      console.log(`[Dashboard] ${label}`, payload);
+    };
+
+    logApi("Trigger fetchAll", { restaurantFilter, timeFilter });
+
     try {
       setLoading(true);
+      setErrors({ restaurants: null, orders: null, kpis: null });
 
-      // Fetch restaurants
-      const restaurantsRes = await http.get("/restaurants", {
-        params: { size: 100 }
-      });
-      const restaurantList = restaurantsRes.data?.data?.content || [];
-      setRestaurants(restaurantList);
+      const fetchRestaurants = async () => {
+        const params = { size: 100, page: 0 };
+        logApi("GET /restaurants params", params);
+        const response = await http.get("/restaurants", { params });
+        logApi("GET /restaurants response", response?.data);
+        const list =
+          response?.data?.data?.content ||
+          response?.data?.content ||
+          response?.data?.data ||
+          [];
+        if (!Array.isArray(list)) {
+          throw new Error("Danh sách nhà hàng trả về không hợp lệ");
+        }
+        return list;
+      };
 
-      // Fetch orders (fetching a large batch for stats - in real app should use stats endpoint)
-      const ordersRes = await http.get("/orders", {
-        params: { size: 1000 }
-      });
-      const oData = ordersRes.data?.data?.content || [];
+      const fetchOrders = async () => {
+        const params = { size: 1000, page: 0 };
+        logApi("GET /orders params", params);
+        const response = await http.get("/orders", { params });
+        logApi("GET /orders response", response?.data);
+        const list =
+          response?.data?.data?.content ||
+          response?.data?.content ||
+          response?.data?.data ||
+          [];
+        if (!Array.isArray(list)) {
+          throw new Error("Danh sách đơn hàng trả về không hợp lệ");
+        }
+        return list;
+      };
 
-      let filteredOrders = oData;
+      const fetchKpis = async () => {
+        logApi("GET /admin/dashboard/kpis", {});
+        const response = await getSystemKPIs();
+        logApi("GET /admin/dashboard/kpis response", response);
+        return response;
+      };
 
-      // If filter by restaurant
-      if (restaurantFilter !== "all") {
-        filteredOrders = filteredOrders.filter(
-          (o) => String(o.merchantId) === String(restaurantFilter)
-        );
+      const results = await Promise.allSettled([
+        fetchRestaurants(),
+        fetchOrders(),
+        fetchKpis(),
+      ]);
+
+      const [restaurantsResult, ordersResult, kpisResult] = results;
+
+      if (restaurantsResult.status === "fulfilled") {
+        setRestaurants(restaurantsResult.value);
+      } else {
+        const errPayload = serializeError(restaurantsResult.reason);
+        setErrors((prev) => ({ ...prev, restaurants: errPayload }));
+        message.error("Không thể tải danh sách nhà hàng");
       }
 
-      setOrders(filteredOrders);
+      let filteredOrders = [];
+      if (ordersResult.status === "fulfilled") {
+        const rawOrders = ordersResult.value;
+
+        filteredOrders = rawOrders;
+        if (restaurantFilter !== "all") {
+          filteredOrders = filteredOrders.filter(
+            (o) => String(o.merchantId) === String(restaurantFilter)
+          );
+        }
+
+        setOrders(filteredOrders);
+      } else {
+        const errPayload = serializeError(ordersResult.reason);
+        setErrors((prev) => ({ ...prev, orders: errPayload }));
+        message.error("Không thể tải danh sách đơn hàng");
+      }
+
+      if (kpisResult.status === "fulfilled") {
+        setKpis(kpisResult.value || null);
+      } else {
+        const errPayload = serializeError(kpisResult.reason);
+        setErrors((prev) => ({ ...prev, kpis: errPayload }));
+        setKpis(null);
+        message.warning("Không thể tải KPI hệ thống, sử dụng dữ liệu tạm thời");
+      }
 
       // === STATS ===
       const delivered = filteredOrders.filter((o) =>
-        (o.status || "").toLowerCase().includes("delivered") || (o.status || "").toLowerCase().includes("đã giao")
+        (o.status || "")
+          .toLowerCase()
+          .includes("delivered") || (o.status || "").toLowerCase().includes("đã giao")
       );
       const delivering = filteredOrders.filter((o) =>
-        (o.status || "").toLowerCase().includes("delivering") || (o.status || "").toLowerCase().includes("đang giao")
+        (o.status || "").toLowerCase().includes("delivering") ||
+        (o.status || "").toLowerCase().includes("đang giao")
       );
       const processing = filteredOrders.filter((o) =>
-        (o.status || "").toLowerCase().includes("processing") || (o.status || "").toLowerCase().includes("pending") || (o.status || "").toLowerCase().includes("confirmed")
+        (o.status || "").toLowerCase().includes("processing") ||
+        (o.status || "").toLowerCase().includes("pending") ||
+        (o.status || "").toLowerCase().includes("confirmed")
       );
 
       const totalRevenue = delivered.reduce(
@@ -127,6 +215,34 @@ export default function RestaurantDashboard() {
         const date = new Date(createdAt[0], createdAt[1] - 1, createdAt[2], createdAt[3], createdAt[4], createdAt[5]);
         return date.getTime();
       }
+      if (
+        typeof createdAt === "object" &&
+        createdAt !== null &&
+        (createdAt.year || createdAt.monthValue)
+      ) {
+        const {
+          year,
+          monthValue,
+          month,
+          dayOfMonth,
+          day,
+          hour,
+          minute,
+          second,
+        } = createdAt;
+        const jsDate = new Date(
+          year || createdAt.year || new Date().getFullYear(),
+          (monthValue || month || 1) - 1,
+          dayOfMonth || day || 1,
+          hour || 0,
+          minute || 0,
+          second || 0
+        );
+        return jsDate.getTime();
+      }
+      if (typeof createdAt === "number") {
+        return createdAt;
+      }
       const ms = new Date(createdAt).getTime();
       return Number.isFinite(ms) ? ms : 0;
     };
@@ -169,6 +285,29 @@ export default function RestaurantDashboard() {
     setOrderChart(sorted);
   }, [orders, timeFilter, restaurantFilter]);
 
+  const displayStats = useMemo(() => {
+    const shouldUseKpis = restaurantFilter === "all" && kpis;
+    const statusCount = (statusKey) => {
+      if (!shouldUseKpis || !kpis?.todayOrdersByStatus) return undefined;
+      const entry = Object.entries(kpis.todayOrdersByStatus || {}).find(
+        ([key]) => (key || "").toLowerCase() === statusKey.toLowerCase()
+      );
+      return entry ? Number(entry[1]) : undefined;
+    };
+
+    return {
+      totalOrders: shouldUseKpis && kpis?.todayTotalOrders != null ? Number(kpis.todayTotalOrders) : stats.totalOrders,
+      delivered: statusCount("delivered") ?? stats.delivered,
+      delivering: statusCount("delivering") ?? stats.delivering,
+      processing: shouldUseKpis && kpis?.pendingOrdersCount != null ? Number(kpis.pendingOrdersCount) : stats.processing,
+      totalRevenue: stats.totalRevenue,
+    };
+  }, [kpis, stats, restaurantFilter]);
+
+  const errorEntries = useMemo(
+    () => Object.entries(errors).filter(([, value]) => !!value),
+    [errors]
+  );
 
   if (loading) return <p>⏳ Đang tải dữ liệu...</p>;
 
@@ -179,25 +318,44 @@ export default function RestaurantDashboard() {
     <div className="restaurant-dashboard">
       <h2>Dashboard Nhà hàng</h2>
 
+      {errorEntries.length > 0 && (
+        <div className="dashboard-error-banner">
+          <div>
+            <p>Không thể tải đầy đủ dữ liệu:</p>
+            <ul>
+              {errorEntries.map(([key, value]) => (
+                <li key={key}>
+                  <strong>{key}:</strong> {value?.message || "Lỗi không xác định"}
+                  {value?.status && ` (HTTP ${value.status})`}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <button type="button" onClick={fetchAll}>
+            Thử lại
+          </button>
+        </div>
+      )}
+
       {/* SUMMARY CARDS */}
       <div className="cards">
         <div className="card purple">
-          <h2>{stats.totalOrders}</h2>
+          <h2>{displayStats.totalOrders}</h2>
           <p>Tổng đơn hàng</p>
         </div>
 
         <div className="card orange">
-          <h2>{stats.processing}</h2>
+          <h2>{displayStats.processing}</h2>
           <p>Đang xử lý</p>
         </div>
 
         <div className="card green">
-          <h2>{stats.delivering}</h2>
+          <h2>{displayStats.delivering}</h2>
           <p>Đang giao</p>
         </div>
 
         <div className="card blue">
-          <h2>{stats.totalRevenue.toLocaleString()}₫</h2>
+          <h2>{displayStats.totalRevenue.toLocaleString()}₫</h2>
           <p>Tổng doanh thu</p>
         </div>
       </div>

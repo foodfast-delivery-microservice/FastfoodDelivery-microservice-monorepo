@@ -345,5 +345,22 @@
   border: 1px solid #dcdcdc;
 }
 
+.drone-assign {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.drone-assign select,
+.drone-assign button {
+  width: 100%;
+}
+
+.drone-status {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 
 /* Filter bar, table, badge giữ nguyên code cũ của bạn */

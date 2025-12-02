@@ -23,7 +23,7 @@ public class DroneResponse {
     private Double baseLongitude;
     private Double weightCapacity;
 
-    public static DroneResponse fromEntity(Drone drone){
+    public static DroneResponse fromEntity(Drone drone) {
         DroneResponse droneResponse = new DroneResponse();
         droneResponse.setId(drone.getId());
         droneResponse.setSerialNumber(drone.getSerialNumber());

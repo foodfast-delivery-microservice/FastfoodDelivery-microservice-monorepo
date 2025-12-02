@@ -101,19 +101,24 @@ public class SecurityConfig {
                                                 .requestMatchers("/actuator/**").permitAll()
 
                                                 // Admin-only endpoints (Drone management)
-                                                .requestMatchers(HttpMethod.POST, "/api/drones").hasRole("ADMIN")
-                                                .requestMatchers(HttpMethod.PUT, "/api/drones/**").hasRole("ADMIN")
-                                                .requestMatchers(HttpMethod.DELETE, "/api/drones/**").hasRole("ADMIN")
+                                                .requestMatchers(HttpMethod.POST, "/api/v1/drones").hasRole("ADMIN")
+                                                .requestMatchers(HttpMethod.PUT, "/api/v1/drones/**").hasRole("ADMIN")
+                                                .requestMatchers(HttpMethod.DELETE, "/api/v1/drones/**").hasRole("ADMIN")
+                                                .requestMatchers(HttpMethod.POST, "/api/v1/drones/assignments/**")
+                                                .hasAnyRole("ADMIN", "MERCHANT")
 
-                                                // Admin can view all drones and missions
-                                                .requestMatchers(HttpMethod.GET, "/api/drones/**")
-                                                .hasAnyRole("ADMIN", "SERVICE")
-                                                .requestMatchers(HttpMethod.GET, "/api/missions")
-                                                .hasAnyRole("ADMIN", "SERVICE")
-
-                                                // Users can track their own orders
-                                                .requestMatchers(HttpMethod.GET, "/api/missions/order/*/tracking")
+                                                // Drone & mission visibility
+                                                .requestMatchers(HttpMethod.GET, "/api/v1/drones/**")
+                                                .hasAnyRole("ADMIN", "MERCHANT", "SERVICE")
+                                                // Tracking endpoint - cho phép authenticated users (customer có thể xem tracking đơn của mình)
+                                                .requestMatchers(HttpMethod.GET, "/api/v1/missions/order/*/tracking")
                                                 .authenticated()
+                                                // Mission by order ID - cho phép authenticated users (customer có thể xem mission đơn của mình)
+                                                .requestMatchers(HttpMethod.GET, "/api/v1/missions/order/**")
+                                                .authenticated()
+                                                // Other mission endpoints - chỉ ADMIN/SERVICE
+                                                .requestMatchers(HttpMethod.GET, "/api/v1/missions/**")
+                                                .hasAnyRole("ADMIN", "SERVICE")
                                                 .anyRequest().authenticated())
                                 .addFilterBefore(publicEndpointFilter, UsernamePasswordAuthenticationFilter.class)
                                 .addFilterAfter(jwtTokenForwardFilter, UsernamePasswordAuthenticationFilter.class)

@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Core simulation use case - simulates drone movement for a single mission.
@@ -31,6 +32,10 @@ public class SimulateDroneMovementUseCase {
     private static final int SIMULATION_INTERVAL_SECONDS = 2; // Called every 2 seconds
     private static final double BATTERY_CONSUMPTION_PER_KM = 2.0; // 2% per km
     private static final double ARRIVAL_THRESHOLD_KM = 0.05; // 50 meters = arrived
+    
+    // Accumulate fractional battery consumption per drone to avoid rounding errors
+    // Key: droneId, Value: accumulated battery consumption (percentage)
+    private final ConcurrentHashMap<Long, Double> accumulatedBatteryConsumption = new ConcurrentHashMap<>();
 
     /**
      * Simulate movement for a specific mission
@@ -42,11 +47,30 @@ public class SimulateDroneMovementUseCase {
 
         Drone drone = mission.getDrone();
 
+        // Check if drone is in a state that should consume battery
+        // Only DELIVERING and RETURNING drones should consume battery during movement
+        State droneState = drone.getState();
+        if (droneState != State.DELIVERING && droneState != State.RETURNING) {
+            // Clear any accumulated battery consumption for non-active drones
+            accumulatedBatteryConsumption.remove(drone.getId());
+            log.debug("⏸️ Drone {} is in state {} - skipping battery consumption", 
+                    drone.getSerialNumber(), droneState);
+            return;
+        }
+
+        // CRITICAL: Check if drone has run out of battery
+        if (drone.getBatteryLevel() <= 0) {
+            handleBatteryDepleted(mission, drone);
+            return;
+        }
+
         // Determine target based on mission status
         GpsCoordinate target = determineTarget(mission, drone);
 
         if (target == null) {
-            log.warn("No target determined for mission {}", missionId);
+            log.warn("No target determined for mission {} (drone state: {})", missionId, droneState);
+            // Clear accumulated battery when no target (mission completed/cancelled)
+            accumulatedBatteryConsumption.remove(drone.getId());
             return;
         }
 
@@ -79,13 +103,46 @@ public class SimulateDroneMovementUseCase {
         drone.setCurrentLatitude(nextPos.getLatitude());
         drone.setCurrentLongitude(nextPos.getLongitude());
 
-        // Update battery
-        int batteryConsumed = (int) Math.ceil(distanceTraveled * BATTERY_CONSUMPTION_PER_KM);
-        drone.setBatteryLevel(Math.max(0, drone.getBatteryLevel() - batteryConsumed));
+        // Update battery with accumulation to avoid over-consumption from Math.ceil()
+        // Problem: Math.ceil(0.044%) = 1% means 1% consumed every 2 seconds = 30%/minute (too fast!)
+        // Solution: Accumulate fractional consumption and only deduct when >= 1%
+        // IMPORTANT: Only consume battery when drone is DELIVERING or RETURNING
+        // IDLE drones should NOT consume battery here (handled by DroneSimulationBattery)
+        // droneState already checked above, so we know it's DELIVERING or RETURNING here
+        if (droneState == State.DELIVERING || droneState == State.RETURNING) {
+            double batteryConsumed = distanceTraveled * BATTERY_CONSUMPTION_PER_KM;
+            double accumulated = accumulatedBatteryConsumption.getOrDefault(drone.getId(), 0.0);
+            accumulated += batteryConsumed;
+            
+            // Only deduct battery when accumulated consumption >= 1%
+            if (accumulated >= 1.0) {
+                int batteryToDeduct = (int) Math.floor(accumulated);
+                int newBatteryLevel = Math.max(0, drone.getBatteryLevel() - batteryToDeduct);
+                drone.setBatteryLevel(newBatteryLevel);
+                accumulated -= batteryToDeduct; // Keep the remainder
+                log.debug("🔋 Drone {} battery deducted: {}% (accumulated: {:.3f}%)", 
+                        drone.getSerialNumber(), batteryToDeduct, accumulated);
+                
+                // Check if battery depleted after deduction
+                if (newBatteryLevel <= 0) {
+                    handleBatteryDepleted(mission, drone);
+                    return;
+                }
+            }
+            
+            // Store accumulated value for next iteration
+            accumulatedBatteryConsumption.put(drone.getId(), accumulated);
+        } else {
+            // Clear accumulated value if drone is not DELIVERING or RETURNING
+            // This prevents battery consumption for IDLE drones
+            accumulatedBatteryConsumption.remove(drone.getId());
+            log.debug("🧹 Cleared accumulated battery for drone {} (state: {})", 
+                    drone.getSerialNumber(), droneState);
+        }
 
         droneRepository.save(drone);
 
-        log.debug("Drone {} moved to ({}, {}). Battery: {}%, Distance to target: {:.3f}km",
+        log.info("🚁 Drone {} moved to ({}, {}). Battery: {}%, Distance to target: {:.3f}km",
                 drone.getSerialNumber(), nextPos.getLatitude(), nextPos.getLongitude(),
                 drone.getBatteryLevel(), distanceToTarget);
     }
@@ -104,8 +161,7 @@ public class SimulateDroneMovementUseCase {
         return switch (mission.getStatus()) {
 
             // Trường hợp mới nhận nhiệm vụ: Chắc chắn phải đi lấy hàng
-            case ASSIGNED ->
-                    new GpsCoordinate(mission.getPickupLatitude(), mission.getPickupLongitude());
+            case ASSIGNED -> new GpsCoordinate(mission.getPickupLatitude(), mission.getPickupLongitude());
 
             case IN_PROGRESS -> {
                 // Logic quan trọng: Phân định rõ đang đi Lấy hay đi Giao
@@ -150,26 +206,36 @@ public class SimulateDroneMovementUseCase {
 
         // todo check where the drone is
 
-        // case 1: Drone is at pickup location
+        // case 1: Drone is at pickup location (nhà hàng)
         if (distanceToPickup <= ARRIVAL_THRESHOLD_KM) {
-            log.info("Drone {} arrived at PICKUP location for order {}",
+            log.info("✅ Drone {} arrived at PICKUP location (nhà hàng) for order {}",
                     drone.getSerialNumber(), mission.getOrderId());
+            // Chuyển mission status thành IN_PROGRESS để bắt đầu giao hàng
             mission.setStatus(Status.IN_PROGRESS);
+            // Đảm bảo drone state là DELIVERING để đi đến delivery location
+            if (drone.getState() != State.DELIVERING) {
+                drone.setState(State.DELIVERING);
+            }
             missionRepository.save(mission);
+            droneRepository.save(drone);
+            log.info("📦 Mission {} status changed to IN_PROGRESS - Drone will now go to delivery location",
+                    mission.getId());
+        }
 
-        } 
-        
-        // case 2: Drone is at delivery location
+        // case 2: Drone is at delivery location (đã giao hàng)
         else if (distanceToDelivery <= ARRIVAL_THRESHOLD_KM) {
-            log.info("Drone {} DELIVERED order {}",
+            log.info("✅ Drone {} DELIVERED order {} - Gửi event để order status = 'delivered'",
                     drone.getSerialNumber(), mission.getOrderId());
 
             // Start returning to base
             drone.setState(State.RETURNING);
+            // Keep accumulated battery consumption for RETURNING state
             droneRepository.save(drone);
 
+            // Note: Event sẽ được publish bởi DroneSimulationScheduler
+            // khi detect drone state = DELIVERING hoặc vừa chuyển sang RETURNING
         }
-        
+
         // case 3: Drone is at base location
         else if (distanceToBase <= ARRIVAL_THRESHOLD_KM) {
             log.info("Drone {} returned to BASE. Mission {} completed",
@@ -180,6 +246,9 @@ public class SimulateDroneMovementUseCase {
             mission.setCompletedAt(LocalDateTime.now());
             missionRepository.save(mission);
 
+            // Clear accumulated battery consumption when mission completes
+            accumulatedBatteryConsumption.remove(drone.getId());
+            
             // Drone back to idle or charging
             if (drone.getBatteryLevel() < 50) {
                 drone.setState(State.CHARGING);
@@ -192,5 +261,51 @@ public class SimulateDroneMovementUseCase {
             }
             droneRepository.save(drone);
         }
+    }
+
+    /**
+     * Handle battery depletion - drone hết pin giữa chừng
+     * Khi drone hết pin, nó sẽ:
+     * 1. Dừng lại tại vị trí hiện tại
+     * 2. Chuyển state sang MAINTENANCE
+     * 3. Mission có thể bị     CANCELLED hoặc cần rescue
+     */
+    private void handleBatteryDepleted(DroneMission mission, Drone drone) {
+        // Save current state before changing it
+        State previousState = drone.getState();
+        
+        log.error("🔴 CRITICAL: Drone {} has run out of battery during mission {} (Order {})!",
+                drone.getSerialNumber(), mission.getId(), mission.getOrderId());
+        log.error("📍 Drone location: ({}, {}), Previous state: {}, Battery: {}%",
+                drone.getCurrentLatitude(), drone.getCurrentLongitude(), previousState, drone.getBatteryLevel());
+
+        // Set battery to 0 to prevent negative values
+        drone.setBatteryLevel(0);
+
+        // Change drone state to MAINTENANCE (cần sửa chữa/nạp pin)
+        drone.setState(State.MAINTENANCE);
+        droneRepository.save(drone);
+
+        // Mission status depends on where drone ran out:
+        // - If returning to base: Mission can be marked as completed (delivery was successful)
+        // - If going to pickup/delivery: Mission should be cancelled
+        if (previousState == State.RETURNING) {
+            // Drone was returning to base after delivery - delivery was successful
+            log.warn("⚠️ Drone ran out of battery while returning to base. Delivery was successful.");
+            mission.setStatus(Status.COMPLETED);
+            mission.setCompletedAt(LocalDateTime.now());
+        } else {
+            // Drone ran out before completing delivery - mission failed
+            log.error("❌ Mission {} CANCELLED due to battery depletion", mission.getId());
+            mission.setStatus(Status.CANCELLED);
+        }
+        
+        missionRepository.save(mission);
+
+        // Clear accumulated battery consumption
+        accumulatedBatteryConsumption.remove(drone.getId());
+
+        log.error("🚨 ACTION REQUIRED: Drone {} needs immediate attention! Location: ({}, {})",
+                drone.getSerialNumber(), drone.getCurrentLatitude(), drone.getCurrentLongitude());
     }
 }

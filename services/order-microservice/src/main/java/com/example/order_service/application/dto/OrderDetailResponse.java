@@ -27,6 +27,7 @@ public class OrderDetailResponse {
     private BigDecimal grandTotal;
     private String note;
     private LocalDateTime createdAt;
+    private LocalDateTime processingStartedAt;
     private DeliveryAddressResponse deliveryAddress;
     private List<OrderItemResponse> orderItems;
 }

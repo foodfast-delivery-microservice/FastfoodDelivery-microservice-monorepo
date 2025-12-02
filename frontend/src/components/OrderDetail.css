@@ -177,3 +177,102 @@
 .back-btn {
   display: none !important;
 }
+
+/* ================= DRONE TRACKING ================= */
+.order-drone-tracking {
+  margin-top: 30px;
+  padding: 20px;
+  background: #f0f8ff;
+  border: 2px solid #4a90e2;
+  border-radius: 12px;
+}
+
+.tracking-info-box {
+  background: white;
+  padding: 15px;
+  border-radius: 8px;
+  margin: 15px 0;
+  border: 1px solid #ddd;
+}
+
+.tracking-info-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.tracking-info-list li {
+  padding: 8px 0;
+  border-bottom: 1px solid #eee;
+  font-size: 0.95rem;
+}
+
+.tracking-info-list li:last-child {
+  border-bottom: none;
+}
+
+.tracking-info-list b {
+  color: #4a90e2;
+  margin-right: 8px;
+}
+
+.tracking-no-data {
+  color: #999;
+  font-style: italic;
+  padding: 15px;
+  text-align: center;
+  background: #f9f9f9;
+  border-radius: 8px;
+}
+
+.tracking-map-container {
+  margin-top: 20px;
+}
+
+.tracking-map-container h4 {
+  color: #4a90e2;
+  margin-bottom: 10px;
+  font-size: 1.1rem;
+}
+
+.tracking-actions {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid #ddd;
+}
+
+.btn-refresh {
+  padding: 8px 16px;
+  background: #4a90e2;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background 0.2s;
+}
+
+.btn-refresh:hover:not(:disabled) {
+  background: #357abd;
+}
+
+.btn-refresh:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.tracking-auto {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.9rem;
+  color: #666;
+  cursor: pointer;
+}
+
+.tracking-auto input[type="checkbox"] {
+  cursor: pointer;
+}

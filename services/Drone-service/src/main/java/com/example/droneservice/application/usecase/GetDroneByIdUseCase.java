@@ -11,11 +11,11 @@ import lombok.RequiredArgsConstructor;
 public class GetDroneByIdUseCase {
     private final DroneRepository droneRepository;
 
-    public DroneResponse execute (Long id){
+    public DroneResponse execute(Long id) {
         Drone drone = droneRepository.findById(id)
-                .orElseThrow(()->new InvalidId(id));
+                .orElseThrow(() -> new InvalidId(id));
         return DroneResponse.fromEntity(drone);
     }
 
-    
+
 }

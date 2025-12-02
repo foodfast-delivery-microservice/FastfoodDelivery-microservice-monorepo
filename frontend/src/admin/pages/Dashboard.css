@@ -127,3 +127,36 @@ td.pending {
     padding: 50px;
     color: #6b7280;
 }
+
+.dashboard-error-banner {
+    border: 1px solid #fecaca;
+    background: #fef2f2;
+    color: #991b1b;
+    padding: 12px 16px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    font-size: 14px;
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.dashboard-error-banner ul {
+    margin: 8px 0 0 16px;
+    padding: 0;
+}
+
+.dashboard-error-banner button {
+    background: #dc2626;
+    border: none;
+    color: white;
+    padding: 8px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.dashboard-error-banner button:hover {
+    background: #b91c1c;
+}

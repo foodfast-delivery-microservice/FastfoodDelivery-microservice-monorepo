@@ -69,6 +69,15 @@ public class RestaurantController {
         return ResponseEntity.ok(response);
     }
 
+    @GetMapping("/merchants/{merchantId}")
+    public ResponseEntity<ApiResponse<RestaurantDetailResponse>> getRestaurantByMerchantId(
+            @PathVariable @NonNull Long merchantId) {
+        RestaurantDetailResponse restaurant = getRestaurantByMerchantIdUseCase.execute(merchantId);
+        ApiResponse<RestaurantDetailResponse> response =
+                new ApiResponse<>(HttpStatus.OK, "restaurant", restaurant, null);
+        return ResponseEntity.ok(response);
+    }
+
     @GetMapping("/me")
     public ResponseEntity<ApiResponse<RestaurantDetailResponse>> getMyRestaurant(Authentication authentication) {
         Long merchantId = resolveMerchantId(authentication);

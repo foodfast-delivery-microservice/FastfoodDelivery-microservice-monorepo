@@ -1,12 +1,19 @@
-// src/admin/pages/OrdersList.jsx
-import { useEffect, useState, useMemo } from "react";
-import { Input, Table, Tag, Select } from "antd";
+// src/admin/pages/Orders.jsx
+import { useEffect, useState, useMemo, useCallback } from "react";
+import { Input, Table, Tag, Select, message, Spin } from "antd";
 import { useNavigate } from "react-router-dom";
 import http from "../../services/http";
 import "./Orders.css";
 
-export default function OrdersList() {
+export default function Orders() {
   const [orders, setOrders] = useState([]);
+  const [restaurants, setRestaurants] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [errors, setErrors] = useState({
+    orders: null,
+    restaurants: null,
+  });
+
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [timeFilter, setTimeFilter] = useState("all");
@@ -14,49 +21,148 @@ export default function OrdersList() {
 
   const navigate = useNavigate();
 
-  // 🔥 Fetch Orders
-  useEffect(() => {
-    async function fetchOrders() {
-      try {
-        const res = await http.get("/orders", { params: { size: 100 } });
-        const data = res.data?.data?.content || [];
+  const logApi = (label, payload) => {
+    if (process.env.NODE_ENV === "production") return;
+    // eslint-disable-next-line no-console
+    console.log(`[Orders] ${label}`, payload);
+  };
 
-        // Map backend data to frontend structure if needed
-        const mappedData = data.map(item => ({
-          ...item,
-          // Backend returns LocalDateTime array [yyyy, MM, dd, HH, mm, ss]
-          createdAt: Array.isArray(item.createdAt)
-            ? new Date(item.createdAt[0], item.createdAt[1] - 1, item.createdAt[2], item.createdAt[3], item.createdAt[4], item.createdAt[5])
-            : new Date(item.createdAt),
-          total: item.grandTotal, // Map grandTotal to total
-          restaurantName: "Loading...", // We might need to fetch restaurant name or it might be in response? 
-          // OrderListResponse doesn't have restaurantName, only merchantId.
-          // We might need to fetch restaurants to map names or just show ID.
-          // For now let's try to fetch restaurants separately or just show ID.
-        }));
+  const serializeError = (err) => {
+    if (!err) return null;
+    return {
+      message: err?.message || "Lỗi không xác định",
+      status: err?.response?.status,
+      details: err?.response?.data || err?.stack,
+    };
+  };
 
-        setOrders(mappedData);
-        console.log("✅ API loaded orders:", mappedData);
-      } catch (error) {
-        console.error("❌ Lỗi tải đơn hàng:", error);
-      }
+  const parseDate = (createdAt) => {
+    if (!createdAt) return null;
+    
+    // Handle array format [yyyy, MM, dd, HH, mm, ss]
+    if (Array.isArray(createdAt)) {
+      return new Date(
+        createdAt[0],
+        createdAt[1] - 1,
+        createdAt[2],
+        createdAt[3] || 0,
+        createdAt[4] || 0,
+        createdAt[5] || 0
+      );
     }
-    fetchOrders();
+    
+    // Handle object format (Java LocalDateTime)
+    if (
+      typeof createdAt === "object" &&
+      createdAt !== null &&
+      (createdAt.year || createdAt.monthValue)
+    ) {
+      const { year, monthValue, month, dayOfMonth, day, hour, minute, second } = createdAt;
+      return new Date(
+        year || new Date().getFullYear(),
+        (monthValue || month || 1) - 1,
+        dayOfMonth || day || 1,
+        hour || 0,
+        minute || 0,
+        second || 0
+      );
+    }
+    
+    // Handle number (timestamp)
+    if (typeof createdAt === "number") {
+      return new Date(createdAt);
+    }
+    
+    // Handle string
+    const date = new Date(createdAt);
+    return Number.isFinite(date.getTime()) ? date : null;
+  };
+
+  // 🔥 Fetch Orders
+  const fetchOrders = useCallback(async () => {
+    try {
+      logApi("GET /orders params", { size: 100, page: 0 });
+      const res = await http.get("/orders", { params: { size: 100, page: 0 } });
+      logApi("GET /orders response", res?.data);
+
+      // Try multiple response structures
+      const data =
+        res?.data?.data?.content ||
+        res?.data?.content ||
+        res?.data?.data ||
+        res?.data ||
+        [];
+
+      if (!Array.isArray(data)) {
+        throw new Error(`Response không phải mảng: ${typeof data}`);
+      }
+
+      logApi("Parsed orders array length", data.length);
+
+      // Map backend data to frontend structure
+      const mappedData = data.map((item) => {
+        const parsedDate = parseDate(item.createdAt);
+        return {
+          ...item,
+          createdAt: parsedDate,
+          total: item.grandTotal || item.total || 0,
+          restaurantName: "Loading...", // Will be updated after restaurants load
+        };
+      });
+
+      setOrders(mappedData);
+      logApi("✅ Mapped orders", mappedData);
+    } catch (error) {
+      const errPayload = serializeError(error);
+      setErrors((prev) => ({ ...prev, orders: errPayload }));
+      logApi("❌ Error fetching orders", errPayload);
+      message.error("Không thể tải danh sách đơn hàng");
+    }
   }, []);
 
   // Fetch restaurants to map names
-  const [restaurants, setRestaurants] = useState([]);
-  useEffect(() => {
-    async function fetchRestaurants() {
-      try {
-        const res = await http.get("/restaurants", { params: { size: 100 } });
-        setRestaurants(res.data?.data?.content || []);
-      } catch (e) {
-        console.error("Failed to fetch restaurants", e);
+  const fetchRestaurants = useCallback(async () => {
+    try {
+      logApi("GET /restaurants params", { size: 100, page: 0 });
+      const res = await http.get("/restaurants", {
+        params: { size: 100, page: 0 },
+      });
+      logApi("GET /restaurants response", res?.data);
+
+      const data =
+        res?.data?.data?.content ||
+        res?.data?.content ||
+        res?.data?.data ||
+        res?.data ||
+        [];
+
+      if (!Array.isArray(data)) {
+        throw new Error(`Response không phải mảng: ${typeof data}`);
       }
+
+      setRestaurants(data);
+      logApi("✅ Loaded restaurants", data.length);
+    } catch (error) {
+      const errPayload = serializeError(error);
+      setErrors((prev) => ({ ...prev, restaurants: errPayload }));
+      logApi("❌ Error fetching restaurants", errPayload);
+      message.error("Không thể tải danh sách nhà hàng");
     }
-    fetchRestaurants();
   }, []);
+
+  // Fetch all data
+  useEffect(() => {
+    const loadAll = async () => {
+      setLoading(true);
+      setErrors({ orders: null, restaurants: null });
+      
+      await Promise.allSettled([fetchOrders(), fetchRestaurants()]);
+      
+      setLoading(false);
+    };
+    
+    loadAll();
+  }, [fetchOrders, fetchRestaurants]);
 
   const getRestaurantName = (merchantId) => {
     const r = restaurants.find(res => res.merchantId === merchantId);
@@ -210,26 +316,69 @@ export default function OrdersList() {
     },
   ];
 
+  const errorEntries = useMemo(
+    () => Object.entries(errors).filter(([, value]) => !!value),
+    [errors]
+  );
+
+  const handleRetry = useCallback(() => {
+    setLoading(true);
+    setErrors({ orders: null, restaurants: null });
+    Promise.allSettled([fetchOrders(), fetchRestaurants()]).then(() => {
+      setLoading(false);
+    });
+  }, [fetchOrders, fetchRestaurants]);
+
+  if (loading) {
+    return (
+      <div className="orders-page">
+        <div style={{ textAlign: "center", padding: "60px 20px" }}>
+          <Spin size="large" tip="Đang tải dữ liệu..." />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="orders-page">
       <div className="orders-header">
         <h1>📦 Quản lý đơn hàng (Admin)</h1>
       </div>
 
+      {errorEntries.length > 0 && (
+        <div className="orders-error-banner">
+          <div>
+            <p><strong>Không thể tải đầy đủ dữ liệu:</strong></p>
+            <ul>
+              {errorEntries.map(([key, value]) => (
+                <li key={key}>
+                  <strong>{key}:</strong> {value?.message || "Lỗi không xác định"}
+                  {value?.status && ` (HTTP ${value.status})`}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <button type="button" onClick={handleRetry} className="retry-btn">
+            🔄 Thử lại
+          </button>
+        </div>
+      )}
+
       {/* ===== Bộ lọc ===== */}
       <div className="filter-container">
         <div className="filter-item">
-          <label>Tìm kiếm:</label>
+          <span className="filter-label">Tìm kiếm:</span>
           <Input
             placeholder="Nhập tên hoặc mã đơn hàng..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             allowClear
+            aria-label="Tìm kiếm đơn hàng"
           />
         </div>
 
         <div className="filter-item">
-          <label>Trạng thái:</label>
+          <span className="filter-label">Trạng thái:</span>
           <Select
             value={statusFilter}
             onChange={setStatusFilter}
@@ -245,7 +394,7 @@ export default function OrdersList() {
         </div>
 
         <div className="filter-item">
-          <label>Thời gian:</label>
+          <span className="filter-label">Thời gian:</span>
           <Select
             value={timeFilter}
             onChange={setTimeFilter}
@@ -259,7 +408,7 @@ export default function OrdersList() {
         </div>
 
         <div className="filter-item">
-          <label>Nhà hàng:</label>
+          <span className="filter-label">Nhà hàng:</span>
           <Select
             value={restaurantFilter}
             onChange={setRestaurantFilter}

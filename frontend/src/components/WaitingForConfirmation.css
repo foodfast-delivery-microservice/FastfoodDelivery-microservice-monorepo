@@ -109,6 +109,21 @@
   color: #222;
 }
 
+.wfc-tracking-box h4 {
+  margin: 0 0 10px 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #2b2623;
+}
+
+/* Map container in tracking box */
+.wfc-tracking-box .leaflet-container {
+  height: 400px !important;
+  width: 100%;
+  border-radius: 8px;
+  margin-top: 10px;
+}
+
 /* ====== Button: Confirm Received ====== */
 .wfc-btn-received {
   margin-top: 20px;

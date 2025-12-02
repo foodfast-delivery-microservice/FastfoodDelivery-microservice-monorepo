@@ -25,7 +25,7 @@ public class DroneAssignmentController {
     /**
      * Manually assign a drone to an order
      * POST /api/v1/assignments
-     * 
+     * <p>
      * Use case: Admin hoặc System có thể manually assign drone cho order
      * thay vì đợi auto-assignment từ event
      */

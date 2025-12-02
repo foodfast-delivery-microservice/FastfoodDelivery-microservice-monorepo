@@ -272,4 +272,6 @@
   /* Điều chỉnh kích thước chiều rộng */
   display: block;
   /* Loại bỏ khoảng trắng thừa dưới ảnh */
+  object-fit: contain;
+  /* Đảm bảo SVG scale đúng tỷ lệ */
 }

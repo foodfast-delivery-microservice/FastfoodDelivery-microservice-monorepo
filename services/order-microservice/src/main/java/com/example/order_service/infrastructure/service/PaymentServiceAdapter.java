@@ -99,9 +99,8 @@ public class PaymentServiceAdapter implements PaymentServicePort {
                 log.info("=== VALIDATING PAYMENT METHOD ===");
                 log.info("UserId: {}, PaymentMethod: {}", userId, paymentMethod);
 
-                // For now, validate locally since Payment Service doesn't have validation endpoint
-                // Allowed payment methods
-                String[] allowedMethods = {"COD", "CARD", "WALLET", "BANK_TRANSFER"};
+                // Chỉ cho phép thanh toán bằng QR (duy nhất phương thức thanh toán)
+                String[] allowedMethods = {"QR", "QR_CODE", "QRCODE"};
                 boolean isValid = false;
                 for (String method : allowedMethods) {
                     if (method.equalsIgnoreCase(paymentMethod)) {
@@ -111,9 +110,9 @@ public class PaymentServiceAdapter implements PaymentServicePort {
                 }
 
                 if (!isValid) {
-                    log.warn("Invalid payment method: {}", paymentMethod);
+                    log.warn("Invalid payment method: {}. Chỉ chấp nhận thanh toán bằng QR", paymentMethod);
                     return new PaymentValidationResponse(userId, paymentMethod, false, 
-                            "Payment method không hợp lệ: " + paymentMethod);
+                            "Phương thức thanh toán không hợp lệ. Hệ thống chỉ chấp nhận thanh toán bằng QR. Payment method: " + paymentMethod);
                 }
 
                 log.info("✓ Payment method {} validated successfully for user {}", paymentMethod, userId);
@@ -135,8 +134,8 @@ public class PaymentServiceAdapter implements PaymentServicePort {
         log.error("Circuit Breaker fallback triggered for payment validation. Error: {}", ex.getMessage());
         log.warn("Payment Service unavailable - using local validation");
         
-        // Fallback to local validation
-        String[] allowedMethods = {"COD", "CARD", "WALLET", "BANK_TRANSFER"};
+        // Fallback to local validation - Chỉ cho phép QR
+        String[] allowedMethods = {"QR", "QR_CODE", "QRCODE"};
         boolean isValid = false;
         for (String method : allowedMethods) {
             if (method.equalsIgnoreCase(paymentMethod)) {
@@ -148,7 +147,7 @@ public class PaymentServiceAdapter implements PaymentServicePort {
         if (!isValid) {
             return CompletableFuture.completedFuture(
                     new PaymentValidationResponse(userId, paymentMethod, false, 
-                            "Payment method không hợp lệ: " + paymentMethod));
+                            "Phương thức thanh toán không hợp lệ. Hệ thống chỉ chấp nhận thanh toán bằng QR. Payment method: " + paymentMethod));
         }
         
         return CompletableFuture.completedFuture(

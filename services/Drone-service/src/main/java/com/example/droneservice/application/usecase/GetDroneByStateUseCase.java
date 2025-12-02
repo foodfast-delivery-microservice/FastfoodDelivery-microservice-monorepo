@@ -12,29 +12,30 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class GetDroneByStateUseCase {
     private final DroneRepository droneRepository;
-    public List<DroneResponse> execute (String state){
 
-       State states ;
-       try {
-           states =State.valueOf(state.toLowerCase());
-       }catch (IllegalArgumentException e){
-           throw new IllegalArgumentException("Invalid drone state" + state);
-       }
-       List<Drone> droneByState =droneRepository.findByState(states);
-       return droneByState
-               .stream()
-               .map(drone -> new DroneResponse(
-                       drone.getId(),
-                       drone.getSerialNumber(),
-                       drone.getModel(),
-                       drone.getBatteryLevel(),
-                       drone.getState(),
-                       drone.getCurrentLatitude(),
-                       drone.getCurrentLongitude(),
-                       drone.getBaseLatitude(),
-                       drone.getBaseLongitude(),
-                       drone.getWeightCapacity()
-               ))
-               .collect(Collectors.toList());
+    public List<DroneResponse> execute(String state) {
+
+        State states;
+        try {
+            states = State.valueOf(state.toLowerCase());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Invalid drone state" + state);
+        }
+        List<Drone> droneByState = droneRepository.findByState(states);
+        return droneByState
+                .stream()
+                .map(drone -> new DroneResponse(
+                        drone.getId(),
+                        drone.getSerialNumber(),
+                        drone.getModel(),
+                        drone.getBatteryLevel(),
+                        drone.getState(),
+                        drone.getCurrentLatitude(),
+                        drone.getCurrentLongitude(),
+                        drone.getBaseLatitude(),
+                        drone.getBaseLongitude(),
+                        drone.getWeightCapacity()
+                ))
+                .collect(Collectors.toList());
     }
 }

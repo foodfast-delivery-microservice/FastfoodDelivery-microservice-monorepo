@@ -40,6 +40,15 @@ public class Restaurant {
 
     private String district;
 
+    /**
+     * Restaurant GPS coordinates for location-based services (drone pickup, distance calculation)
+     */
+    @Column(precision = 10, scale = 7)
+    private BigDecimal latitude;
+
+    @Column(precision = 10, scale = 7)
+    private BigDecimal longitude;
+
     private String image;
 
     private String phone;

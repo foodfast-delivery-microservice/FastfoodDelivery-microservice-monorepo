@@ -11,7 +11,7 @@ public class HaversineDistanceCalculator {
 
     /**
      * Calculate distance between two GPS coordinates using Haversine formula
-     * 
+     *
      * @param lat1 Latitude of point 1 (degrees)
      * @param lon1 Longitude of point 1 (degrees)
      * @param lat2 Latitude of point 2 (degrees)
@@ -41,7 +41,7 @@ public class HaversineDistanceCalculator {
     /**
      * Calculate the next GPS position when moving from current to target
      * at a given speed for a given time interval.
-     * 
+     *
      * @param current         Current GPS position
      * @param target          Target GPS position
      * @param speedKmh        Speed in km/h
@@ -49,9 +49,9 @@ public class HaversineDistanceCalculator {
      * @return Next GPS position
      */
     public static GpsCoordinate calculateNextPosition(GpsCoordinate current,
-            GpsCoordinate target,
-            double speedKmh,
-            int intervalSeconds) {
+                                                      GpsCoordinate target,
+                                                      double speedKmh,
+                                                      int intervalSeconds) {
 
         // Calculate distance that can be traveled in this interval
         double distanceCanTravel = (speedKmh / 3600.0) * intervalSeconds; // km
@@ -80,7 +80,7 @@ public class HaversineDistanceCalculator {
 
     /**
      * Calculate bearing (direction) from one point to another
-     * 
+     *
      * @param lat1 Latitude of point 1 (degrees)
      * @param lon1 Longitude of point 1 (degrees)
      * @param lat2 Latitude of point 2 (degrees)

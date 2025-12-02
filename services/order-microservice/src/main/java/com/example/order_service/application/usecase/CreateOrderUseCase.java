@@ -612,6 +612,7 @@ public class CreateOrderUseCase {
     }
 
     private OrderResponse mapToResponse(Order order) {
+        // Map Order to OrderResponse
         return OrderResponse.builder()
                 .id(order.getId())
                 .orderCode(order.getOrderCode())
@@ -624,11 +625,12 @@ public class CreateOrderUseCase {
                 .shippingFee(order.getShippingFee())
                 .grandTotal(order.getGrandTotal())
                 .note(order.getNote())
+                .createdAt(order.getCreatedAt())
+                .processingStartedAt(order.getProcessingStartedAt())
                 .deliveryAddress(mapToDeliveryAddressResponse(order.getDeliveryAddress()))
                 .orderItems(order.getOrderItems().stream()
                         .map(this::mapToOrderItemResponse)
                         .collect(Collectors.toList()))
-                .createdAt(order.getCreatedAt())
                 .build();
     }
 

@@ -71,8 +71,27 @@ function Header({ cartCount }) {
             value={searchValue}
             onChange={(e) => setSearchValue(e.target.value)}
           />
-          <button type="submit">
-            <img src="/Images/search.png" alt="SEARCH" />
+          <button type="submit" aria-label="Tìm kiếm">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              viewBox="0 0 48 48"
+              fill="none"
+            >
+              <path
+                d="m29.175 31.99 2.828-2.827 12.019 12.019-2.828 2.827z"
+                fill="#2b2623"
+                opacity="0.6"
+              />
+              <circle cx="20" cy="20" r="16" fill="#2b2623" opacity="0.4" />
+              <circle cx="20" cy="20" r="13" fill="#2b2623" opacity="0.7" />
+              <path
+                d="M26.9 14.2c-1.7-2-4.2-3.2-6.9-3.2s-5.2 1.2-6.9 3.2c-.4.4-.3 1.1.1 1.4.4.4 1.1.3 1.4-.1C16 13.9 17.9 13 20 13s4 .9 5.4 2.5c.2.2.5.4.8.4.2 0 .5-.1.6-.2.4-.4.4-1.1.1-1.5z"
+                fill="#2b2623"
+                opacity="0.9"
+              />
+            </svg>
           </button>
         </form>
       </div>

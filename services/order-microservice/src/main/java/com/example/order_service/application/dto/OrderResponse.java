@@ -26,9 +26,10 @@ public class OrderResponse {
     private BigDecimal shippingFee;
     private BigDecimal grandTotal;
     private String note;
+    private LocalDateTime createdAt;
+    private LocalDateTime processingStartedAt;
     private DeliveryAddressResponse deliveryAddress;
     private List<OrderItemResponse> orderItems;
-    private LocalDateTime createdAt;
 
     @Data
     @Builder

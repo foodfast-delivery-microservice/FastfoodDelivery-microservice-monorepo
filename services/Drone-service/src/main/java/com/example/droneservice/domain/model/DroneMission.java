@@ -47,7 +47,7 @@ public class DroneMission {
 
     // Mission metrics
     private Double distanceKm;
-    
+
     private Integer estimatedDurationMinutes;
 
     private LocalDateTime startedAt;

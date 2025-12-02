@@ -31,8 +31,8 @@ public class UserUseCaseConfig {
     }
 
     @Bean
-    public CreateUserUseCase createUserUseCase(UserRepository userRepository, PasswordEncoder passwordEncoder) {
-        return new CreateUserUseCase(userRepository, passwordEncoder);
+    public CreateUserUseCase createUserUseCase(UserRepository userRepository, RestaurantRepository restaurantRepository, PasswordEncoder passwordEncoder) {
+        return new CreateUserUseCase(userRepository, restaurantRepository, passwordEncoder);
     }
 
     @Bean

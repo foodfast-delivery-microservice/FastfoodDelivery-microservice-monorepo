@@ -7,6 +7,7 @@ import com.example.droneservice.domain.repository.DroneMissionRepository;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -58,29 +59,53 @@ public class DroneMissionController {
     }
 
     /**
+     * Get all missions for a specific drone
+     */
+    @GetMapping("/drone/{droneId}")
+    public ResponseEntity<List<MissionResponse>> getMissionsByDroneId(@PathVariable Long droneId) {
+        List<MissionResponse> missions = missionRepository.findByDroneId(droneId).stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(missions);
+    }
+
+    /**
      * Get real-time tracking info for a mission
      */
     @GetMapping("/{id}/tracking")
     public ResponseEntity<TrackingResponse> getTrackingInfo(@PathVariable Long id) {
-        return missionRepository.findById(id)
-                .map(mission -> {
-                    Drone drone = mission.getDrone();
+        try {
+            return missionRepository.findById(id)
+                    .map(mission -> {
+                        try {
+                            Drone drone = mission.getDrone();
+                            if (drone == null) {
+                                throw new IllegalStateException("Drone not found for mission " + mission.getId());
+                            }
 
-                    TrackingResponse tracking = TrackingResponse.builder()
-                            .missionId(mission.getId())
-                            .orderId(mission.getOrderId())
-                            .droneId(drone.getId())
-                            .droneSerialNumber(drone.getSerialNumber())
-                            .currentLatitude(drone.getCurrentLatitude())
-                            .currentLongitude(drone.getCurrentLongitude())
-                            .batteryLevel(drone.getBatteryLevel())
-                            .status(mission.getStatus().toString())
-                            .estimatedArrivalMinutes(calculateETA(mission))
-                            .build();
+                            TrackingResponse tracking = TrackingResponse.builder()
+                                    .missionId(mission.getId())
+                                    .orderId(mission.getOrderId())
+                                    .droneId(drone.getId())
+                                    .droneSerialNumber(drone.getSerialNumber())
+                                    .currentLatitude(drone.getCurrentLatitude())
+                                    .currentLongitude(drone.getCurrentLongitude())
+                                    .baseLatitude(drone.getBaseLatitude())
+                                    .baseLongitude(drone.getBaseLongitude())
+                                    .batteryLevel(drone.getBatteryLevel())
+                                    .status(mission.getStatus().toString())
+                                    .estimatedArrivalMinutes(calculateETA(mission))
+                                    .build();
 
-                    return ResponseEntity.ok(tracking);
-                })
-                .orElse(ResponseEntity.notFound().build());
+                            return ResponseEntity.ok(tracking);
+                        } catch (Exception e) {
+                            throw new RuntimeException("Error building tracking response: " + e.getMessage(), e);
+                        }
+                    })
+                    .orElse(ResponseEntity.notFound().build());
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().build();
+        }
     }
 
     /**
@@ -88,25 +113,38 @@ public class DroneMissionController {
      */
     @GetMapping("/order/{orderId}/tracking")
     public ResponseEntity<TrackingResponse> getTrackingByOrderId(@PathVariable Long orderId) {
-        return missionRepository.findByOrderId(orderId)
-                .map(mission -> {
-                    Drone drone = mission.getDrone();
+        try {
+            return missionRepository.findByOrderId(orderId)
+                    .map(mission -> {
+                        try {
+                            Drone drone = mission.getDrone();
+                            if (drone == null) {
+                                throw new IllegalStateException("Drone not found for mission " + mission.getId());
+                            }
 
-                    TrackingResponse tracking = TrackingResponse.builder()
-                            .missionId(mission.getId())
-                            .orderId(mission.getOrderId())
-                            .droneId(drone.getId())
-                            .droneSerialNumber(drone.getSerialNumber())
-                            .currentLatitude(drone.getCurrentLatitude())
-                            .currentLongitude(drone.getCurrentLongitude())
-                            .batteryLevel(drone.getBatteryLevel())
-                            .status(mission.getStatus().toString())
-                            .estimatedArrivalMinutes(calculateETA(mission))
-                            .build();
+                            TrackingResponse tracking = TrackingResponse.builder()
+                                    .missionId(mission.getId())
+                                    .orderId(mission.getOrderId())
+                                    .droneId(drone.getId())
+                                    .droneSerialNumber(drone.getSerialNumber())
+                                    .currentLatitude(drone.getCurrentLatitude())
+                                    .currentLongitude(drone.getCurrentLongitude())
+                                    .baseLatitude(drone.getBaseLatitude())
+                                    .baseLongitude(drone.getBaseLongitude())
+                                    .batteryLevel(drone.getBatteryLevel())
+                                    .status(mission.getStatus().toString())
+                                    .estimatedArrivalMinutes(calculateETA(mission))
+                                    .build();
 
-                    return ResponseEntity.ok(tracking);
-                })
-                .orElse(ResponseEntity.notFound().build());
+                            return ResponseEntity.ok(tracking);
+                        } catch (Exception e) {
+                            throw new RuntimeException("Error building tracking response: " + e.getMessage(), e);
+                        }
+                    })
+                    .orElse(ResponseEntity.notFound().build());
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().build();
+        }
     }
 
     private MissionResponse mapToResponse(DroneMission mission) {
@@ -148,6 +186,7 @@ public class DroneMissionController {
     @Data
     @Builder
     @AllArgsConstructor
+    @NoArgsConstructor
     public static class TrackingResponse {
         private Long missionId;
         private Long orderId;
@@ -155,6 +194,8 @@ public class DroneMissionController {
         private String droneSerialNumber;
         private Double currentLatitude;
         private Double currentLongitude;
+        private Double baseLatitude;
+        private Double baseLongitude;
         private Integer batteryLevel;
         private String status;
         private Integer estimatedArrivalMinutes;

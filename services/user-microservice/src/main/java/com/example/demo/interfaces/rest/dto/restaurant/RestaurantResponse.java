@@ -30,6 +30,8 @@ public class RestaurantResponse {
     private Integer reviewCount;
     private Boolean active;
     private Boolean approved;
+    private BigDecimal latitude;
+    private BigDecimal longitude;
 
     public static RestaurantResponse fromEntity(Restaurant restaurant) {
         if (restaurant == null) {
@@ -53,6 +55,8 @@ public class RestaurantResponse {
                 .reviewCount(Optional.ofNullable(restaurant.getReviewCount()).orElse(0))
                 .active(restaurant.getActive())
                 .approved(restaurant.getApproved())
+                .latitude(restaurant.getLatitude())
+                .longitude(restaurant.getLongitude())
                 .build();
     }
 
@@ -61,6 +65,7 @@ public class RestaurantResponse {
         return openingHours != null && !openingHours.isBlank();
     }
 }
+
 
 
 

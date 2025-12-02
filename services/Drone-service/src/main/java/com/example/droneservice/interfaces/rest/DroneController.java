@@ -29,7 +29,7 @@ public class DroneController {
 
     private final CreateDroneUseCase createDroneUseCase;
     private final GetAllDroneUseCase getAllDroneUseCase;
-    private final GetDroneByStateUseCase  getDroneByStateUseCase;
+    private final GetDroneByStateUseCase getDroneByStateUseCase;
     private final GetDroneByIdUseCase getDroneByIdUseCase;
     private final DroneRepository droneRepository;
 
@@ -61,6 +61,7 @@ public class DroneController {
         );
         return ResponseEntity.status(HttpStatus.OK).body(result);
     }
+
     /**
      * Get drone by ID
      */
@@ -96,16 +97,17 @@ public class DroneController {
 
 
 
-/*
- * Ukhuc duoi nay chua lm lai
- */
+    /*
+     * Ukhuc duoi nay chua lm lai
+     */
+
     /**
      * Update drone battery level (for testing/maintenance)
      */
     // todo check lại endpoint này
     @PutMapping("/{id}/battery")
     public ResponseEntity<Void> updateBattery(
-                @PathVariable Long id,
+            @PathVariable Long id,
             @RequestParam Integer level) {
 
         return droneRepository.findById(id)

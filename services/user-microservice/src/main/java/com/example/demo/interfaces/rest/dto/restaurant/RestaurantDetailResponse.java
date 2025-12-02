@@ -46,8 +46,11 @@ public class RestaurantDetailResponse extends RestaurantResponse {
         setReviewCount(base.getReviewCount());
         setActive(base.getActive());
         setApproved(base.getApproved());
+        setLatitude(base.getLatitude());
+        setLongitude(base.getLongitude());
     }
 }
+
 
 
 
