@@ -1,0 +1,104 @@
+name: CD - Deploy to Production
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+
+jobs:
+  # Job 1: Build tất cả services
+  build-all:
+    name: Build All Services
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: ☕ Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: 🏗️ Build all services
+        run: |
+          echo "🔨 Building all services..."
+          for service in services/*/; do
+            if [ -f "$service/pom.xml" ]; then
+              echo "Building $(basename $service)..."
+              cd "$service"
+              mvn clean package -DskipTests -B
+              cd ../..
+            fi
+          done
+
+      - name: ✅ Verify builds
+        run: |
+          echo "✅ Verifying all JAR files..."
+          for service in services/*/; do
+            if [ -f "$service/pom.xml" ]; then
+              SERVICE_NAME=$(basename $service)
+              if ls $service/target/*.jar 1> /dev/null 2>&1; then
+                echo "✅ $SERVICE_NAME: JAR found"
+              else
+                echo "❌ $SERVICE_NAME: JAR not found!"
+                exit 1
+              fi
+            fi
+          done
+
+  # Job 2: Deploy to Render (nếu có setup)
+  deploy-render:
+    name: Deploy to Render
+    runs-on: ubuntu-latest
+    needs: [build-all]
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: 🚀 Trigger Render Deploy
+        run: |
+          echo "🚀 Deployment would trigger here"
+          echo "Configure RENDER_API_KEY and service IDs in GitHub Secrets"
+          echo "See: github_actions_setup_guide.md for details"
+          
+          # Uncomment when ready to deploy:
+          # curl -X POST "https://api.render.com/v1/services/${{ secrets.RENDER_SERVICE_ID }}/deploys" \
+          #   -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}" \
+          #   -H "Content-Type: application/json"
+
+  # Job 3: Deployment Summary
+  deployment-summary:
+    name: Deployment Summary
+    runs-on: ubuntu-latest
+    needs: [build-all, deploy-render]
+    if: always()
+    
+    steps:
+      - name: 📊 Generate Summary
+        run: |
+          echo "## 🚀 Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Build Status:" >> $GITHUB_STEP_SUMMARY
+          echo "- Build: ${{ needs.build-all.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Deploy: ${{ needs.deploy-render.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Environment:" >> $GITHUB_STEP_SUMMARY
+          echo "- Target: ${{ inputs.environment || 'production' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Branch: \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Commit: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "**Deployed by**: @${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Time**: $(date -u)" >> $GITHUB_STEP_SUMMARY

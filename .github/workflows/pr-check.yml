@@ -1,0 +1,75 @@
+name: PR Check
+
+on:
+  pull_request:
+    branches:
+      - main
+      - develop
+
+jobs:
+  # Job đơn giản: Chỉ build services có thay đổi
+  quick-build:
+    name: Quick Build
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: ☕ Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: 🔍 Detect changed services
+        id: detect-changes
+        run: |
+          CHANGED_FILES=$(git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.sha }})
+          echo "Changed files:"
+          echo "$CHANGED_FILES"
+          
+          CHANGED_SERVICES=""
+          for service in user-microservice product-microservice order-microservice payment-microservice Drone-service gateway-service registry-service; do
+            if echo "$CHANGED_FILES" | grep -q "services/$service"; then
+              CHANGED_SERVICES="$CHANGED_SERVICES $service"
+            fi
+          done
+          
+          if [ -z "$CHANGED_SERVICES" ]; then
+            echo "No services changed"
+            echo "services=none" >> $GITHUB_OUTPUT
+          else
+            echo "Changed services: $CHANGED_SERVICES"
+            echo "services=$CHANGED_SERVICES" >> $GITHUB_OUTPUT
+          fi
+
+      - name: 🏗️ Build changed services
+        if: steps.detect-changes.outputs.services != 'none'
+        run: |
+          for service in ${{ steps.detect-changes.outputs.services }}; do
+            echo "🔨 Building $service..."
+            cd services/$service
+            mvn clean package -DskipTests -B
+            cd ../..
+            echo "✅ $service built successfully"
+          done
+
+      - name: 📊 PR Summary
+        run: |
+          echo "## 📋 PR Check Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.detect-changes.outputs.services }}" = "none" ]; then
+            echo "✅ No services changed - PR looks good!" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### Changed Services:" >> $GITHUB_STEP_SUMMARY
+            for service in ${{ steps.detect-changes.outputs.services }}; do
+              echo "- ✅ $service" >> $GITHUB_STEP_SUMMARY
+            done
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**PR**: #${{ github.event.pull_request.number }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Author**: @${{ github.event.pull_request.user.login }}" >> $GITHUB_STEP_SUMMARY

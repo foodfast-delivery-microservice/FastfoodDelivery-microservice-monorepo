@@ -1,0 +1,215 @@
+name: CI - Build & Test
+
+on:
+  push:
+    branches: 
+      - main
+      - develop
+      - feature/**
+      - bugfix/**
+  pull_request:
+    branches: 
+      - main
+      - develop
+
+jobs:
+  # Job 1: Build và test tất cả microservices
+  build-services:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        service:
+          - user-microservice
+          - product-microservice
+          - order-microservice
+          - payment-microservice
+          - Drone-service
+          - gateway-service
+          - registry-service
+      fail-fast: false
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: ☕ Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: 🔍 Check if ${{ matrix.service }} has changes
+        id: check-changes
+        run: |
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            CHANGED_FILES=$(git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.sha }} || echo "all")
+          else
+            CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || echo "all")
+          fi
+          
+          if echo "$CHANGED_FILES" | grep -q "services/${{ matrix.service }}" || [ "$CHANGED_FILES" = "all" ]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "✅ ${{ matrix.service }} has changes"
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "⏭️ ${{ matrix.service }} has no changes, skipping"
+          fi
+
+      - name: 🏗️ Build ${{ matrix.service }}
+        if: steps.check-changes.outputs.changed == 'true'
+        working-directory: ./services/${{ matrix.service }}
+        run: |
+          echo "🔨 Building ${{ matrix.service }}..."
+          mvn clean package -DskipTests -B
+          echo "✅ Build completed"
+
+      - name: 🧪 Run tests for ${{ matrix.service }}
+        if: steps.check-changes.outputs.changed == 'true'
+        working-directory: ./services/${{ matrix.service }}
+        run: |
+          echo "🧪 Running tests for ${{ matrix.service }}..."
+          mvn test -B
+          echo "✅ Tests completed"
+
+      - name: 📊 Upload test results
+        if: always() && steps.check-changes.outputs.changed == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.service }}
+          path: services/${{ matrix.service }}/target/surefire-reports/
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: 📦 Upload JAR artifact
+        if: success() && steps.check-changes.outputs.changed == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.service }}-jar
+          path: services/${{ matrix.service }}/target/*.jar
+          retention-days: 7
+          if-no-files-found: warn
+
+  # Job 2: Build Frontend
+  build-frontend:
+    name: Build Frontend
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🔍 Check if frontend has changes
+        id: check-frontend
+        run: |
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            CHANGED_FILES=$(git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.sha }} || echo "all")
+          else
+            CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || echo "all")
+          fi
+          
+          if echo "$CHANGED_FILES" | grep -q "frontend/" || [ "$CHANGED_FILES" = "all" ]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "✅ Frontend has changes"
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "⏭️ Frontend has no changes, skipping"
+          fi
+
+      - name: 📦 Setup Node.js
+        if: steps.check-frontend.outputs.changed == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: 📥 Install dependencies
+        if: steps.check-frontend.outputs.changed == 'true'
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: 🏗️ Build frontend
+        if: steps.check-frontend.outputs.changed == 'true'
+        working-directory: ./frontend
+        run: npm run build
+
+      - name: 📦 Upload frontend build
+        if: success() && steps.check-frontend.outputs.changed == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist/
+          retention-days: 7
+
+  # Job 3: Code Quality (chỉ chạy trên PR)
+  code-quality:
+    name: Code Quality
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    needs: [build-services]
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: ☕ Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: 🔍 Run code quality checks
+        continue-on-error: true
+        run: |
+          echo "🔍 Running code quality checks..."
+          for service in services/*/; do
+            if [ -f "$service/pom.xml" ]; then
+              echo "Checking $(basename $service)..."
+              cd "$service"
+              mvn checkstyle:check || true
+              cd ../..
+            fi
+          done
+
+  # Job 4: Build Summary
+  build-summary:
+    name: Build Summary
+    runs-on: ubuntu-latest
+    needs: [build-services, build-frontend]
+    if: always()
+    
+    steps:
+      - name: 📊 Generate Build Summary
+        run: |
+          echo "## 🚀 Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📦 Services:" >> $GITHUB_STEP_SUMMARY
+          echo "| Service | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|---------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| User Service | ${{ needs.build-services.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Product Service | ${{ needs.build-services.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Order Service | ${{ needs.build-services.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Payment Service | ${{ needs.build-services.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Drone Service | ${{ needs.build-services.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Gateway Service | ${{ needs.build-services.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Registry Service | ${{ needs.build-services.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🎨 Frontend:" >> $GITHUB_STEP_SUMMARY
+          echo "| Component | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| React App | ${{ needs.build-frontend.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit**: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch**: \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Triggered by**: ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
