@@ -59,40 +59,136 @@ jobs:
             fi
           done
 
-  # Job 2: Deploy to Render (nếu có setup)
+  # Job 2: Deploy to Render
   deploy-render:
     name: Deploy to Render
     runs-on: ubuntu-latest
     needs: [build-all]
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && secrets.RENDER_API_KEY != ''
     
-    steps:
-      - name: 🚀 Trigger Render Deploy
-        run: |
-          echo "🚀 Deployment would trigger here"
-          echo "Configure RENDER_API_KEY and service IDs in GitHub Secrets"
-          echo "See: github_actions_setup_guide.md for details"
-          
-          # Uncomment when ready to deploy:
-          # curl -X POST "https://api.render.com/v1/services/${{ secrets.RENDER_SERVICE_ID }}/deploys" \
-          #   -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}" \
-          #   -H "Content-Type: application/json"
+    strategy:
+      matrix:
+        service:
+          - name: user-service
+            id: RENDER_USER_SERVICE_ID
+          - name: product-service
+            id: RENDER_PRODUCT_SERVICE_ID
+          - name: order-service
+            id: RENDER_ORDER_SERVICE_ID
+          - name: gateway-service
+            id: RENDER_GATEWAY_SERVICE_ID
+      max-parallel: 2
 
-  # Job 3: Deployment Summary
+    steps:
+      - name: 🚀 Deploy ${{ matrix.service.name }} to Render
+        run: |
+          SERVICE_ID="${{ secrets[matrix.service.id] }}"
+          
+          if [ -z "$SERVICE_ID" ]; then
+            echo "⚠️ Service ID not configured for ${{ matrix.service.name }}"
+            echo "Please setup GitHub Secret: ${{ matrix.service.id }}"
+            exit 0
+          fi
+          
+          echo "🚀 Deploying ${{ matrix.service.name }}..."
+          
+          RESPONSE=$(curl -X POST \
+            "https://api.render.com/v1/services/$SERVICE_ID/deploys" \
+            -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{"clearCache": "clear"}' \
+            -w "\n%{http_code}" \
+            -s)
+          
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | head -n-1)
+          
+          if [ "$HTTP_CODE" = "201" ] || [ "$HTTP_CODE" = "200" ]; then
+            echo "✅ ${{ matrix.service.name }} deployment triggered successfully"
+            echo "Response: $BODY"
+          else
+            echo "❌ Failed to deploy ${{ matrix.service.name }}"
+            echo "HTTP Code: $HTTP_CODE"
+            echo "Response: $BODY"
+            exit 1
+          fi
+
+      - name: ⏳ Wait for deployment to start
+        run: |
+          echo "Waiting 30 seconds for ${{ matrix.service.name }} to start deploying..."
+          sleep 30
+
+  # Job 3: Health Check
+  health-check:
+    name: Health Check
+    runs-on: ubuntu-latest
+    needs: [deploy-render]
+    if: success()
+    
+    strategy:
+      matrix:
+        service:
+          - name: user-service
+            url_secret: USER_SERVICE_URL
+          - name: product-service
+            url_secret: PRODUCT_SERVICE_URL
+          - name: order-service
+            url_secret: ORDER_SERVICE_URL
+          - name: gateway-service
+            url_secret: GATEWAY_SERVICE_URL
+
+    steps:
+      - name: 🏥 Health Check for ${{ matrix.service.name }}
+        run: |
+          SERVICE_URL="${{ secrets[matrix.service.url_secret] }}"
+          
+          if [ -z "$SERVICE_URL" ]; then
+            echo "⚠️ Service URL not configured for ${{ matrix.service.name }}"
+            exit 0
+          fi
+          
+          echo "🏥 Checking health of ${{ matrix.service.name }}..."
+          echo "URL: $SERVICE_URL/actuator/health"
+          
+          for i in {1..10}; do
+            echo "Attempt $i/10..."
+            
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$SERVICE_URL/actuator/health" || echo "000")
+            
+            if [ "$HTTP_CODE" = "200" ]; then
+              echo "✅ ${{ matrix.service.name }} is healthy!"
+              exit 0
+            else
+              echo "⏳ Service not ready yet (HTTP $HTTP_CODE), waiting 30s..."
+              sleep 30
+            fi
+          done
+          
+          echo "❌ ${{ matrix.service.name }} failed health check after 5 minutes"
+          exit 1
+
+  # Job 4: Deployment Summary
   deployment-summary:
     name: Deployment Summary
     runs-on: ubuntu-latest
-    needs: [build-all, deploy-render]
+    needs: [build-all, deploy-render, health-check]
     if: always()
     
     steps:
-      - name: 📊 Generate Summary
+      - name: 📊 Generate Deployment Summary
         run: |
           echo "## 🚀 Deployment Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Build Status:" >> $GITHUB_STEP_SUMMARY
           echo "- Build: ${{ needs.build-all.result }}" >> $GITHUB_STEP_SUMMARY
           echo "- Deploy: ${{ needs.deploy-render.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Health Check: ${{ needs.health-check.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Services Deployed:" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ User Service" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Product Service" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Order Service" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Gateway Service" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Environment:" >> $GITHUB_STEP_SUMMARY
           echo "- Target: ${{ inputs.environment || 'production' }}" >> $GITHUB_STEP_SUMMARY
@@ -102,3 +198,15 @@ jobs:
           echo "---" >> $GITHUB_STEP_SUMMARY
           echo "**Deployed by**: @${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
           echo "**Time**: $(date -u)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ secrets.GATEWAY_SERVICE_URL }}" != "" ]; then
+            echo "### 🔗 Quick Links:" >> $GITHUB_STEP_SUMMARY
+            echo "- [Gateway Service](${{ secrets.GATEWAY_SERVICE_URL }})" >> $GITHUB_STEP_SUMMARY
+            echo "- [Render Dashboard](https://dashboard.render.com)" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: 📧 Notify on failure
+        if: failure()
+        run: |
+          echo "❌ Deployment failed! Check the logs above for details."
+          echo "::error::Deployment to Render failed"
