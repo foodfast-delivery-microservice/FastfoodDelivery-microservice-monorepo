@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.math.BigDecimal;
+
 @AllArgsConstructor
 @NoArgsConstructor
 @Getter
@@ -28,4 +29,5 @@ public class ProductRequest {
     private Boolean active;
 
     private Long merchantId;
+    private String imageUrl;
 }

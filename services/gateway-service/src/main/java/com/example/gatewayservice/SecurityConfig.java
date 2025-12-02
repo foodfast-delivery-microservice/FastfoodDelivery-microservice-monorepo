@@ -21,11 +21,17 @@ public class SecurityConfig {
 
         private final JwtTokenForwardFilter jwtTokenForwardFilter;
         private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
+        private final PublicEndpointFilter publicEndpointFilter;
+        private final PublicEndpointBearerTokenResolver publicEndpointBearerTokenResolver;
 
         public SecurityConfig(JwtTokenForwardFilter jwtTokenForwardFilter,
-                        JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint) {
+                        JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint,
+                        PublicEndpointFilter publicEndpointFilter,
+                        PublicEndpointBearerTokenResolver publicEndpointBearerTokenResolver) {
                 this.jwtTokenForwardFilter = jwtTokenForwardFilter;
                 this.jwtAuthenticationEntryPoint = jwtAuthenticationEntryPoint;
+                this.publicEndpointFilter = publicEndpointFilter;
+                this.publicEndpointBearerTokenResolver = publicEndpointBearerTokenResolver;
         }
 
         @Bean
@@ -33,18 +39,37 @@ public class SecurityConfig {
                 http
                                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                                 .csrf(AbstractHttpConfigurer::disable)
+                                .sessionManagement(session -> session.sessionCreationPolicy(
+                                                org.springframework.security.config.http.SessionCreationPolicy.STATELESS))
                                 .authorizeHttpRequests(auth -> auth
                                                 // Public endpoints
+                                                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                                                 .requestMatchers("/api/v1/auth/**").permitAll()
                                                 .requestMatchers(HttpMethod.GET, "/api/v1/products/**").permitAll()
+
+                                                // Restaurant endpoints
+                                                .requestMatchers("/api/v1/restaurants/me/**")
+                                                .hasAnyRole("MERCHANT", "ADMIN")
+                                                .requestMatchers(HttpMethod.PUT, "/api/v1/restaurants/me")
+                                                .hasAnyRole("MERCHANT", "ADMIN")
+                                                .requestMatchers(HttpMethod.PATCH, "/api/v1/restaurants/me/**")
+                                                .hasAnyRole("MERCHANT", "ADMIN")
+                                                .requestMatchers(HttpMethod.GET, "/api/v1/restaurants/**").permitAll()
 
                                                 // USER endpoints - specific patterns FIRST
                                                 // Validation endpoint for inter-service calls
                                                 .requestMatchers(HttpMethod.GET, "/api/v1/users/*/validate")
                                                 .hasAnyRole("USER", "ADMIN", "MERCHANT")
 
+                                                // Allow getting own profile
+                                                .requestMatchers(HttpMethod.GET, "/api/v1/users/me").authenticated()
+
                                                 // PATCH endpoints - only need authentication (authorization in UseCase)
                                                 .requestMatchers(HttpMethod.PATCH, "/api/v1/users/**").authenticated()
+
+                                                // Allow getting specific user/restaurant details (public)
+                                                .requestMatchers(HttpMethod.GET, "/api/v1/users/{id:[0-9]+}")
+                                                .permitAll()
 
                                                 // Other USER endpoints require ADMIN
                                                 .requestMatchers(HttpMethod.POST, "/api/v1/users/**").hasRole("ADMIN")
@@ -52,7 +77,11 @@ public class SecurityConfig {
                                                 .requestMatchers(HttpMethod.DELETE, "/api/v1/users/**").hasRole("ADMIN")
 
                                                 // PRODUCT endpoints - specific patterns first
-                                                .requestMatchers("/api/v1/products/merchants/**")
+                                                // Public endpoint: GET /products/merchants/{merchantId} - for guests
+                                                .requestMatchers(HttpMethod.GET, "/api/v1/products/merchants/{merchantId:[0-9]+}")
+                                                .permitAll()
+                                                // Authenticated endpoint: GET /products/merchants/me - for merchant
+                                                .requestMatchers("/api/v1/products/merchants/me")
                                                 .hasAnyRole("MERCHANT", "ADMIN")
                                                 .requestMatchers(HttpMethod.POST, "/api/v1/products/**")
                                                 .hasAnyRole("ADMIN", "MERCHANT")
@@ -69,14 +98,42 @@ public class SecurityConfig {
                                                 .hasAnyRole("MERCHANT", "ADMIN")
                                                 .requestMatchers("/api/v1/payments/**").authenticated()
 
-                                                .anyRequest().authenticated())
-                                .exceptionHandling(exception -> exception
-                                                .authenticationEntryPoint(jwtAuthenticationEntryPoint))
+                                                .requestMatchers("/actuator/**").permitAll()
 
+                                                // Admin-only endpoints (Drone management)
+                                                .requestMatchers(HttpMethod.POST, "/api/v1/drones").hasRole("ADMIN")
+                                                .requestMatchers(HttpMethod.PUT, "/api/v1/drones/**").hasRole("ADMIN")
+                                                .requestMatchers(HttpMethod.DELETE, "/api/v1/drones/**").hasRole("ADMIN")
+                                                .requestMatchers(HttpMethod.POST, "/api/v1/drones/assignments/**")
+                                                .hasAnyRole("ADMIN", "MERCHANT")
+
+                                                // Drone & mission visibility
+                                                .requestMatchers(HttpMethod.GET, "/api/v1/drones/**")
+                                                .hasAnyRole("ADMIN", "MERCHANT", "SERVICE")
+                                                // Tracking endpoint - cho phép authenticated users (customer có thể xem tracking đơn của mình)
+                                                .requestMatchers(HttpMethod.GET, "/api/v1/missions/order/*/tracking")
+                                                .authenticated()
+                                                // Mission by order ID - cho phép authenticated users (customer có thể xem mission đơn của mình)
+                                                .requestMatchers(HttpMethod.GET, "/api/v1/missions/order/**")
+                                                .authenticated()
+                                                // Other mission endpoints - chỉ ADMIN/SERVICE
+                                                .requestMatchers(HttpMethod.GET, "/api/v1/missions/**")
+                                                .hasAnyRole("ADMIN", "SERVICE")
+                                                .anyRequest().authenticated())
+                                .addFilterBefore(publicEndpointFilter, UsernamePasswordAuthenticationFilter.class)
                                 .addFilterAfter(jwtTokenForwardFilter, UsernamePasswordAuthenticationFilter.class)
 
                                 .oauth2ResourceServer(oauth2 -> oauth2
-                                                .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthConverter)));
+                                                .bearerTokenResolver(publicEndpointBearerTokenResolver)
+                                                .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthConverter))
+                                                .authenticationEntryPoint(
+                                                                new PublicEndpointAwareAuthenticationEntryPoint(
+                                                                                jwtAuthenticationEntryPoint)))
+
+                                .exceptionHandling(exception -> exception
+                                                .authenticationEntryPoint(
+                                                                new PublicEndpointAwareAuthenticationEntryPoint(
+                                                                                jwtAuthenticationEntryPoint)));
 
                 return http.build();
         }

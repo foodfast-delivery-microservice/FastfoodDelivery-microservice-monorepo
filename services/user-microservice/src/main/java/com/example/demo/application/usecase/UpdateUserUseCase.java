@@ -30,15 +30,16 @@ public class UpdateUserUseCase {
         validateUserAccessUseCase.execute(id, authentication);
 
         User existingUser = userRepository.findById(id)
-                .orElseThrow(()-> new InvalidId(id));
+                .orElseThrow(() -> new InvalidId(id));
 
         // 1. CHECK USERNAME
         // only update when field was sent (not null)
-        if (userPatchDTO.getUsername()!= null){
+        if (userPatchDTO.getUsername() != null) {
             // Chỉ check trùng nếu username MỚI khác username CŨ
-            if(!userPatchDTO.getUsername().equals(existingUser.getUsername())){
-                // nếu tên mới khác tên cũ thì kiểm tra tên mới có trùng với ai trong database không
-                if (userRepository.existsByUsername(userPatchDTO.getUsername())){
+            if (!userPatchDTO.getUsername().equals(existingUser.getUsername())) {
+                // nếu tên mới khác tên cũ thì kiểm tra tên mới có trùng với ai trong database
+                // không
+                if (userRepository.existsByUsername(userPatchDTO.getUsername())) {
                     throw new UsernameAlreadyExistException(userPatchDTO.getUsername());
                 }
                 // nếu không trùng set giá trị mới
@@ -49,9 +50,9 @@ public class UpdateUserUseCase {
 
         // 2. CHECK EMAIL
         // only update when field was sent (not null)
-        if (userPatchDTO.getEmail()!= null){
-            if (!userPatchDTO.getEmail().equals(existingUser.getEmail())){
-                if (userRepository.existsByEmail(userPatchDTO.getEmail())){
+        if (userPatchDTO.getEmail() != null) {
+            if (!userPatchDTO.getEmail().equals(existingUser.getEmail())) {
+                if (userRepository.existsByEmail(userPatchDTO.getEmail())) {
                     throw new EmailAlreadyExistException(userPatchDTO.getEmail());
                 }
                 existingUser.setEmail(userPatchDTO.getEmail());
@@ -60,6 +61,26 @@ public class UpdateUserUseCase {
         if (userPatchDTO.getApproved() != null) {
             existingUser.setApproved(userPatchDTO.getApproved());
         }
+
+        // Map Profile Fields
+        if (userPatchDTO.getFullName() != null)
+            existingUser.setFullName(userPatchDTO.getFullName());
+        if (userPatchDTO.getPhone() != null)
+            existingUser.setPhone(userPatchDTO.getPhone());
+        if (userPatchDTO.getAddress() != null)
+            existingUser.setAddress(userPatchDTO.getAddress());
+        if (userPatchDTO.getAvatar() != null)
+            existingUser.setAvatar(userPatchDTO.getAvatar());
+
+        // Map Merchant Fields
+        if (userPatchDTO.getRestaurantName() != null)
+            existingUser.setRestaurantName(userPatchDTO.getRestaurantName());
+        if (userPatchDTO.getRestaurantAddress() != null)
+            existingUser.setRestaurantAddress(userPatchDTO.getRestaurantAddress());
+        if (userPatchDTO.getRestaurantImage() != null)
+            existingUser.setRestaurantImage(userPatchDTO.getRestaurantImage());
+        if (userPatchDTO.getOpeningHours() != null)
+            existingUser.setOpeningHours(userPatchDTO.getOpeningHours());
 
         boolean merchantDeactivated = false;
         boolean merchantActivated = false;
@@ -79,7 +100,6 @@ public class UpdateUserUseCase {
         }
 
         User updatedUser = userRepository.save(existingUser);
-
 
         // -- BƯỚC MỚI: BẮN RA SỰ KIỆN --
         UserUpdatedEventDTO eventDTO = UserUpdatedEventDTO.builder()
@@ -127,16 +147,16 @@ public class UpdateUserUseCase {
     // thay đổi role của user
     // only admin
 
-    public User updateRoleUser (User currentUser, Long id, String newRole){
+    public User updateRoleUser(User currentUser, Long id, String newRole) {
         // check if caller is admin
-        if (!currentUser.getRole().equals(User.UserRole.ADMIN)){
+        if (!currentUser.getRole().equals(User.UserRole.ADMIN)) {
             throw new AdminAccessDeniedException();
         }
         User targetUser = userRepository.findById(id)
-                .orElseThrow(()-> new InvalidId(id));
+                .orElseThrow(() -> new InvalidId(id));
         Set<String> allowedRole = Set.of("ADMIN", "USER", "MERCHANT");
         String roleUpper = newRole.toUpperCase();
-        if (!allowedRole.contains(roleUpper)){
+        if (!allowedRole.contains(roleUpper)) {
             throw new InvalidRoleException(roleUpper);
         }
         targetUser.setRole(User.UserRole.valueOf(roleUpper));

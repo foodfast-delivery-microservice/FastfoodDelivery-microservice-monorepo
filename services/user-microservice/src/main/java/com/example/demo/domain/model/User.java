@@ -16,52 +16,63 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 @Table(name = "users")
 public class User {
 
-  @Id
-  @GeneratedValue(strategy = GenerationType.IDENTITY)
-  private Long id;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-  @Column(nullable = false, unique = true)
-  private String username;
+    @Column(nullable = false, unique = true)
+    private String username;
 
-  @Column(unique = true, nullable = false)
-  private String email;
+    @Column(unique = true, nullable = false)
+    private String email;
 
-  @JsonIgnore
-  @Column(nullable = false)
-  private String password;
+    @JsonIgnore
+    @Column(nullable = false)
+    private String password;
 
-  @Enumerated(EnumType.STRING)
-  @Column(nullable = false)
-  private UserRole role;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private UserRole role;
 
-  @Column(nullable = false)
-  private boolean approved = true;
+    @Column(nullable = false)
+    private boolean approved = true;
 
-  @Column(nullable = false)
-  private boolean active = true;
+    @Column(nullable = false)
+    private boolean active = true;
 
-  public enum UserRole {
-      ADMIN,
-      USER,
-      MERCHANT
-  }
+    // Common Profile Fields
+    private String fullName;
+    private String phone;
+    private String address;
+    private String avatar;
 
-  public void changePassword(String newPassword, PasswordEncoder passwordEncoder) {
-      if(newPassword == null || newPassword.trim().isEmpty()){
-          throw new IllegalArgumentException("New password cannot be empty");
-      }
-      // bỏ khoảng trắng đầu cuối
-      newPassword = newPassword.trim();
+    // Merchant Profile Fields
+    private String restaurantName;
+    private String restaurantAddress;
+    private String restaurantImage;
+    private String openingHours;
 
-      // kt độ mạnh mật khẩu bằng regex
-      if (!isStrongPassword(newPassword)) {
-          throw new IllegalArgumentException(
-                  "Password must be at least 8 characters long, contain upper and lower case letters, a number, and a special character."
-          );
-      }
+    public enum UserRole {
+        ADMIN,
+        USER,
+        MERCHANT
+    }
 
-      this.password = passwordEncoder.encode(newPassword);
-  }
+    public void changePassword(String newPassword, PasswordEncoder passwordEncoder) {
+        if (newPassword == null || newPassword.trim().isEmpty()) {
+            throw new IllegalArgumentException("New password cannot be empty");
+        }
+        // bỏ khoảng trắng đầu cuối
+        newPassword = newPassword.trim();
+
+        // kt độ mạnh mật khẩu bằng regex
+        if (!isStrongPassword(newPassword)) {
+            throw new IllegalArgumentException(
+                    "Password must be at least 8 characters long, contain upper and lower case letters, a number, and a special character.");
+        }
+
+        this.password = passwordEncoder.encode(newPassword);
+    }
 
     // Hàm riêng để kiểm tra độ mạnh mật khẩu
     private boolean isStrongPassword(String password) {

@@ -13,13 +13,13 @@ import java.util.Optional;
 public class CreateProductUseCase {
     private final ProductRepository productRepository;
 
-    public ProductResponse create (ProductRequest productRequest) {
+    public ProductResponse create(ProductRequest productRequest) {
 
         // check category
         Product.Category category;
         try {
             category = Product.Category.valueOf(productRequest.getCategory().toUpperCase());
-        }catch (IllegalArgumentException e){
+        } catch (IllegalArgumentException e) {
             throw new InvalidCategoryException(productRequest.getCategory());
         }
 
@@ -29,8 +29,7 @@ public class CreateProductUseCase {
 
         Optional<Product> existingProduct = productRepository.findByNameIgnoreCaseAndMerchantId(
                 productRequest.getName(),
-                productRequest.getMerchantId()
-        );
+                productRequest.getMerchantId());
 
         Product product;
         if (existingProduct.isPresent()) {
@@ -48,6 +47,9 @@ public class CreateProductUseCase {
             if (productRequest.getActive() != null) {
                 product.setActive(productRequest.getActive());
             }
+            if (productRequest.getImageUrl() != null) {
+                product.setImageUrl(productRequest.getImageUrl());
+            }
             product.setCategory(category);
         } else {
             product = new Product();
@@ -58,6 +60,7 @@ public class CreateProductUseCase {
             product.setCategory(category);
             product.setMerchantId(productRequest.getMerchantId());
             product.setActive(productRequest.getActive() != null ? productRequest.getActive() : true);
+            product.setImageUrl(productRequest.getImageUrl());
         }
 
         // ensure merchant id set (existing record already has it)

@@ -25,10 +25,11 @@ public class UserController {
 
     private final CreateUserUseCase createUserUseCase;
     private final UpdateUserUseCase updateUserUseCase;
-    private final DeleteUserByIdUseCase  deleteUserByIdUseCase;
+    private final DeleteUserByIdUseCase deleteUserByIdUseCase;
     private final GetAllUsersUseCase getAllUserUseCase;
     private final GetUserByIdUseCase getUserByIdUseCase;
     private final ChangePasswordUseCase changePasswordUseCase;
+
     @PostMapping
     public ResponseEntity<ApiResponse<CreateUserResponse>> createUser(@Valid @RequestBody CreateUserRequest request) {
         CreateUserResponse created = createUserUseCase.execute(request);
@@ -67,32 +68,30 @@ public class UserController {
                 HttpStatus.OK,
                 "changed password",
                 updated,
-                null
-        );
+                null);
         return ResponseEntity.status(HttpStatus.OK).body(result);
     }
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<CreateUserResponse>>> getAllUsers(){
+    public ResponseEntity<ApiResponse<List<CreateUserResponse>>> getAllUsers() {
 
         ApiResponse<List<CreateUserResponse>> result = new ApiResponse<>(
                 HttpStatus.OK,
-                "got all users" ,
+                "got all users",
                 getAllUserUseCase.execute(),
                 null);
         return ResponseEntity.ok(result);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<CreateUserResponse>> getUserById(@PathVariable Long id){
+    public ResponseEntity<ApiResponse<CreateUserResponse>> getUserById(@PathVariable Long id) {
         CreateUserResponse getUser = getUserByIdUseCase.execute(id);
 
         ApiResponse<CreateUserResponse> result = new ApiResponse<>(
                 HttpStatus.OK,
                 "get user",
                 getUser,
-                null
-        );
+                null);
         return ResponseEntity.ok(result);
     }
 
@@ -102,7 +101,7 @@ public class UserController {
      * GET /api/v1/users/{id}/validate
      */
     @GetMapping("/{id}/validate")
-    public ResponseEntity<ApiResponse<CreateUserResponse>> validateUser(@PathVariable Long id){
+    public ResponseEntity<ApiResponse<CreateUserResponse>> validateUser(@PathVariable Long id) {
         try {
             CreateUserResponse getUser = getUserByIdUseCase.execute(id);
 
@@ -110,8 +109,7 @@ public class UserController {
                     HttpStatus.OK,
                     "user validated",
                     getUser,
-                    null
-            );
+                    null);
             return ResponseEntity.ok(result);
         } catch (com.example.demo.domain.exception.InvalidId ex) {
             // User not found - return 404
@@ -119,8 +117,7 @@ public class UserController {
                     HttpStatus.NOT_FOUND,
                     ex.getMessage(),
                     null,
-                    "INVALID_ID"
-            );
+                    "INVALID_ID");
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(result);
         } catch (Exception ex) {
             // Other errors - return 500
@@ -128,8 +125,7 @@ public class UserController {
                     HttpStatus.INTERNAL_SERVER_ERROR,
                     "Error validating user: " + ex.getMessage(),
                     null,
-                    "INTERNAL_SERVER_ERROR"
-            );
+                    "INTERNAL_SERVER_ERROR");
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(result);
         }
     }
@@ -137,30 +133,43 @@ public class UserController {
     @DeleteMapping("/{id}")
     // @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<String>> deleteUser(@PathVariable Long id) {
-        try {
-            deleteUserByIdUseCase.execute(id);
-            ApiResponse<String> result = new ApiResponse<>(
-                    HttpStatus.NO_CONTENT,
-                    "deleted",
-                    null,
-                    null);
+        deleteUserByIdUseCase.execute(id);
+        ApiResponse<String> result = new ApiResponse<>(
+                HttpStatus.NO_CONTENT,
+                "deleted",
+                null,
+                null);
 
-            return ResponseEntity.status(HttpStatus.NO_CONTENT).body(result);
-        } catch (com.example.demo.domain.exception.MerchantDeletionNotAllowedException ex) {
-            ApiResponse<String> result = new ApiResponse<>(
-                    HttpStatus.BAD_REQUEST,
-                    ex.getMessage(),
-                    null,
-                    "MERCHANT_DELETION_NOT_ALLOWED");
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(result);
-        } catch (com.example.demo.domain.exception.InvalidId ex) {
-            ApiResponse<String> result = new ApiResponse<>(
-                    HttpStatus.NOT_FOUND,
-                    ex.getMessage(),
-                    null,
-                    "INVALID_ID");
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(result);
+        return ResponseEntity.status(HttpStatus.NO_CONTENT).body(result);
+    }
+
+    private final com.example.demo.domain.repository.UserRepository userRepository;
+
+    @Deprecated
+    @GetMapping("/restaurants")
+    public ResponseEntity<Void> getRestaurants() {
+        return ResponseEntity.status(HttpStatus.MOVED_PERMANENTLY)
+                .header(org.springframework.http.HttpHeaders.LOCATION, "/api/v1/restaurants")
+                .build();
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<ApiResponse<CreateUserResponse>> getMe(Authentication authentication) {
+        if (authentication == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
+        String username = authentication.getName();
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        CreateUserResponse response = CreateUserResponse.fromEntity(user);
+
+        ApiResponse<CreateUserResponse> result = new ApiResponse<>(
+                HttpStatus.OK,
+                "get me",
+                response,
+                null);
+        return ResponseEntity.ok(result);
     }
 
 }

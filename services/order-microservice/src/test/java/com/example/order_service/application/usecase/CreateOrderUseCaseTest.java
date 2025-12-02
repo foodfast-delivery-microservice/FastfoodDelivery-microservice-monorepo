@@ -4,6 +4,7 @@ import com.example.order_service.application.dto.CreateOrderRequest;
 import com.example.order_service.application.dto.OrderResponse;
 import com.example.order_service.application.dto.ProductValidationResponse;
 import com.example.order_service.application.dto.UserValidationResponse;
+import com.example.order_service.application.service.AdministrativeAddressNormalizer;
 import com.example.order_service.domain.exception.OrderValidationException;
 import com.example.order_service.domain.model.*;
 import com.example.order_service.domain.repository.IdempotencyKeyRepository;
@@ -54,6 +55,9 @@ class CreateOrderUseCaseTest {
 
     @Mock
     private ObjectMapper objectMapper;
+
+    @Mock
+    private AdministrativeAddressNormalizer administrativeAddressNormalizer;
 
     @InjectMocks
     private CreateOrderUseCase createOrderUseCase;

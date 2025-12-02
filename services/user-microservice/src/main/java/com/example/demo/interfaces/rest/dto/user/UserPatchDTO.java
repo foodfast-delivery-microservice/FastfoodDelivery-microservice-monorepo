@@ -10,5 +10,16 @@ public class UserPatchDTO {
     private Boolean approved;
     private Boolean active;
 
+    // Common Profile Fields
+    private String fullName;
+    private String phone;
+    private String address;
+    private String avatar;
+
+    // Merchant Profile Fields
+    private String restaurantName;
+    private String restaurantAddress;
+    private String restaurantImage;
+    private String openingHours;
 
 }

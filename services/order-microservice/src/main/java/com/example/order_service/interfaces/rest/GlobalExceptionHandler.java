@@ -1,5 +1,6 @@
 package com.example.order_service.interfaces.rest;
 
+import com.example.order_service.domain.exception.AddressValidationException;
 import com.example.order_service.domain.exception.InvalidJwtTokenException;
 import com.example.order_service.domain.exception.InvalidOrderStatusException;
 import com.example.order_service.domain.exception.OrderNotFoundException;
@@ -40,6 +41,19 @@ public class GlobalExceptionHandler {
                 .timestamp(LocalDateTime.now())
                 .status(HttpStatus.BAD_REQUEST.value())
                 .error("Order Validation Error")
+                .message(ex.getMessage())
+                .path(getCurrentPath())
+                .build();
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+    }
+
+    @ExceptionHandler(AddressValidationException.class)
+    public ResponseEntity<ErrorResponse> handleAddressValidationException(AddressValidationException ex) {
+        log.error("Address validation error: {}", ex.getMessage());
+        ErrorResponse error = ErrorResponse.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.BAD_REQUEST.value())
+                .error("Address Validation Error")
                 .message(ex.getMessage())
                 .path(getCurrentPath())
                 .build();

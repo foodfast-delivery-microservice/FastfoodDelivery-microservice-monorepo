@@ -16,15 +16,37 @@ public class CreateUserResponse {
     private boolean approved;
     private boolean active;
 
+    // Common Profile Fields
+    private String fullName;
+    private String phone;
+    private String address;
+    private String avatar;
 
-    public static CreateUserResponse fromEntity(User user){
-        CreateUserResponse response  = new CreateUserResponse();
+    // Merchant Profile Fields
+    private String restaurantName;
+    private String restaurantAddress;
+    private String restaurantImage;
+    private String openingHours;
+
+    public static CreateUserResponse fromEntity(User user) {
+        CreateUserResponse response = new CreateUserResponse();
         response.setId(user.getId());
         response.setUsername(user.getUsername());
         response.setEmail(user.getEmail());
         response.setRole(user.getRole().name());
         response.setApproved(user.isApproved());
         response.setActive(user.isActive());
+
+        response.setFullName(user.getFullName());
+        response.setPhone(user.getPhone());
+        response.setAddress(user.getAddress());
+        response.setAvatar(user.getAvatar());
+
+        response.setRestaurantName(user.getRestaurantName());
+        response.setRestaurantAddress(user.getRestaurantAddress());
+        response.setRestaurantImage(user.getRestaurantImage());
+        response.setOpeningHours(user.getOpeningHours());
+
         return response;
     }
 

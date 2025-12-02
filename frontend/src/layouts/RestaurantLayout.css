@@ -1,0 +1,131 @@
+/* ================================== */
+/* RESTAURANT LAYOUT STYLES (2025)   */
+/* ================================== */
+
+/* ===== Tổng thể layout ===== */
+.restaurant-layout {
+    display: flex;
+    min-height: 100vh;
+    font-family: "Poppins", sans-serif;
+    background-color: #f4f7fa;
+    color: #333;
+}
+
+/* ===== Sidebar ===== */
+.restaurant-sidebar {
+    width: 260px;
+    background: linear-gradient(180deg, #1f4f66, #357b9d);
+    color: #fff;
+    padding: 25px 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.08);
+}
+
+.restaurant-logo {
+    font-size: 22px;
+    font-weight: 600;
+    margin-bottom: 40px;
+    text-align: center;
+    color: #fff;
+    letter-spacing: 0.5px;
+}
+
+/* ===== Navigation ===== */
+.restaurant-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    width: 100%;
+}
+
+.restaurant-link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+    color: #e1ebf2;
+    padding: 12px 15px;
+    border-radius: 10px;
+    font-weight: 500;
+    transition: all 0.25s ease;
+}
+
+.restaurant-link:hover {
+    background: rgba(255, 255, 255, 0.18);
+    color: #fff;
+    transform: translateX(5px);
+}
+
+.restaurant-link.active {
+    background: #fff;
+    color: #1f4f66;
+    font-weight: 600;
+    box-shadow: 0 3px 10px rgba(255, 255, 255, 0.25);
+}
+
+/* ===== Nội dung chính ===== */
+.restaurant-content {
+    flex: 1;
+    padding: 35px 40px;
+    background-color: #fff;
+    border-radius: 20px 0 0 0;
+    margin: 20px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    overflow-y: auto;
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 992px) {
+    .restaurant-layout {
+        flex-direction: column;
+    }
+
+    .restaurant-sidebar {
+        width: 100%;
+        flex-direction: row;
+        justify-content: space-around;
+        padding: 15px;
+        box-shadow: 0 3px 6px rgba(0, 0, 0, 0.08);
+    }
+
+    .restaurant-nav {
+        flex-direction: row;
+        gap: 10px;
+    }
+
+    .restaurant-link {
+        padding: 10px 12px;
+        font-size: 14px;
+    }
+
+    .restaurant-content {
+        margin: 10px;
+        padding: 20px;
+    }
+}
+.logout-btn {
+  margin-top: auto;
+  padding: 10px 15px;
+  width: 90%;
+  background-color: #ff4b4b;
+  border: none;
+  color: white;
+  font-size: 15px;
+  font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.logout-btn:hover {
+  background-color: #d93636;
+}
+.restaurant-id {
+  text-align: center;
+  font-size: 20px;
+  color: #fff;
+  margin-bottom: 1rem;
+  border-width: 10px;
+}

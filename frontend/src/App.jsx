@@ -1,34 +1,300 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider } from './context/AuthContext';
-import ProtectedRoute from './components/ProtectedRoute';
-import LoginPage from './pages/auth/LoginPage';
-import AdminDashboard from './pages/admin/AdminDashboard';
-import MerchantDashboard from './pages/merchant/MerchantDashboard';
-import UnauthorizedPage from './pages/UnauthorizedPage';
+import React, { useEffect, useState } from "react";
+import { Routes, Route, BrowserRouter, Navigate } from "react-router-dom";
+import { useAuth } from "./context/AuthContext";
+import "leaflet/dist/leaflet.css";
+import "antd/dist/reset.css";
+import "./App.css";
+import { Modal, message } from "antd";
+
+/* USER PAGES */
+import Profile from "./components/Profile";
+import OrderDetail from "./components/OrderDetail";
+import ProductList from "./components/ProductList";
+import ProductDetail from "./components/ProductDetail";
+import Cart from "./components/Cart";
+import Checkout from "./components/Checkout";
+import OrderHistory from "./components/OrderHistory";
+import Login from "./components/Login";
+import Register from "./components/Register";
+import RestaurantList from "./components/RestaurantList";
+import RestaurantDetail from "./components/RestaurantDetail";
+import WaitingForConfirmation from "./components/WaitingForConfirmation";
+
+/* LAYOUTS */
+import UserLayout from "./layouts/UserLayout";
+import AdminLayout from "./layouts/AdminLayout";
+import RestaurantLayout from "./layouts/RestaurantLayout";
+
+/* ADMIN PAGES */
+import Dashboard from "./admin/pages/Dashboard";
+import Orders from "./admin/pages/Orders";
+import Users from "./admin/pages/Users";
+import AdminOrderDetail from "./admin/components/OrdersDetail";
+import Products from "./admin/pages/Products";
+import AdminCreateRestaurant from "./admin/pages/AdminCreateRestaurant";
+import AdminDroneManager from "./admin/pages/AdminDroneManager";
+
+/* RESTAURANT ADMIN */
+import RestaurantDashboard from "./components/RestaurantDashboard";
+import RestaurantOrderDetail from "./components/RestaurantOrderDetail";
+import RestaurantProducts from "./components/RestaurantProducts";
+import DroneList from "./components/DroneList";
+
+/* ✅ Protected Routes */
+const SESSION_KEY = "app_session";
+
+function AdminRoute({ children }) {
+  const { currentUser, loading } = useAuth();
+
+  console.log("🧩 [AdminRoute] loading:", loading, "user:", currentUser?.role);
+
+  if (loading) {
+    // ⏳ Chờ cho AuthContext xong rồi mới render
+    return <p>⏳ Đang xác thực Admin...</p>;
+  }
+
+  if (!currentUser) {
+    console.log("❌ [AdminRoute] Không có user → login");
+    return <Navigate to="/login" replace />;
+  }
+
+  const role = (currentUser.role || "").toLowerCase();
+  if (role !== "admin") {
+    console.log("🚫 [AdminRoute] Không phải admin, role:", currentUser.role);
+    return <Navigate to="/login" replace />;
+  }
+
+  console.log("✅ [AdminRoute] Cho phép truy cập admin");
+  return children;
+}
+
+function RestaurantRoute({ children }) {
+  const { currentUser, loading } = useAuth();
+
+  if (loading) return <p>⏳ Đang xác thực tài khoản...</p>;
+  const role = (currentUser?.role || "").toLowerCase();
+  // ✅ Chỉ cho phép MERCHANT truy cập khu vực dashboard này
+  if (!currentUser || role !== "merchant") {
+    return <Navigate to="/login" replace />;
+  }
+  return children;
+}
+
+/**
+ * Protected Route: Yêu cầu login để truy cập
+ * Dùng cho: Checkout, Order History, Profile
+ */
+function ProtectedRoute({ children }) {
+  const { currentUser, loading } = useAuth();
+
+  if (loading) return <p>⏳ Đang xác thực...</p>;
+  
+  if (!currentUser) {
+    // Redirect đến login và lưu đường dẫn hiện tại để quay lại sau khi login
+    return <Navigate to="/login" replace state={{ from: window.location.pathname }} />;
+  }
+  
+  return children;
+}
 
 function App() {
+  const { currentUser, loading } = useAuth();
+
+  // ✅ Giữ giỏ hàng theo user
+  const userKey = (user) => user?.id || user?.uid || user?.phonenumber || user?.username
+
+  const [cart, setCart] = useState(() => {
+    try {
+      const storedUser = JSON.parse(localStorage.getItem(SESSION_KEY));
+      const identifier = userKey(storedUser);
+      const key = identifier ? `cart_${encodeURIComponent(identifier)}` : "cart_guest";
+      const raw = localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const [modalVisible, setModalVisible] = useState(false);
+  const [pendingProduct, setPendingProduct] = useState(null);
+
+  // ✅ Lưu giỏ hàng
+  useEffect(() => {
+    if (loading) return;
+    const identifier = userKey(currentUser);
+    const key = identifier ? `cart_${encodeURIComponent(identifier)}` : "cart_guest";
+    localStorage.setItem(key, JSON.stringify(cart));
+  }, [cart, currentUser, loading]);
+
+  // ✅ Reset khi logout
+  useEffect(() => {
+    if (!loading && !currentUser) {
+      setCart([]);
+      localStorage.removeItem("cart_guest");
+    }
+  }, [currentUser, loading]);
+
+  const handleAdd = (product) => {
+    setCart((prev) => {
+      if (prev.length === 0)
+        return [{ ...product, quantity: 1, restaurantId: product.restaurantId }];
+
+      const currentRes = prev[0].restaurantId;
+      if (product.restaurantId !== currentRes) {
+        setPendingProduct(product);
+        setModalVisible(true);
+        return prev;
+      }
+
+      const existing = prev.find((p) => p.id === product.id);
+      if (existing)
+        return prev.map((p) =>
+          p.id === product.id ? { ...p, quantity: p.quantity + 1 } : p
+        );
+
+      return [...prev, { ...product, quantity: 1 }];
+    });
+  };
+
+  const confirmResetCart = () => {
+    if (!pendingProduct) return;
+    const newCart = [
+      {
+        ...pendingProduct,
+        quantity: 1,
+        restaurantId: pendingProduct.restaurantId,
+      },
+    ];
+    setCart(newCart);
+    const identifier = userKey(currentUser);
+    const key = identifier ? `cart_${encodeURIComponent(identifier)}` : "cart_guest";
+    localStorage.setItem(key, JSON.stringify(newCart));
+    message.success(`Đã bắt đầu giỏ hàng mới từ ${pendingProduct.restaurantName}`);
+    setModalVisible(false);
+    setPendingProduct(null);
+  };
+
+  if (loading) return <p>⏳ Đang tải...</p>;
+
   return (
-    <AuthProvider>
-      <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+    <>
+      <BrowserRouter>
         <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/unauthorized" element={<UnauthorizedPage />} />
-
-          {/* Admin Routes */}
-          <Route element={<ProtectedRoute allowedRoles={['ADMIN']} />}>
-            <Route path="/admin" element={<AdminDashboard />} />
+          {/* USER */}
+          <Route
+            path="/"
+            element={
+              <UserLayout cartCount={cart.reduce((s, i) => s + i.quantity, 0)} />
+            }
+          >
+            {/* Public routes - Guest có thể xem */}
+            <Route path="/menu/:categoryKey" element={<ProductList onAdd={handleAdd} />} />
+            <Route index element={<RestaurantList />} />
+            <Route path="login" element={<Login />} />
+            <Route path="register" element={<Register />} />
+            <Route path="product-detail/:id" element={<ProductDetail onAdd={handleAdd} />} />
+            <Route path="restaurant/:id" element={<RestaurantDetail onAdd={handleAdd} />} />
+            
+            {/* Cart - Guest có thể xem và thêm sản phẩm, nhưng cần login để checkout */}
+            <Route path="cart" element={<Cart cart={cart} setCart={setCart} />} />
+            
+            {/* Protected routes - Yêu cầu login */}
+            <Route path="checkout" element={
+              <ProtectedRoute>
+                <Checkout cart={cart} setCart={setCart} />
+              </ProtectedRoute>
+            } />
+            <Route path="profile" element={
+              <ProtectedRoute>
+                <Profile />
+              </ProtectedRoute>
+            } />
+            <Route path="order-history" element={
+              <ProtectedRoute>
+                <OrderHistory />
+              </ProtectedRoute>
+            } />
+            <Route path="order/:id" element={
+              <ProtectedRoute>
+                <OrderDetail />
+              </ProtectedRoute>
+            } />
+            <Route path="waiting/:orderId" element={
+              <ProtectedRoute>
+                <WaitingForConfirmation />
+              </ProtectedRoute>
+            } />
           </Route>
 
-          {/* Merchant Routes */}
-          <Route element={<ProtectedRoute allowedRoles={['MERCHANT']} />}>
-            <Route path="/merchant" element={<MerchantDashboard />} />
+          {/* ADMIN */}
+          <Route
+            path="/admin"
+            element={
+              <AdminRoute>
+                <AdminLayout />
+              </AdminRoute>
+            }
+          >
+            <Route index element={<Navigate to="/admin/dashboards" />} />
+            <Route path="dashboards" element={<Dashboard />} />
+            <Route path="orders" element={<Orders />} />
+            <Route path="orders/:id" element={<AdminOrderDetail />} />
+            <Route path="products" element={<Products />} />
+            <Route path="users" element={<Users />} />
+            <Route path="create-restaurant" element={<AdminCreateRestaurant />} />
+            <Route path="drones" element={<AdminDroneManager />} />
           </Route>
 
-          {/* Default Redirect */}
-          <Route path="/" element={<Navigate to="/login" replace />} />
+          {/* RESTAURANT ADMIN */}
+          <Route
+            path="/restaurantadmin"
+            element={
+              <RestaurantRoute>
+                <RestaurantLayout />
+              </RestaurantRoute>
+            }
+          >
+            <Route index element={<RestaurantDashboard />} />
+            <Route path="products" element={<RestaurantProducts />} />
+            <Route path="order/:id" element={<RestaurantOrderDetail />} />
+            <Route path="drones" element={<DroneList />} />
+          </Route>
+
+          {/* MERCHANT DASHBOARD (alias, dùng chung layout với restaurantadmin) */}
+          <Route
+            path="/merchant"
+            element={
+              <RestaurantRoute>
+                <RestaurantLayout />
+              </RestaurantRoute>
+            }
+          >
+            <Route index element={<RestaurantDashboard />} />
+            <Route path="products" element={<RestaurantProducts />} />
+            <Route path="order/:id" element={<RestaurantOrderDetail />} />
+            <Route path="drones" element={<DroneList />} />
+          </Route>
         </Routes>
-      </Router>
-    </AuthProvider>
+      </BrowserRouter>
+
+      <Modal
+        title="Giỏ hàng chứa món từ nhà hàng khác"
+        open={modalVisible}
+        onCancel={() => {
+          setModalVisible(false);
+          setPendingProduct(null);
+        }}
+        onOk={confirmResetCart}
+        okText="Đồng ý"
+        cancelText="Hủy"
+      >
+        <p>
+          Một đơn hàng chỉ có thể đặt từ 1 nhà hàng. Bạn có muốn xóa giỏ cũ và
+          bắt đầu giỏ mới từ{" "}
+          <strong>{pendingProduct?.restaurantName || "nhà hàng này"}</strong>?
+        </p>
+      </Modal>
+    </>
   );
 }
 

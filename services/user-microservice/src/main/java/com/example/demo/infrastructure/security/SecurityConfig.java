@@ -45,10 +45,23 @@ public class SecurityConfig {
                         .requestMatchers("/api/internal/**").permitAll()
 
                         .requestMatchers("/api/v1/auth/**").permitAll()
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
+                        .requestMatchers("/api/v1/restaurants/me/**").hasAnyRole("MERCHANT", "ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/restaurants/me").hasAnyRole("MERCHANT", "ADMIN")
+                        .requestMatchers(HttpMethod.PATCH, "/api/v1/restaurants/me/**").hasAnyRole("MERCHANT", "ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/restaurants/**").permitAll()
                         // Validation endpoint cho phép USER role (cho Order Service)
                         // Pattern: /api/v1/users/{id}/validate - chỉ match 1 level path variable
                         .requestMatchers(HttpMethod.GET, "/api/v1/users/*/validate")
                         .hasAnyRole("USER", "ADMIN", "MERCHANT")
+
+                        // Allow getting own profile
+                        .requestMatchers(HttpMethod.GET, "/api/v1/users/me").authenticated()
+
+                        // Allow getting specific user/restaurant details (public)
+                        .requestMatchers(HttpMethod.GET, "/api/v1/users/{id:[0-9]+}").permitAll()
+
                         // Các endpoint khác yêu cầu ADMIN
                         .requestMatchers(HttpMethod.POST, "/api/v1/users/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/v1/users/**").hasRole("ADMIN")

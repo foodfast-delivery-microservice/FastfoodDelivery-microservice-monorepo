@@ -1,0 +1,91 @@
+.address-manager {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+  margin-top: 20px;
+}
+
+.address-form-card,
+.address-map-card {
+  flex: 1;
+  min-width: 320px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(39, 102, 173, 0.1);
+  padding: 20px;
+}
+
+.address-form-card form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.address-form-card input,
+.address-form-card select {
+  padding: 10px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.address-save-btn {
+  background: #2563eb;
+  border: none;
+  color: #fff;
+  padding: 10px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.address-save-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.address-map-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.address-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.address-item {
+  text-align: left;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 10px;
+  background: #fafafa;
+  cursor: pointer;
+}
+
+.address-item.active {
+  border-color: #2563eb;
+  background: #e3edff;
+}
+
+.address-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.address-map-wrapper {
+  margin-top: 8px;
+}
+
+@media (max-width: 900px) {
+  .address-manager {
+    flex-direction: column;
+  }
+}
+
+
+

@@ -5,8 +5,10 @@ import com.example.order_service.application.dto.OrderResponse;
 import com.example.order_service.application.dto.ProductValidationRequest;
 import com.example.order_service.application.dto.ProductValidationResponse;
 import com.example.order_service.application.dto.UserValidationResponse;
+import com.example.order_service.application.service.AdministrativeAddressNormalizer;
 import com.example.order_service.domain.repository.ProductServicePort;
 import com.example.order_service.domain.repository.UserServicePort;
+import com.example.order_service.domain.repository.UserAddressRepository;
 import com.example.order_service.infrastructure.event.OrderCreatedEventPayload;
 import com.example.order_service.domain.exception.OrderValidationException;
 import com.example.order_service.domain.model.*;
@@ -43,6 +45,8 @@ public class CreateOrderUseCase {
     private final ObjectMapper objectMapper;
     private final ProductServicePort productServicePort;// Port để gọi sang Product Service
     private final UserServicePort userServicePort;// Port để gọi sang User Service
+    private final AdministrativeAddressNormalizer administrativeAddressNormalizer;
+    private final UserAddressRepository userAddressRepository;
     @Value("${app.user.validation.enabled:true}")
     private boolean userValidationEnabled;
 
@@ -80,8 +84,11 @@ public class CreateOrderUseCase {
         // Đây là bước QUAN TRỌNG NHẤT - lấy giá và tên thực tế từ Product Service
         List<ProductValidationResponse> validatedProducts = callProductServiceForValidation(request);
 
-        // ===== BƯỚC 4: TẠO ORDER TỪ DATA ĐÃ VALIDATE =====
-        Order order = buildOrderFromValidatedData(request, validatedProducts);
+        // ===== BƯỚC 4: RESOLVE DELIVERY ADDRESS =====
+        DeliveryAddress resolvedDeliveryAddress = resolveDeliveryAddress(request);
+
+        // ===== BƯỚC 5: TẠO ORDER TỪ DATA ĐÃ VALIDATE =====
+        Order order = buildOrderFromValidatedData(request, validatedProducts, resolvedDeliveryAddress);
         order = orderRepository.save(order);
         log.info("Order saved with code: {}", order.getOrderCode());
 
@@ -113,7 +120,11 @@ public class CreateOrderUseCase {
         }
 
         // Validate delivery address format and business rules
-        validateDeliveryAddress(request.getDeliveryAddress());
+        if (request.getDeliveryAddressId() == null) {
+            validateDeliveryAddress(request.getDeliveryAddress());
+        } else {
+            validateReceiverInfo(request.getDeliveryAddress());
+        }
 
         // ===== PHASE 2: USER SERVICE VALIDATION (sau khi validate dữ liệu đầu vào) =====
         if (userValidationEnabled) {
@@ -165,25 +176,9 @@ public class CreateOrderUseCase {
             throw new OrderValidationException("Dia chi giao hang (delivery address) la bat buoc");
         }
 
+        validateReceiverInfo(address);
+
         // ===== BASIC VALIDATION: Receiver name (empty / too short) =====
-        String receiverName = address.getReceiverName() != null ? address.getReceiverName().trim() : "";
-        if (receiverName.isEmpty() || receiverName.length() < 2) {
-            throw new OrderValidationException("Tên người nhận không được để trống và phải có ít nhất 2 ký tự");
-        }
-
-        // ===== BUSINESS RULE: Receiver name must contain at least one letter =====
-        // Bean Validation @Pattern only checks format, not business rule
-        if (!receiverName.matches(".*[\\p{L}].*")) {
-            throw new OrderValidationException("Tên người nhận phải chứa ít nhất một chữ cái");
-        }
-
-        // ===== BASIC VALIDATION: Phone number =====
-        String phone = address.getReceiverPhone() != null ? address.getReceiverPhone().trim() : "";
-        if (phone.isEmpty() || !phone.matches("^0\\d{9}$")) {
-            throw new OrderValidationException("Số điện thoại không hợp lệ");
-        }
-
-        // ===== BASIC VALIDATION: Address line 1 (detailed address) =====
         String addressLine1 = address.getAddressLine1() != null ? address.getAddressLine1().trim() : "";
         if (addressLine1.isEmpty() || addressLine1.length() < 5) {
             throw new OrderValidationException("Địa chỉ chi tiết quá ngắn");
@@ -228,6 +223,24 @@ public class CreateOrderUseCase {
         }
 
         log.debug("✓ Delivery address business rules validated successfully");
+    }
+
+    private void validateReceiverInfo(CreateOrderRequest.DeliveryAddressRequest address) {
+        if (address == null) {
+            throw new OrderValidationException("Thông tin người nhận là bắt buộc");
+        }
+        String receiverName = address.getReceiverName() != null ? address.getReceiverName().trim() : "";
+        if (receiverName.isEmpty() || receiverName.length() < 2) {
+            throw new OrderValidationException("Tên người nhận không được để trống và phải có ít nhất 2 ký tự");
+        }
+        if (!receiverName.matches(".*[\\p{L}].*")) {
+            throw new OrderValidationException("Tên người nhận phải chứa ít nhất một chữ cái");
+        }
+
+        String phone = address.getReceiverPhone() != null ? address.getReceiverPhone().trim() : "";
+        if (phone.isEmpty() || !phone.matches("^0\\d{9}$")) {
+            throw new OrderValidationException("Số điện thoại không hợp lệ");
+        }
     }
 
     /**
@@ -323,7 +336,8 @@ public class CreateOrderUseCase {
      */
     private Order buildOrderFromValidatedData(
             CreateOrderRequest request,
-            List<ProductValidationResponse> validatedProducts
+            List<ProductValidationResponse> validatedProducts,
+            DeliveryAddress resolvedDeliveryAddress
     ) {
         // Tạo Map để tra cứu nhanh thông tin sản phẩm đã validate
         Map<Long, ProductValidationResponse> productMap = validatedProducts.stream()
@@ -345,7 +359,7 @@ public class CreateOrderUseCase {
                 .discount(request.getDiscount() != null ? request.getDiscount() : BigDecimal.ZERO)
                 .shippingFee(request.getShippingFee() != null ? request.getShippingFee() : BigDecimal.ZERO)
                 .note(request.getNote())
-                .deliveryAddress(mapToDeliveryAddress(request.getDeliveryAddress()))
+                .deliveryAddress(resolvedDeliveryAddress)
                 .createdAt(LocalDateTime.now())
                 .build();
 
@@ -498,6 +512,32 @@ public class CreateOrderUseCase {
     // =====================================================================
 
     private DeliveryAddress mapToDeliveryAddress(CreateOrderRequest.DeliveryAddressRequest request) {
+        // Chuẩn hóa địa chỉ hành chính (nếu có thể) bằng AddressKit
+        AdministrativeAddressNormalizer.NormalizedAddress normalized = null;
+        try {
+            normalized = administrativeAddressNormalizer
+                    .normalizeForHcm(request.getCity(), request.getDistrict(), request.getWard())
+                    .orElse(null);
+        } catch (Exception ex) {
+            log.warn("Failed to normalize administrative address. Proceeding without normalized fields. Reason: {}",
+                    ex.getMessage());
+        }
+
+        String provinceCode = request.getProvinceCode();
+        String provinceName = request.getProvinceName();
+        String communeCode = request.getCommuneCode();
+        String communeName = request.getCommuneName();
+        String normalizedDistrictName = request.getNormalizedDistrictName();
+
+        if (normalized != null) {
+            // Ưu tiên sử dụng dữ liệu chuẩn hóa nếu có
+            if (provinceCode == null) provinceCode = normalized.getProvinceCode();
+            if (provinceName == null) provinceName = normalized.getProvinceName();
+            if (communeCode == null) communeCode = normalized.getCommuneCode();
+            if (communeName == null) communeName = normalized.getCommuneName();
+            if (normalizedDistrictName == null) normalizedDistrictName = normalized.getNormalizedDistrictName();
+        }
+
         return DeliveryAddress.builder()
                 .receiverName(request.getReceiverName())
                 .receiverPhone(request.getReceiverPhone())
@@ -505,8 +545,44 @@ public class CreateOrderUseCase {
                 .ward(request.getWard())
                 .district(request.getDistrict())
                 .city(request.getCity())
+                .provinceCode(provinceCode)
+                .provinceName(provinceName)
+                .communeCode(communeCode)
+                .communeName(communeName)
+                .normalizedDistrictName(normalizedDistrictName)
                 .lat(request.getLat())
                 .lng(request.getLng())
+                .build();
+    }
+
+    private DeliveryAddress resolveDeliveryAddress(CreateOrderRequest request) {
+        if (request.getDeliveryAddressId() == null) {
+            return mapToDeliveryAddress(request.getDeliveryAddress());
+        }
+
+        var receiverInfo = request.getDeliveryAddress();
+        validateReceiverInfo(receiverInfo);
+
+        var userAddress = userAddressRepository.findById(request.getDeliveryAddressId())
+                .orElseThrow(() -> new OrderValidationException("Địa chỉ đã chọn không tồn tại"));
+        if (!userAddress.getUserId().equals(request.getUserId())) {
+            throw new OrderValidationException("Địa chỉ không thuộc sở hữu của người dùng");
+        }
+
+        return DeliveryAddress.builder()
+                .receiverName(receiverInfo.getReceiverName())
+                .receiverPhone(receiverInfo.getReceiverPhone())
+                .addressLine1(userAddress.getStreet())
+                .ward(userAddress.getCommuneName())
+                .district(userAddress.getDistrictName() != null ? userAddress.getDistrictName() : "Not Specified")
+                .city(userAddress.getProvinceName())
+                .provinceCode(userAddress.getProvinceCode())
+                .provinceName(userAddress.getProvinceName())
+                .communeCode(userAddress.getCommuneCode())
+                .communeName(userAddress.getCommuneName())
+                .normalizedDistrictName(userAddress.getDistrictName())
+                .lat(userAddress.getLat())
+                .lng(userAddress.getLng())
                 .build();
     }
 
@@ -536,6 +612,7 @@ public class CreateOrderUseCase {
     }
 
     private OrderResponse mapToResponse(Order order) {
+        // Map Order to OrderResponse
         return OrderResponse.builder()
                 .id(order.getId())
                 .orderCode(order.getOrderCode())
@@ -548,11 +625,12 @@ public class CreateOrderUseCase {
                 .shippingFee(order.getShippingFee())
                 .grandTotal(order.getGrandTotal())
                 .note(order.getNote())
+                .createdAt(order.getCreatedAt())
+                .processingStartedAt(order.getProcessingStartedAt())
                 .deliveryAddress(mapToDeliveryAddressResponse(order.getDeliveryAddress()))
                 .orderItems(order.getOrderItems().stream()
                         .map(this::mapToOrderItemResponse)
                         .collect(Collectors.toList()))
-                .createdAt(order.getCreatedAt())
                 .build();
     }
 
@@ -566,6 +644,11 @@ public class CreateOrderUseCase {
                 .city(deliveryAddress.getCity())
                 .lat(deliveryAddress.getLat())
                 .lng(deliveryAddress.getLng())
+                .provinceCode(deliveryAddress.getProvinceCode())
+                .provinceName(deliveryAddress.getProvinceName())
+                .communeCode(deliveryAddress.getCommuneCode())
+                .communeName(deliveryAddress.getCommuneName())
+                .normalizedDistrictName(deliveryAddress.getNormalizedDistrictName())
                 .fullAddress(deliveryAddress.getFullAddress())
                 .build();
     }

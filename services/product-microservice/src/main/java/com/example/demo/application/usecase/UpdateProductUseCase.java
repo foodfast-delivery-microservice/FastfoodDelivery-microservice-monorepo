@@ -43,6 +43,9 @@ public class UpdateProductUseCase {
         if (productPatch.getActive() != null) {
             existingProduct.setActive(productPatch.getActive());
         }
+        if (productPatch.getImageUrl() != null) {
+            existingProduct.setImageUrl(productPatch.getImageUrl());
+        }
         Product saved = productRepository.save(existingProduct);
         return ProductResponse.fromEntity(saved);
     }

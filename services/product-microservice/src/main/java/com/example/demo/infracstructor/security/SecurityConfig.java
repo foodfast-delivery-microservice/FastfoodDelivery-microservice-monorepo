@@ -16,29 +16,31 @@ import org.springframework.security.web.SecurityFilterChain;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 
-
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
     @Bean
-    SecurityFilterChain filter(HttpSecurity http,JwtAuthConverter jwtAuthConverter) throws Exception {
+    SecurityFilterChain filter(HttpSecurity http, JwtAuthConverter jwtAuthConverter) throws Exception {
         http.csrf(csrf -> csrf.disable())
+                .sessionManagement(session -> session.sessionCreationPolicy(
+                        org.springframework.security.config.http.SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         // 2. Cho phép XEM (GET) sản phẩm công khai
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/products/**").permitAll()
 
                         // 2. Cho Order Service gọi validate (không cần ADMIN)
                         .requestMatchers(HttpMethod.POST, "/api/v1/products/validate").permitAll()
                         // 3. Yêu cầu ADMIN cho các hành động CUD (Tạo, Sửa, Xóa) sản phẩm
-                        .requestMatchers(HttpMethod.GET, "/api/v1/products/merchants/**").hasAnyRole("ADMIN","MERCHANT")
-                        .requestMatchers(HttpMethod.POST, "/api/v1/products/**").hasAnyRole("ADMIN","MERCHANT")
-                        .requestMatchers(HttpMethod.PUT, "/api/v1/products/**").hasAnyRole("ADMIN","MERCHANT")
-                        .requestMatchers(HttpMethod.DELETE, "/api/v1/products/**").hasAnyRole("ADMIN","MERCHANT")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/products/merchants/**")
+                        .hasAnyRole("ADMIN", "MERCHANT")
+                        .requestMatchers(HttpMethod.POST, "/api/v1/products/**").hasAnyRole("ADMIN", "MERCHANT")
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/products/**").hasAnyRole("ADMIN", "MERCHANT")
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/products/**").hasAnyRole("ADMIN", "MERCHANT")
 
-                        .anyRequest().authenticated()
-                )
+                        .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2
-                        .authenticationEntryPoint((request, response, authException) ->{
+                        .authenticationEntryPoint((request, response, authException) -> {
                             response.setStatus(HttpStatus.UNAUTHORIZED.value());
                             response.setContentType("application/json");
                             response.getWriter().write("""
@@ -62,14 +64,16 @@ public class SecurityConfig {
                                     }
                                     """);
 
-        })
+                        })
                         .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthConverter)));
         return http.build();
     }
+
     @Bean
     JwtAuthConverter jwtAuthConverter(JwtGrantedAuthoritiesConverter grantedConverter) {
         return new JwtAuthConverter(grantedConverter);
     }
+
     @Bean
     JwtGrantedAuthoritiesConverter grantedAuthoritiesConverter() {
         return new JwtGrantedAuthoritiesConverter("role"); // hoặc "roles"
@@ -84,4 +88,3 @@ public class SecurityConfig {
                 .build();
     }
 }
-

@@ -13,25 +13,25 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 @ToString
 @Entity
-@EqualsAndHashCode(of = {"id"}) //Chỉ sử dụng field id để so sánh và tính hash, bỏ qua field khác.
-@Table(
-        name ="products"
-        //indexes = { @Index(name = "idx_products_name", columnList = "name") }, loc theo name tang toc do tim kiem
-        //uniqueConstraints = {@UniqueConstraint(columnNames ={"name"} )}  dam bao 2 sp khong trung ten
+@EqualsAndHashCode(of = { "id" }) // Chỉ sử dụng field id để so sánh và tính hash, bỏ qua field khác.
+@Table(name = "products"
+// indexes = { @Index(name = "idx_products_name", columnList = "name") }, loc
+// theo name tang toc do tim kiem
+// uniqueConstraints = {@UniqueConstraint(columnNames ={"name"} )} dam bao 2 sp
+// khong trung ten
 )
 
 public class Product {
 
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
-    //@JsonProperty("productId")
+    // @JsonProperty("productId")
     @Column(updatable = false, nullable = false)
     private Long id;
 
     @Column(nullable = false)
     @NotBlank
     private String name;
-
 
     @Column(nullable = false)
     @NotBlank
@@ -57,6 +57,9 @@ public class Product {
     @Builder.Default
     @Column(nullable = false)
     private boolean active = true;
+
+    @Column(name = "image_url")
+    private String imageUrl;
 
     public enum Category {
         DRINK,

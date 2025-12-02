@@ -1549,5 +1549,144 @@ Thanh toán có các trạng thái:
 
 ---
 
+## 10. Order Status Definition (Drone Delivery + QR Prepaid)
+
+### 10.1 Order Status Definition
+
+Hệ thống sử dụng các trạng thái đơn hàng để theo dõi vòng đời của một đơn từ lúc tạo đến khi hoàn thành hoặc hủy. Dưới đây là bảng mô tả chi tiết các trạng thái:
+
+| Trạng thái     | Mô tả nghiệp vụ                                                                                          | Ai kích hoạt chính              | Ghi chú |
+|----------------|----------------------------------------------------------------------------------------------------------|---------------------------------|---------|
+| PENDING        | Đơn hàng vừa được tạo, hệ thống mới ghi nhận yêu cầu đặt món, chưa kiểm tra chi tiết hoặc tạo payment.  | Customer / Order Service        | Trạng thái ban đầu sau khi customer submit order. |
+| CONFIRMED      | Hệ thống đã xác nhận đơn hợp lệ (món còn hàng, địa chỉ trong vùng bay của drone, nhà hàng còn mở…). QR thanh toán đã được tạo, chờ khách thanh toán. | Order Service                   | Sau trạng thái này khách có thể scan QR để thanh toán. |
+| **PAID**       | Khách hàng đã thanh toán thành công qua QR. Số tiền đã được cổng thanh toán xác nhận và ghi nhận vào hệ thống. Đơn đang chờ nhà hàng bắt đầu chuẩn bị món. | Payment Service + Order Service | Trạng thái kết thúc của flow thanh toán. Là điều kiện bắt buộc trước khi nhà hàng chuyển sang chuẩn bị món. |
+| **PROCESSING** | Nhà hàng/bếp đã nhận đơn và bắt đầu chuẩn bị món (nấu, đóng gói…). Đơn đang trong quá trình xử lý tại nhà hàng, chưa sẵn sàng để drone lấy hàng. | Merchant (Restaurant) / Order Service (auto rule) | Đây là trạng thái thể hiện hoạt động nội bộ của nhà hàng. Chỉ được chuyển sang từ `PAID`. |
+| DELIVERING     | Drone đã được gán cho đơn hàng và đang bay để giao đến khách.                                           | Drone Service                   | Dựa trên event từ Drone Service khi drone được assign. |
+| DELIVERED      | Drone đã giao món thành công cho khách (theo xác nhận từ Drone Service).                                | Drone Service                   | Kết thúc flow giao hàng thành công. |
+| CANCELLED      | Đơn hàng bị hủy (do khách, nhà hàng hoặc hệ thống), trước khi giao.                                     | Customer / Merchant / System    | Không được chuyển sang các trạng thái sau này (PROCESSING, DELIVERING…). |
+| REFUNDED       | Đơn hàng đã được hoàn tiền sau khi giao hàng thành công hoặc do tranh chấp.                            | Payment Service / Admin         | Chỉ áp dụng cho đơn đã DELIVERED. |
+
+### 10.2 Order State Transitions
+
+Flow chính của đơn hàng (Drone Delivery + QR Prepaid):
+
+```
+PENDING → CONFIRMED → PAID → PROCESSING → DELIVERING → DELIVERED
+   ↓           ↓         ↓         ↓            ↓           ↓
+Tạo đơn   Xác nhận  Thanh toán  Chuẩn bị   Gán drone  Giao hàng
+                                    hàng    & giao      xong
+```
+
+**Valid Transitions Matrix:**
+
+| From        | To          | Điều kiện                                    | Trigger                    |
+|-------------|-------------|----------------------------------------------|----------------------------|
+| PENDING     | CONFIRMED   | Order hợp lệ, QR payment đã tạo              | Order Service (auto)      |
+| CONFIRMED   | PAID        | Payment thành công                            | Payment Service event     |
+| PAID        | PROCESSING  | Order đã thanh toán, merchant bắt đầu chuẩn bị | Merchant (manual) hoặc Auto |
+| PROCESSING  | DELIVERING  | Merchant gán drone                           | Merchant action + Drone Service event |
+| DELIVERING  | DELIVERED   | Drone giao hàng thành công                    | Drone Service event       |
+| Any (trừ DELIVERED) | CANCELLED | Trước khi giao hàng                          | Customer/Merchant/System  |
+| DELIVERED   | REFUNDED    | Yêu cầu hoàn tiền hợp lệ                      | Payment Service / Admin   |
+
+### 10.3 Business Rule: PAID → PROCESSING
+
+#### 10.3.1 Mục đích
+
+Thể hiện thời điểm nhà hàng bắt đầu chuẩn bị món sau khi đơn hàng đã được thanh toán thành công.
+
+#### 10.3.2 Trigger Options
+
+**Option 1 - Manual (Khuyến nghị):**
+- Merchant/nhà hàng thao tác trên UI: bấm nút "Bắt đầu chuẩn bị món" cho một đơn ở trạng thái PAID.
+- Cho phép merchant kiểm soát thời điểm bắt đầu chuẩn bị, phù hợp với workflow thực tế của nhà hàng.
+
+**Option 2 - Auto:**
+- Hệ thống tự động chuyển trạng thái ngay sau khi order được đánh dấu PAID.
+- Phù hợp với nhà hàng muốn tự động hóa hoàn toàn, không cần thao tác thủ công.
+
+**Lưu ý:** Hiện tại hệ thống đang sử dụng **Option 2 (Auto)** để đơn giản hóa flow. Có thể chuyển sang Option 1 nếu merchant cần kiểm soát tốt hơn.
+
+#### 10.3.3 Điều kiện tiên quyết (Preconditions)
+
+1. Order đang ở trạng thái `PAID`.
+2. Thanh toán của order đã được xác nhận thành công (ví dụ: `paymentStatus = PAID` hoặc `paidAt` khác null).
+3. Order chưa bị huỷ hoặc hết hạn (không ở trạng thái `CANCELLED`, không bị timeout).
+4. Merchant/nhà hàng của order vẫn đang hoạt động (active) và còn khả năng phục vụ.
+
+#### 10.3.4 Hành động (Actions)
+
+1. Cập nhật `orderStatus` từ `PAID` sang `PROCESSING`.
+2. Ghi nhận thời điểm bắt đầu xử lý món: `processingStartedAt = now()`.
+3. Lưu thay đổi vào cơ sở dữ liệu.
+4. Phát sự kiện domain `OrderStatusChanged` với trạng thái mới là `PROCESSING` để các service khác (Notification, Drone, v.v.) có thể phản ứng nếu cần.
+
+#### 10.3.5 Hậu điều kiện (Postconditions)
+
+- Order ở trạng thái `PROCESSING`.
+- Thời gian bắt đầu xử lý (`processingStartedAt`) được lưu lại để phục vụ báo cáo/thống kê SLA (thời gian từ lúc thanh toán đến lúc nhà hàng bắt đầu làm món).
+- Các service liên quan có thể sử dụng event `OrderStatusChanged(PROCESSING)` để cập nhật UI, gửi thông báo cho khách, hoặc chuẩn bị luồng gán drone.
+
+#### 10.3.6 Xử lý lỗi (Error cases)
+
+- Nếu order không ở trạng thái `PAID` → từ chối chuyển trạng thái (trả về lỗi nghiệp vụ, ví dụ HTTP 400/409).
+- Nếu order đã bị huỷ (`CANCELLED`) hoặc đã chuyển sang trạng thái giao hàng (ví dụ `DELIVERING`, `DELIVERED`) → từ chối chuyển trạng thái.
+- Nếu merchant không sở hữu order này → từ chối với lỗi quyền truy cập (HTTP 403).
+
+### 10.4 Implementation Notes
+
+**Code Reference:**
+
+Method `markAsPaid()` trong `UpdateOrderStatusUseCase` hiện tại tự động chuyển từ `PAID` → `PROCESSING` trong cùng một transaction:
+
+```java
+@Transactional
+public void markAsPaid(Long orderId) {
+    // ... validate và set PAID ...
+    order.setStatus(OrderStatus.PAID);
+    orderRepository.save(order);
+    
+    // Auto transition to PROCESSING
+    order.setStatus(OrderStatus.PROCESSING);
+    order.setProcessingStartedAt(LocalDateTime.now());
+    orderRepository.save(order);
+    
+    // Publish events...
+}
+```
+
+**Future Enhancement:**
+
+Nếu muốn chuyển sang Manual trigger, có thể thêm method `startProcessing()` riêng để merchant gọi qua API:
+
+```java
+@Transactional
+public void startProcessing(Long orderId, Long merchantId) {
+    Order order = orderRepository.findById(orderId)
+        .orElseThrow(() -> new OrderNotFoundException(orderId));
+    
+    // Validate merchant ownership
+    if (!order.getMerchantId().equals(merchantId)) {
+        throw new AccessDeniedException("Merchant không sở hữu order này");
+    }
+    
+    // Only allow from PAID
+    if (order.getStatus() != OrderStatus.PAID) {
+        throw new IllegalStateException("Order phải ở trạng thái PAID");
+    }
+    
+    // Update status
+    order.setStatus(OrderStatus.PROCESSING);
+    order.setProcessingStartedAt(LocalDateTime.now());
+    orderRepository.save(order);
+    
+    // Publish event
+    createStatusChangeEvent(order, OrderStatus.PROCESSING, 
+        "Restaurant started processing the order");
+}
+```
+
+---
+
 **End of Document**
 

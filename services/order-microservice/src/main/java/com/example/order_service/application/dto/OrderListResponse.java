@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @Builder
@@ -30,4 +31,5 @@ public class OrderListResponse {
     private String receiverPhone;
     private String fullAddress;
     private int itemCount;
+    private List<OrderItemResponse> orderItems; // Thêm items để frontend có thể hiển thị
 }

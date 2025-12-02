@@ -1,0 +1,90 @@
+/* ====== SIDEBAR TỔNG ====== */
+.sidebar1 {
+    width: 240px;
+    height: 100vh;
+    background: linear-gradient(180deg, #1f1f2e, #2b2b3c);
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    padding: 20px 15px;
+    box-shadow: 3px 0 10px rgba(0, 0, 0, 0.2);
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 100;
+}
+
+/* ====== LOGO ====== */
+.sidebar .logo {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: #ffb84d;
+    margin-bottom: 40px;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* ====== DANH SÁCH MENU ====== */
+.sidebar ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    flex-grow: 1;
+}
+
+.sidebar ul li {
+    margin: 12px 0;
+}
+
+.sidebar ul li a {
+    display: flex;
+    align-items: center;
+    text-decoration: none;
+    color: #dcdcdc;
+    font-size: 1rem;
+    padding: 10px 14px;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+/* ====== ICON ====== */
+.sidebar ul li a svg {
+    margin-right: 10px;
+    font-size: 1.2rem;
+}
+
+/* ====== HIỆU ỨNG HOVER ====== */
+.sidebar ul li a:hover {
+    background-color: #383854;
+    color: #ffffff;
+    transform: translateX(5px);
+}
+
+/* ====== MỤC ĐANG CHỌN (active) ====== */
+.sidebar ul li a.active {
+    background-color: #ffb84d;
+    color: #1f1f2e;
+    font-weight: 600;
+}
+
+/* ====== RESPONSIVE ====== */
+@media (max-width: 768px) {
+    .sidebar {
+        width: 200px;
+        padding: 15px 10px;
+    }
+
+    .sidebar .logo {
+        font-size: 1.2rem;
+    }
+
+    .sidebar ul li a {
+        font-size: 0.95rem;
+        padding: 8px 10px;
+    }
+
+    .sidebar ul li a svg {
+        margin-right: 8px;
+    }
+}

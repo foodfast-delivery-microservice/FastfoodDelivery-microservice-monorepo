@@ -1,0 +1,155 @@
+.rso-container {
+    background: #ffffff;
+    padding: 25px;
+    border-radius: 16px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+    margin: 20px auto;
+    min-width: 1200px;
+    font-family: "Segoe UI", sans-serif;
+}
+
+.rso-title {
+    text-align: center;
+    color: #2d3436;
+    margin-bottom: 20px;
+    font-size: 24px;
+    font-weight: 600;
+}
+
+.rso-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #fafafa;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.rso-table th {
+    background: linear-gradient(90deg, #1f4f66, #357b9d);
+    color: white;
+    padding: 12px 10px;
+    text-align: left;
+}
+
+.rso-table td {
+    padding: 12px 10px;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.rso-row {
+    transition: background 0.25s ease;
+    cursor: pointer;
+}
+
+.rso-row:hover {
+    background: #f1f7ff;
+}
+
+.rso-btn-confirm {
+    background: #00b894;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: 0.25s;
+}
+
+.rso-btn-confirm:hover {
+    background: #019874;
+}
+
+.rso-status {
+    font-weight: 600;
+}
+
+.rso-wait {
+    color: #f39c12;
+}
+
+.rso-shipping {
+    color: #0984e3;
+}
+
+.rso-done {
+    color: #27ae60;
+}
+
+.rso-processed {
+    color: #636e72;
+}
+
+.rso-empty,
+.rso-loading {
+    text-align: center;
+    color: #636e72;
+    font-size: 16px;
+    margin-top: 20px;
+}
+/* --- Filter bar (giống file 1) --- */
+.filter-bar {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  margin: 12px 0 6px;
+  flex-wrap: wrap;
+}
+
+.filter-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 180px;
+}
+
+.filter-item label {
+  font-size: 13px;
+  color: #444;
+  font-weight: 600;
+}
+
+.filter-item select {
+  height: 36px;
+  border-radius: 8px;
+  border: 1px solid #e3e6ea;
+  padding: 0 10px;
+  background: #fff;
+}
+
+/* Meta line above table */
+.table-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 6px 0 12px;
+  font-size: 14px;
+  color: #333;
+}
+
+/* Buttons */
+.btn.reset {
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid #e3e6ea;
+  background: #fff;
+  cursor: pointer;
+}
+
+.btn.reset:hover {
+  background: #f8f9fb;
+}
+
+.btn.ghost {
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 6px;
+  border: 1px solid #e3e6ea;
+  background: #fff;
+  cursor: pointer;
+}
+
+.btn.ghost:hover {
+  background: #f8f9fb;
+}

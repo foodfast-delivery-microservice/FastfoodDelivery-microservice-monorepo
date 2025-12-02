@@ -1,42 +1,48 @@
-#root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+/* src/App.css */
+
+/* --- THIẾT LẬP CHUNG & LAYOUT CHÍNH --- */
+body {
+  font-family: Arial, Helvetica, sans-serif;
+  color: #10243a;
+  margin: 0;
+  /* Đảm bảo không có margin mặc định */
+  padding: 0;
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+.app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  /* Bắt buộc app chiếm ít nhất toàn bộ chiều cao màn hình */
 }
 
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+main {
+  flex-grow: 1;
+  /* Cho phép nội dung chính giãn ra, đẩy footer xuống dưới */
+
+  /* Thêm padding-top để nội dung không bị header che mất */
+  /* Con số này phải lớn hơn chiều cao của header (ví dụ: 60px + 10px padding + 3px border = ~73px) */
+  padding-top: 80px;
+
+  /* Các style nền chung cho trang */
+  background-image: url(/Images/bgagmb.jpg);
+  /* Đường dẫn này trỏ tới web/public/Images */
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  /* Giữ nền đứng yên khi cuộn */
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
-  }
-}
-
-.card {
-  padding: 2em;
-}
-
-.read-the-docs {
-  color: #888;
+/* Bạn có thể giữ lại các biến màu ở đây nếu muốn dùng chung */
+:root {
+  --primary-color: #fcb32c;
+  /* Màu cam/vàng chủ đạo */
+  --secondary-color: #2b2623;
+  /* Màu nền tối (header/footer) */
+  --accent-color: #d2191a;
+  /* Màu đỏ nổi bật (nút, giá) */
+  --text-light: #ffffff;
+  --text-dark: #333;
+  --bg-light-gray: #f9f9f9;
+  --border-color: #e9e9e9;
 }

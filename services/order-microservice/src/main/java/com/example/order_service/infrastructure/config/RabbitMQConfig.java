@@ -33,6 +33,13 @@ public class RabbitMQConfig {
     public static final String ORDER_MERCHANT_DEACTIVATED_QUEUE = "order.merchant.deactivated.queue";
     public static final String MERCHANT_DEACTIVATED_ROUTING_KEY = "merchant.deactivated";
 
+    // Drone Service Exchange
+    public static final String DRONE_EXCHANGE = "drone_exchange";
+    public static final String DRONE_ASSIGNED_QUEUE = "order.drone.assigned.queue";
+    public static final String DRONE_ASSIGNED_ROUTING_KEY = "drone.assigned";
+    public static final String DELIVERY_COMPLETED_QUEUE = "order.delivery.completed.queue";
+    public static final String DELIVERY_COMPLETED_ROUTING_KEY = "drone.delivery.completed";
+
 
     @Bean
     public TopicExchange orderExchange() {
@@ -46,6 +53,11 @@ public class RabbitMQConfig {
     @Bean
     public TopicExchange userEventsExchange() {
         return new TopicExchange(USER_EVENTS_EXCHANGE);
+    }
+
+    @Bean
+    public TopicExchange droneExchange() {
+        return new TopicExchange(DRONE_EXCHANGE);
     }
 
     @Bean
@@ -76,6 +88,16 @@ public class RabbitMQConfig {
     @Bean
     public Queue orderMerchantDeactivatedQueue() {
         return new Queue(ORDER_MERCHANT_DEACTIVATED_QUEUE, true);
+    }
+
+    @Bean
+    public Queue droneAssignedQueue() {
+        return new Queue(DRONE_ASSIGNED_QUEUE, true);
+    }
+
+    @Bean
+    public Queue deliveryCompletedQueue() {
+        return new Queue(DELIVERY_COMPLETED_QUEUE, true);
     }
 
     @Bean
@@ -118,6 +140,20 @@ public class RabbitMQConfig {
         return BindingBuilder.bind(orderMerchantDeactivatedQueue())
                 .to(userEventsExchange())
                 .with(MERCHANT_DEACTIVATED_ROUTING_KEY);
+    }
+
+    @Bean
+    public Binding droneAssignedBinding() {
+        return BindingBuilder.bind(droneAssignedQueue())
+                .to(droneExchange())
+                .with(DRONE_ASSIGNED_ROUTING_KEY);
+    }
+
+    @Bean
+    public Binding deliveryCompletedBinding() {
+        return BindingBuilder.bind(deliveryCompletedQueue())
+                .to(droneExchange())
+                .with(DELIVERY_COMPLETED_ROUTING_KEY);
     }
 
     @Bean

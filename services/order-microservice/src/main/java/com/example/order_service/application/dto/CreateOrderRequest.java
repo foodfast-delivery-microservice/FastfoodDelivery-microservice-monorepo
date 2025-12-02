@@ -35,7 +35,8 @@ public class CreateOrderRequest {
 
     private String note;
 
-    @NotNull(message = "Địa chỉ giao hàng là bắt buộc")
+    private Long deliveryAddressId;
+
     @Valid
     private DeliveryAddressRequest deliveryAddress;
 
@@ -72,24 +73,28 @@ public class CreateOrderRequest {
         @Pattern(regexp = "^0[35789][0-9]{8}$", message = "Số điện thoại không hợp lệ. Phải có 10 số, bắt đầu bằng 0")
         private String receiverPhone;
 
-        @NotBlank(message = "Địa chỉ chi tiết không được để trống")
-        @Size(min = 5, max = 255, message = "Địa chỉ chi tiết phải có từ 5 đến 255 ký tự")
+        @Size(min = 3, max = 255, message = "Địa chỉ chi tiết phải có từ 3 đến 255 ký tự")
         private String addressLine1;
 
-        @NotBlank(message = "Phường/Xã không được để trống")
         @Size(min = 2, max = 100, message = "Phường/Xã phải có từ 2 đến 100 ký tự")
         private String ward;
 
-        @NotBlank(message = "Quận/Huyện không được để trống")
         @Size(min = 2, max = 100, message = "Quận/Huyện phải có từ 2 đến 100 ký tự")
         private String district;
 
-        @NotBlank(message = "Thành phố/Tỉnh không được để trống")
         @Size(min = 2, max = 100, message = "Thành phố/Tỉnh phải có từ 2 đến 100 ký tự")
         private String city;
 
         // Optional: Latitude and Longitude for GPS coordinates
         private BigDecimal lat;
         private BigDecimal lng;
+
+        // Optional: normalized administrative fields from AddressKit/NSO.
+        // These are not required from clients; backend can enrich them.
+        private String provinceCode;
+        private String provinceName;
+        private String communeCode;
+        private String communeName;
+        private String normalizedDistrictName;
     }
 }

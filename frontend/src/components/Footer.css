@@ -1,0 +1,143 @@
+.footer {
+  background-color: #2b2623;
+  color: white;
+  /* Thay thế margin-left bằng padding ở đây */
+  padding: 40px 60px;
+}
+
+.footer-container {
+  display: flex;
+  justify-content: space-between;
+  /* Căn đều các cột */
+  /* Dùng gap để tạo khoảng cách giữa các cột */
+  gap: 30px;
+  max-width: 1200px;
+  /* Giới hạn chiều rộng và căn giữa */
+  margin: 0 auto;
+}
+
+/* Gộp thành một class chung cho tất cả các cột */
+.footer-column {
+  flex: 1;
+  /* Cho phép các cột tự co giãn đều nhau */
+}
+
+.footer-title {
+  color: #fcb32c;
+  margin-bottom: 15px;
+  font-size: 1.2em;
+}
+
+.footer-column p,
+.footer-column li {
+  margin: 8px 0;
+  color: #ccc;
+  /* Làm màu chữ nhạt hơn một chút cho dễ đọc */
+  font-size: 0.9em;
+}
+
+.footer-bottom {
+  text-align: center;
+  border-top: 1px solid #444;
+  margin-top: 40px;
+  padding-top: 20px;
+  font-size: 14px;
+  color: #aaa;
+}
+
+/* ================================== */
+/* RESPONSIVE CHO FOOTER              */
+/* ================================== */
+
+/* Áp dụng cho màn hình điện thoại (chiều rộng dưới 768px) */
+@media (max-width: 768px) {
+  .footer-container {
+    flex-direction: column;
+    /* Xếp các cột theo chiều dọc */
+    gap: 40px;
+    /* Tăng khoảng cách dọc giữa các cột */
+  }
+
+  .footer {
+    padding: 40px 20px;
+    /* Giảm padding hai bên trên di động */
+  }
+}
+
+/* ================================== */
+/* FOOTER LINKS & SUBSCRIBE FIX       */
+/* ================================== */
+
+/* --- Sửa lại các link màu xanh trong cột "Thông Tin" --- */
+.footer-column a {
+  display: block;
+  /* Xếp các link theo chiều dọc */
+  margin: 8px 0;
+  color: #ccc;
+  /* Đổi màu chữ thành xám sáng */
+  text-decoration: none;
+  /* Bỏ gạch chân */
+  font-size: 0.9em;
+  transition: color 0.2s ease;
+}
+
+.footer-column a:hover {
+  color: #ffffff;
+  /* Chữ sáng lên khi di chuột vào */
+  text-decoration: underline;
+}
+
+/* --- Style riêng cho nút "Xem bản đồ" để nó không bị ảnh hưởng --- */
+.footer-column a.map-button {
+  display: inline-block;
+  background-color: transparent;
+  color: white;
+  border: 1px solid white;
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-weight: bold;
+  margin-top: 10px;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.footer-column a.map-button:hover {
+  background-color: white;
+  color: #2b2623;
+  text-decoration: none;
+  /* Bỏ gạch chân khi hover nút này */
+}
+
+
+/* --- Sửa lại ô nhập email và nút "Gửi" --- */
+.subscribe {
+  display: flex;
+  margin-top: 15px;
+}
+
+.subscribe input {
+  flex-grow: 1;
+  padding: 12px 15px;
+  border: 1px solid #555;
+  border-radius: 6px 0 0 6px;
+  background-color: #444;
+  /* Nền xám tối */
+  color: white;
+  /* Chữ trắng */
+  font-size: 1em;
+  outline: none;
+}
+
+.subscribe button {
+  padding: 12px 20px;
+  border: none;
+  border-radius: 0 6px 6px 0;
+  background-color: var(--accent-color, #d2191a);
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.subscribe button:hover {
+  background-color: #b81c00;
+}

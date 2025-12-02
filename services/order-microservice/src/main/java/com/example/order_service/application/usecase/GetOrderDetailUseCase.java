@@ -44,6 +44,7 @@ public class GetOrderDetailUseCase {
                 .grandTotal(order.getGrandTotal())
                 .note(order.getNote())
                 .createdAt(order.getCreatedAt())
+                .processingStartedAt(order.getProcessingStartedAt())
                 .deliveryAddress(mapToDeliveryAddressResponse(order.getDeliveryAddress()))
                 .orderItems(order.getOrderItems().stream()
                         .map(this::mapToOrderItemResponse)

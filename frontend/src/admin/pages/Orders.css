@@ -1,0 +1,436 @@
+/* ============================================
+   ADMIN ORDERS PAGE - MODERN DESIGN
+   ============================================ */
+
+:root {
+  --orders-bg: #f5f7fa;
+  --orders-card: #ffffff;
+  --orders-text: #1a202c;
+  --orders-text-secondary: #718096;
+  --orders-border: #e2e8f0;
+  --orders-primary: #3b82f6;
+  --orders-primary-hover: #2563eb;
+  --orders-success: #10b981;
+  --orders-warning: #f59e0b;
+  --orders-danger: #ef4444;
+  --orders-info: #06b6d4;
+  --orders-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  --orders-shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.1);
+  --orders-radius: 12px;
+  --orders-radius-sm: 8px;
+}
+
+/* ====== PAGE CONTAINER ====== */
+.orders-page {
+  background: var(--orders-bg);
+  min-height: 100vh;
+  padding: 32px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+/* ====== HEADER SECTION ====== */
+.orders-header {
+  margin-bottom: 32px;
+}
+
+.orders-header h1 {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--orders-text);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.orders-header h1::before {
+  content: "📦";
+  font-size: 32px;
+}
+
+/* ====== ERROR BANNER ====== */
+.orders-error-banner {
+  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+  border: 1px solid #fecaca;
+  border-left: 4px solid var(--orders-danger);
+  border-radius: var(--orders-radius);
+  padding: 16px 20px;
+  margin-bottom: 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  box-shadow: var(--orders-shadow);
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.orders-error-banner > div {
+  flex: 1;
+}
+
+.orders-error-banner p {
+  margin: 0 0 8px 0;
+  color: #991b1b;
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.orders-error-banner ul {
+  margin: 0;
+  padding-left: 20px;
+  color: #7f1d1d;
+  font-size: 14px;
+}
+
+.orders-error-banner li {
+  margin-bottom: 4px;
+}
+
+.retry-btn {
+  background: var(--orders-danger);
+  color: white;
+  border: none;
+  border-radius: var(--orders-radius-sm);
+  padding: 10px 20px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  box-shadow: 0 2px 4px rgba(239, 68, 68, 0.2);
+}
+
+.retry-btn:hover {
+  background: #dc2626;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(239, 68, 68, 0.3);
+}
+
+.retry-btn:active {
+  transform: translateY(0);
+}
+
+/* ====== FILTER CONTAINER ====== */
+.filter-container {
+  background: var(--orders-card);
+  border-radius: var(--orders-radius);
+  padding: 24px;
+  margin-bottom: 24px;
+  box-shadow: var(--orders-shadow);
+  border: 1px solid var(--orders-border);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+  align-items: end;
+  position: relative;
+}
+
+/* Hide any duplicate text that might appear */
+.filter-container > *:first-child::before,
+.filter-container > *:first-child::after {
+  display: none !important;
+  content: none !important;
+}
+
+.filter-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.filter-item label,
+.filter-item .filter-label {
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--orders-text);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: block;
+    margin-bottom: 8px;
+}
+
+/* Prevent duplicate text rendering from pseudo-elements */
+.filter-container::before,
+.filter-container::after {
+    display: none !important;
+    content: none !important;
+}
+
+.filter-item::before,
+.filter-item::after {
+    display: none !important;
+    content: none !important;
+}
+
+/* Input & Select Styling */
+.filter-container .ant-input,
+.filter-container .ant-input-affix-wrapper,
+.filter-container .ant-select-selector {
+  background: #f8fafc !important;
+  border: 1.5px solid var(--orders-border) !important;
+  border-radius: var(--orders-radius-sm) !important;
+  color: var(--orders-text) !important;
+  height: 42px !important;
+  transition: all 0.2s ease !important;
+  font-size: 14px !important;
+}
+
+.filter-container .ant-input:focus,
+.filter-container .ant-input-affix-wrapper-focused,
+.filter-container .ant-select-focused .ant-select-selector {
+  border-color: var(--orders-primary) !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+  background: var(--orders-card) !important;
+}
+
+.filter-container .ant-input::placeholder {
+  color: var(--orders-text-secondary) !important;
+}
+
+.filter-container .ant-select-arrow {
+  color: var(--orders-text-secondary) !important;
+}
+
+/* ====== TABLE STYLING ====== */
+.orders-table {
+  background: var(--orders-card);
+  border-radius: var(--orders-radius);
+  overflow: hidden;
+  box-shadow: var(--orders-shadow);
+  border: 1px solid var(--orders-border);
+}
+
+.orders-table .ant-table {
+  background: transparent !important;
+}
+
+.orders-table .ant-table-thead > tr > th {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%) !important;
+  color: var(--orders-text) !important;
+  font-weight: 700 !important;
+  font-size: 13px !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+  text-align: center !important;
+  padding: 16px 12px !important;
+  border-bottom: 2px solid var(--orders-border) !important;
+  white-space: nowrap;
+}
+
+.orders-table .ant-table-tbody > tr > td {
+  background: var(--orders-card) !important;
+  color: var(--orders-text) !important;
+  text-align: center !important;
+  padding: 16px 12px !important;
+  border-bottom: 1px solid #f1f5f9 !important;
+  font-size: 14px !important;
+  transition: all 0.2s ease !important;
+}
+
+.orders-table .ant-table-tbody > tr:hover > td {
+  background: linear-gradient(90deg, #f0f9ff 0%, #e0f2fe 100%) !important;
+  cursor: pointer;
+  transform: scale(1.01);
+}
+
+.orders-table .ant-table-tbody > tr:last-child > td {
+  border-bottom: none !important;
+}
+
+/* Clickable cells */
+.orders-table .ant-table-tbody > tr > td span {
+  display: inline-block;
+  transition: color 0.2s ease;
+}
+
+.orders-table .ant-table-tbody > tr:hover > td span {
+  color: var(--orders-primary);
+  font-weight: 500;
+}
+
+/* ====== STATUS TAGS ====== */
+.orders-table .ant-tag {
+  font-weight: 600;
+  font-size: 12px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  border: none;
+  text-transform: capitalize;
+  letter-spacing: 0.3px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+}
+
+.orders-table .ant-tag:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
+}
+
+.orders-table .ant-tag-green {
+  background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+  color: #065f46;
+}
+
+.orders-table .ant-tag-orange {
+  background: linear-gradient(135deg, #fed7aa 0%, #fdba74 100%);
+  color: #92400e;
+}
+
+.orders-table .ant-tag-blue {
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  color: #1e40af;
+}
+
+.orders-table .ant-tag-geekblue {
+  background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
+  color: #3730a3;
+}
+
+.orders-table .ant-tag-red,
+.orders-table .ant-tag-volcano {
+  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+  color: #991b1b;
+}
+
+/* ====== EMPTY STATE ====== */
+.orders-table .ant-empty {
+  padding: 60px 20px;
+}
+
+.orders-table .ant-empty-description {
+  color: var(--orders-text-secondary);
+  font-size: 15px;
+}
+
+/* ====== PAGINATION ====== */
+.orders-table .ant-pagination {
+  margin: 20px 0;
+  padding: 0 20px;
+  display: flex;
+  justify-content: center;
+}
+
+.orders-table .ant-pagination-item {
+  border-radius: var(--orders-radius-sm);
+  border-color: var(--orders-border);
+}
+
+.orders-table .ant-pagination-item-active {
+  background: var(--orders-primary);
+  border-color: var(--orders-primary);
+}
+
+.orders-table .ant-pagination-item-active a {
+  color: white;
+}
+
+.orders-table .ant-pagination-item:hover {
+  border-color: var(--orders-primary);
+}
+
+.orders-table .ant-pagination-item:hover a {
+  color: var(--orders-primary);
+}
+
+/* ====== RESPONSIVE DESIGN ====== */
+@media (max-width: 1024px) {
+  .orders-page {
+    padding: 24px;
+  }
+
+  .filter-container {
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+    padding: 20px;
+  }
+}
+
+@media (max-width: 768px) {
+  .orders-page {
+    padding: 16px;
+  }
+
+  .orders-header h1 {
+    font-size: 24px;
+  }
+
+  .filter-container {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    padding: 16px;
+  }
+
+  .orders-error-banner {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 16px;
+  }
+
+  .retry-btn {
+    width: 100%;
+    margin-top: 12px;
+  }
+
+  .orders-table .ant-table-thead > tr > th,
+  .orders-table .ant-table-tbody > tr > td {
+    padding: 12px 8px !important;
+    font-size: 13px !important;
+  }
+
+  .orders-table {
+    overflow-x: auto;
+  }
+}
+
+@media (max-width: 480px) {
+  .orders-header h1 {
+    font-size: 20px;
+  }
+
+  .orders-header h1::before {
+    font-size: 24px;
+  }
+
+  .filter-container {
+    padding: 12px;
+  }
+
+  .filter-item label {
+    font-size: 12px;
+  }
+}
+
+/* ====== LOADING STATE ====== */
+.orders-page .ant-spin-nested-loading {
+  min-height: 400px;
+}
+
+.orders-page .ant-spin-container {
+  min-height: 400px;
+}
+
+/* ====== SMOOTH TRANSITIONS ====== */
+.orders-table .ant-table-tbody > tr,
+.filter-container,
+.orders-error-banner {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ====== FOCUS STATES FOR ACCESSIBILITY ====== */
+.filter-container .ant-input:focus-visible,
+.filter-container .ant-select:focus-visible .ant-select-selector,
+.retry-btn:focus-visible {
+  outline: 2px solid var(--orders-primary);
+  outline-offset: 2px;
+}

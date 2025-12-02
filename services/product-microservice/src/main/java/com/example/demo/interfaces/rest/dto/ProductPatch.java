@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.math.BigDecimal;
+
 @AllArgsConstructor
 @NoArgsConstructor
 @Setter
@@ -18,4 +19,5 @@ public class ProductPatch {
     private Integer stock;
     private Product.Category category;
     private Boolean active;
+    private String imageUrl;
 }
