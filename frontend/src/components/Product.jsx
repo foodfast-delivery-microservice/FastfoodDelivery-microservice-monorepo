@@ -10,11 +10,25 @@ function Product({ product, onAdd }) {
         id,
         name = "Sản phẩm chưa đặt tên",
         price = 0,
-        // Dùng ảnh local để tránh lỗi mạng khi placeholder.com không load
-        img = "/Images/Logo.png",
+        imageUrl,
+        img,
+        image,
         restaurant,
         restaurantName,
     } = product;
+
+    const toAbsoluteUrl = (src) => {
+        if (!src) return null;
+        if (src.startsWith("http")) return src;
+        const base = "http://localhost:8080";
+        return src.startsWith("/") ? `${base}${src}` : `${base}/${src}`;
+    };
+
+    const displayImage =
+        toAbsoluteUrl(imageUrl) ||
+        toAbsoluteUrl(image) ||
+        toAbsoluteUrl(img) ||
+        "/Images/Logo.png";
 
     // Ưu tiên dùng restaurant -> restaurantName -> fallback
     const displayRestaurant = restaurant || restaurantName || "Không rõ nhà hàng";
@@ -27,7 +41,7 @@ function Product({ product, onAdd }) {
     return (
         <div className="prd-card">
             <Link to={`/product-detail/${id}`} className="prd-link">
-                <img src={img} alt={name} loading="lazy" className="prd-img" />
+                <img src={displayImage} alt={name} loading="lazy" className="prd-img" />
                 <div className="prd-info">
                     <h3 className="prd-name">{name}</h3>
                     <p className="prd-price">{displayPrice} ₫</p>

@@ -209,11 +209,31 @@ public class OrderController {
      * GET /api/v1/orders/{orderId}
      */
     @GetMapping("/{orderId}")
-    public ResponseEntity<OrderDetailResponse> getOrderDetail(@PathVariable Long orderId) {
+    public ResponseEntity<OrderDetailResponse> getOrderDetail(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable Long orderId) {
         log.info("Getting order detail for orderId: {}", orderId);
 
         try {
             OrderDetailResponse response = getOrderDetailUseCase.execute(orderId);
+
+            if (jwt != null) {
+                String role = jwt.getClaimAsString("role");
+                Long requesterId = jwtTokenService.extractUserId(jwt);
+
+                if ("MERCHANT".equalsIgnoreCase(role)) {
+                    if (requesterId == null || !requesterId.equals(response.getMerchantId())) {
+                        throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                                "Merchant cannot access orders belonging to other merchants");
+                    }
+                } else if ("USER".equalsIgnoreCase(role)) {
+                    if (requesterId == null || !requesterId.equals(response.getUserId())) {
+                        throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                                "You can only view your own orders");
+                    }
+                }
+            }
+
             return ResponseEntity.ok(response);
         } catch (OrderNotFoundException e) {
             log.warn("Order not found: {}", e.getMessage());

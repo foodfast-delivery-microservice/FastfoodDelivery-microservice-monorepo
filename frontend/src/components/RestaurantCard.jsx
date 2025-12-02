@@ -2,13 +2,26 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import './RestaurantCard.css'; // We'll create this CSS next
 
+const buildImageUrl = (src) => {
+    if (!src) return null;
+    if (src.startsWith?.("http")) return src;
+    const base = "http://localhost:8080";
+    return src.startsWith("/") ? `${base}${src}` : `${base}/${src}`;
+};
+
 const RestaurantCard = ({ restaurant }) => {
+    const displayImage =
+        buildImageUrl(restaurant.imageUrl) ||
+        buildImageUrl(restaurant.image) ||
+        buildImageUrl(restaurant.img) ||
+        '/Images/Logo.png';
+
     return (
         <Link to={`/restaurant/${restaurant.id}`} className="restaurant-card-link">
             <div className="restaurant-card">
                 <div className="restaurant-image-container">
                     <img
-                        src={restaurant.image || restaurant.img || '/Images/Logo.png'}
+                        src={displayImage}
                         alt={restaurant.name}
                         className="restaurant-image"
                         onError={(e) => { e.target.src = '/Images/Logo.png'; }}

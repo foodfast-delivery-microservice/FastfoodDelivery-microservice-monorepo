@@ -90,6 +90,12 @@ public class SecurityConfig {
                                                 .requestMatchers(HttpMethod.DELETE, "/api/v1/products/**")
                                                 .hasAnyRole("ADMIN", "MERCHANT")
 
+                                                // File upload and serving
+                                                .requestMatchers(HttpMethod.POST, "/api/v1/upload/**")
+                                                .hasAnyRole("ADMIN", "MERCHANT")
+                                                .requestMatchers(HttpMethod.GET, "/api/v1/files/**")
+                                                .permitAll()
+
                                                 // ORDER & PAYMENT endpoints - specific patterns first
                                                 .requestMatchers("/api/v1/orders/merchants/**")
                                                 .hasAnyRole("MERCHANT", "ADMIN")

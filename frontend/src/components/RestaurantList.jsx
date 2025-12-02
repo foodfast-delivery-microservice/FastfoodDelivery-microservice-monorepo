@@ -59,7 +59,9 @@ const RestaurantList = () => {
 
     return (
         <div className="restaurant-list-page">
-            <Banner images={bannerImages} />
+            <div className="banner-wrapper">
+                <Banner images={bannerImages} />
+            </div>
 
             <div className="container">
                 {/* Search & Filter Section */}

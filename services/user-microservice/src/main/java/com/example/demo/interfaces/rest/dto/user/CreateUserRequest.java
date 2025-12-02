@@ -26,4 +26,14 @@ public class CreateUserRequest {
     private String restaurantAddress;
     private String restaurantImage;
     private String openingHours;
+    
+    // Restaurant Additional Fields
+    private String restaurantDescription;
+    private String restaurantCity;
+    private String restaurantDistrict;
+    private String restaurantCategory;
+    private Double restaurantLatitude;
+    private Double restaurantLongitude;
+    private java.math.BigDecimal restaurantDeliveryFee;
+    private Integer restaurantEstimatedDeliveryTime;
 }

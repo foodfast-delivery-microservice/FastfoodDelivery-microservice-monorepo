@@ -18,6 +18,10 @@ http.interceptors.request.use(
           config.headers.Authorization = `Bearer ${parsedSession.accessToken}`
         }
       }
+      // Don't override Content-Type for multipart/form-data (file uploads)
+      if (config.data instanceof FormData) {
+        delete config.headers['Content-Type']
+      }
     } catch (error) {
       console.error('Error reading session from localStorage:', error)
     }

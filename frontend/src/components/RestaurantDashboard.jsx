@@ -351,7 +351,7 @@ export default function RestaurantDashboard() {
 
       try {
         console.log("🚁 [Drone] Đang lấy chi tiết đơn hàng...");
-        const detailRes = await http.get(`/orders/${orderId}`);
+        const detailRes = await http.get(`/orders/merchants/me/${orderId}`);
         const detail = detailRes.data?.data || detailRes.data;
         if (!detail) {
           throw new Error("Không thể tải chi tiết đơn hàng");
@@ -432,14 +432,18 @@ export default function RestaurantDashboard() {
             stack: err?.stack
           });
         
-          const errorMessage =
-          err?.response?.data?.message ||
-          err?.response?.data?.error ||
-          err?.message ||
-          "Không thể gán drone. Vui lòng kiểm tra console để biết chi tiết.";
+          let errorMessage =
+            err?.response?.data?.message ||
+            err?.response?.data?.error ||
+            err?.message ||
+            "Không thể gán drone. Vui lòng kiểm tra console để biết chi tiết.";
+
+          if (err?.response?.status === 403) {
+            errorMessage = "Bạn không có quyền thao tác trên đơn hàng này.";
+          }
         
-        message.error(`❌ ${errorMessage}`);
-      } finally {
+          message.error(`❌ ${errorMessage}`);
+        } finally {
         setAssigningDrone((prev) => ({ ...prev, [orderId]: false }));
         }
       },
@@ -829,6 +833,13 @@ export default function RestaurantDashboard() {
                         }
                       >
                         {updatingStatus[order.id] ? "Đang lưu..." : "Cập nhật"}
+                      </button>
+                      <button
+                        className="btn secondary"
+                        type="button"
+                        onClick={() => navigate(`/restaurantadmin/order/${order.id}`)}
+                      >
+                        Xem tracking
                       </button>
                     </div>
                   ) : (

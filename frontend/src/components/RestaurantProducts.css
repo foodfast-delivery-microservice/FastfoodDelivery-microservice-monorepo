@@ -84,7 +84,8 @@
 
 /* Nút hành động */
 .rsp-btn-edit,
-.rsp-btn-delete {
+.rsp-btn-delete,
+.rsp-btn-toggle {
     border: none;
     padding: 6px 10px;
     border-radius: 6px;
@@ -99,6 +100,15 @@
     color: #333;
 }
 
+.rsp-btn-toggle {
+    background-color: #17a2b8;
+    color: #fff;
+}
+
+.rsp-btn-toggle:hover {
+    background-color: #138496;
+}
+
 .rsp-btn-edit:hover {
     background-color: #e0a800;
 }
@@ -110,6 +120,27 @@
 
 .rsp-btn-delete:hover {
     background-color: #c82333;
+}
+
+.rsp-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.rsp-status.active {
+    background-color: rgba(40, 167, 69, 0.15);
+    color: #1c7c35;
+}
+
+.rsp-status.inactive {
+    background-color: rgba(220, 53, 69, 0.15);
+    color: #b21f2d;
 }
 
 /* Modal (Form thêm/sửa & Chi tiết) */

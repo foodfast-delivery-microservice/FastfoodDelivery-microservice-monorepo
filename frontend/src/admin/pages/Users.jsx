@@ -69,7 +69,7 @@ export default function Users() {
   // FILTER USERS
   // ==========================
   const filteredUsers = users.filter((u) => {
-    const fullname = `${u.firstname || ""} ${u.lastname || ""}`.toLowerCase();
+    const fullname = (u.fullName || `${u.firstname || ""} ${u.lastname || ""}`.trim() || "").toLowerCase();
     const matchName = fullname.includes(search.toLowerCase());
     const matchRole = roleFilter === "all" || (u.role || "").toLowerCase() === roleFilter;
     return matchName && matchRole;
@@ -79,34 +79,30 @@ export default function Users() {
   // UPDATE STATUS
   // ==========================
   const handleChangeStatus = async (user, newStatus) => {
-    if (user.status === newStatus) return;
+    // Map "active"/"banned" to boolean
+    const newActive = newStatus === "active";
+    const currentActive = user.active !== false; // Default to true if undefined
+    
+    // Skip if status unchanged
+    if (currentActive === newActive) return;
 
     setLoadingIds((prev) => [...prev, user.id]);
 
     try {
-      // Assuming backend has an endpoint to update status or generic update
-      // Since UserController has patch /users/{id}, we can use that.
-      // But we need to check if it supports status update.
-      // If not, we might need to skip this or assume it works.
-      // Based on code, UserController uses UpdateUserUseCase which takes UserPatchDTO.
-      // UserPatchDTO likely has status? Let's assume yes or use generic patch.
-      await http.patch(`/users/${user.id}`, { status: newStatus });
-
-      // If restaurant, update restaurant status too?
-      // Backend might handle this logic or we need to call restaurant endpoint.
-      // RestaurantController has /me/status but not /restaurants/{id}/status for admin.
-      // We will skip restaurant status update for now as it might be complex without specific endpoint.
+      // Backend uses 'active' (boolean), not 'status' (string)
+      await http.patch(`/users/${user.id}`, { active: newActive });
 
       message.success(
-        newStatus === "banned"
-          ? "🔴 Người dùng đã bị khóa"
-          : "🟢 Người dùng đã mở khóa"
+        newActive
+          ? "🟢 Người dùng đã được kích hoạt"
+          : "🔴 Người dùng đã bị khóa"
       );
 
       loadUsers();
     } catch (err) {
-      console.error(err);
-      message.error("Cập nhật trạng thái thất bại");
+      console.error("Lỗi cập nhật trạng thái:", err);
+      const errorMessage = err?.response?.data?.message || err?.message || "Cập nhật trạng thái thất bại";
+      message.error(`❌ ${errorMessage}`);
     } finally {
       setLoadingIds((prev) => prev.filter((id) => id !== user.id));
     }
@@ -150,7 +146,7 @@ export default function Users() {
     {
       title: "Tên đầy đủ",
       key: "fullname",
-      render: (_, r) => `${r.firstname || ""} ${r.lastname || ""}`,
+      render: (_, r) => r.fullName || `${r.firstname || ""} ${r.lastname || ""}`.trim() || "—",
     },
 
 
@@ -187,7 +183,8 @@ export default function Users() {
       title: "Trạng thái",
       key: "status",
       render: (_, user) => {
-        const status = user.status || "active";
+        // Backend uses 'active' (boolean), default to true if undefined
+        const isActive = user.active !== false;
         const loading = loadingIds.includes(user.id);
 
         const menu = (
@@ -196,9 +193,10 @@ export default function Users() {
               onClick={() => handleChangeStatus(user, "active")}
               style={{
                 padding: 6,
-                cursor: "pointer",
+                cursor: loading ? "not-allowed" : "pointer",
                 borderRadius: 6,
-                background: status === "active" ? "#E8F5E9" : "",
+                background: isActive ? "#E8F5E9" : "",
+                opacity: loading ? 0.5 : 1,
               }}
             >
               🟢 Active
@@ -208,9 +206,10 @@ export default function Users() {
               onClick={() => handleChangeStatus(user, "banned")}
               style={{
                 padding: 6,
-                cursor: "pointer",
+                cursor: loading ? "not-allowed" : "pointer",
                 borderRadius: 6,
-                background: status === "banned" ? "#FFEBEE" : "",
+                background: !isActive ? "#FFEBEE" : "",
+                opacity: loading ? 0.5 : 1,
               }}
             >
               🔴 Banned
@@ -219,17 +218,17 @@ export default function Users() {
         );
 
         return (
-          <Popover content={menu} trigger="click">
+          <Popover content={menu} trigger="click" disabled={loading}>
             <Tag
-              color={status === "banned" ? "red" : "green"}
+              color={isActive ? "green" : "red"}
               style={{
                 padding: "6px 12px",
                 borderRadius: 14,
-                cursor: "pointer",
+                cursor: loading ? "not-allowed" : "pointer",
                 opacity: loading ? 0.5 : 1,
               }}
             >
-              {status === "banned" ? "Banned" : "Active"} ⌄
+              {isActive ? "Active" : "Banned"} ⌄
             </Tag>
           </Popover>
         );
