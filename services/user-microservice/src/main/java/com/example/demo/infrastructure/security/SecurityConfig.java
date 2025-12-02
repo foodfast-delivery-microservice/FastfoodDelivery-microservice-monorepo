@@ -41,6 +41,9 @@ public class SecurityConfig {
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
+                        // Actuator endpoints for health checks (required by Eureka)
+                        .requestMatchers("/actuator/**").permitAll()
+                        
                         // Internal API for service-to-service calls (no authentication required)
                         .requestMatchers("/api/internal/**").permitAll()
 

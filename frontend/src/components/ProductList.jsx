@@ -50,7 +50,7 @@ function ProductList({ onAdd, defaultCategory = "All" }) {
                         const restaurantInfo = restaurantsByMerchant[product.merchantId] || {};
                         return {
                             ...product,
-                            img: product.img || product.image || product.imageUrl,
+                            img: product.imageUrl || product.image || product.img,
                             restaurantId:
                                 restaurantInfo.id ||
                                 product.restaurantId ||

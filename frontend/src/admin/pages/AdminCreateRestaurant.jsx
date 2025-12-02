@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Form, Input, Button, message, Card, Row, Col, Divider } from "antd";
+import { Form, Input, Button, message, Card, Row, Col, Divider, InputNumber, Select } from "antd";
 import http from "../../services/http";
 import "./AdminCreateRestaurant.css";
 
@@ -13,25 +13,94 @@ export default function AdminCreateRestaurant() {
     console.log(`[CreateRestaurant] ${label}`, payload);
   };
 
-  // Geocoding địa chỉ → lat/lng (optional, có thể để backend xử lý)
+  // Geocoding địa chỉ → lat/lng
   const geocodeAddress = async (address) => {
-    if (!address) return null;
+    if (!address) {
+      logApi("Geocoding skipped", "No address provided");
+      return null;
+    }
+    
     try {
+      // Add delay to respect Nominatim usage policy (max 1 request per second)
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      const searchQuery = `${address}, Vietnam`;
       const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(
-        address + ", Vietnam"
-      )}&format=json&limit=1&countrycodes=vn`;
+        searchQuery
+      )}&format=json&limit=1&countrycodes=vn&addressdetails=1`;
+      
+      logApi("Geocoding request", { url, address: searchQuery });
 
-      const response = await fetch(url);
+      const response = await fetch(url, {
+        method: 'GET',
+        mode: 'cors',
+        headers: {
+          'User-Agent': 'FastFoodDelivery-Admin/1.0', // Required by Nominatim
+          'Accept': 'application/json',
+        }
+      });
+      
+      logApi("Geocoding response status", { 
+        status: response.status, 
+        statusText: response.statusText,
+        ok: response.ok 
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        logApi("Geocoding HTTP error", { 
+          status: response.status, 
+          statusText: response.statusText,
+          body: errorText
+        });
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
       const data = await response.json();
+      logApi("Geocoding response data", { 
+        dataLength: Array.isArray(data) ? data.length : 'not array',
+        data: data 
+      });
 
-      if (data.length === 0) return null;
+      if (!data || !Array.isArray(data) || data.length === 0) {
+        logApi("Geocoding failed", "No results found", { data });
+        return null;
+      }
 
-      return {
-        lat: parseFloat(data[0].lat),
-        lng: parseFloat(data[0].lon),
-      };
+      const result = data[0];
+      logApi("Geocoding first result", result);
+      
+      const lat = parseFloat(result.lat);
+      const lng = parseFloat(result.lon);
+
+      if (isNaN(lat) || isNaN(lng)) {
+        logApi("Geocoding failed", "Invalid coordinates", { 
+          lat: result.lat, 
+          lng: result.lon,
+          parsedLat: lat,
+          parsedLng: lng
+        });
+        return null;
+      }
+
+      const coords = { lat, lng };
+      logApi("Geocoding success", coords);
+      return coords;
     } catch (err) {
-      logApi("Geocoding error", err);
+      // Check if it's a CORS error
+      if (err.message && err.message.includes('CORS')) {
+        logApi("Geocoding CORS error", {
+          message: "CORS blocked - may need backend proxy",
+          error: err.message
+        });
+      } else {
+        logApi("Geocoding error", {
+          message: err.message,
+          name: err.name,
+          stack: err.stack,
+          address
+        });
+      }
       return null;
     }
   };
@@ -41,17 +110,60 @@ export default function AdminCreateRestaurant() {
       setLoading(true);
       logApi("Form values", values);
 
-      // Validate required fields
+      // Validate required fields (Ant Design Form đã validate, nhưng double check để chắc chắn)
       if (!values.restaurantName || !values.username || !values.email || !values.password) {
         message.error("Vui lòng nhập đầy đủ thông tin bắt buộc!");
+        setLoading(false);
         return;
       }
 
-      // Geocode address (optional)
+      // Geocode address to get coordinates
       let coords = null;
       if (values.restaurantAddress) {
-        coords = await geocodeAddress(values.restaurantAddress);
-        logApi("Geocoded coordinates", coords);
+        try {
+          message.loading({ content: "Đang tìm tọa độ địa chỉ...", key: "geocoding" });
+          logApi("Starting geocoding", { address: values.restaurantAddress });
+          
+          coords = await geocodeAddress(values.restaurantAddress);
+          
+          logApi("Geocoding result", { coords, hasLat: !!coords?.lat, hasLng: !!coords?.lng });
+          
+          if (coords && coords.lat != null && coords.lng != null && !isNaN(coords.lat) && !isNaN(coords.lng)) {
+            message.success({ 
+              content: `✅ Đã tìm thấy tọa độ: ${coords.lat.toFixed(6)}, ${coords.lng.toFixed(6)}`, 
+              key: "geocoding", 
+              duration: 3 
+            });
+            logApi("Geocoded coordinates", coords);
+          } else {
+            message.warning({ 
+              content: "⚠️ Không tìm thấy tọa độ. Nhà hàng sẽ được tạo không có tọa độ.", 
+              key: "geocoding",
+              duration: 4
+            });
+            logApi("Geocoding returned null or invalid", { 
+              coords, 
+              address: values.restaurantAddress,
+              latValid: coords?.lat != null && !isNaN(coords.lat),
+              lngValid: coords?.lng != null && !isNaN(coords.lng)
+            });
+            coords = null; // Ensure it's null if invalid
+          }
+        } catch (geocodeError) {
+          logApi("Geocoding exception", {
+            error: geocodeError,
+            message: geocodeError?.message,
+            stack: geocodeError?.stack
+          });
+          message.error({ 
+            content: "❌ Lỗi khi tìm tọa độ. Tiếp tục tạo nhà hàng không có tọa độ.", 
+            key: "geocoding",
+            duration: 3
+          });
+          coords = null; // Ensure it's null on error
+        }
+      } else {
+        logApi("Geocoding skipped", "No restaurantAddress provided");
       }
 
       // Prepare request data
@@ -71,6 +183,15 @@ export default function AdminCreateRestaurant() {
         restaurantAddress: values.restaurantAddress || "",
         restaurantImage: values.restaurantImage || "",
         openingHours: values.openingHours || "",
+        // Restaurant additional fields
+        restaurantDescription: values.description || "",
+        restaurantCity: values.city || "",
+        restaurantDistrict: values.district || "",
+        restaurantCategory: values.category || "",
+        restaurantLatitude: coords?.lat || null,
+        restaurantLongitude: coords?.lng || null,
+        restaurantDeliveryFee: values.deliveryFee || null,
+        restaurantEstimatedDeliveryTime: values.estimatedDeliveryTime || null,
       };
 
       logApi("POST /users request", requestData);
@@ -122,6 +243,10 @@ export default function AdminCreateRestaurant() {
           form={form}
           layout="vertical"
           onFinish={handleSubmit}
+          onFinishFailed={(errorInfo) => {
+            logApi("Form validation failed", errorInfo);
+            message.error("Vui lòng kiểm tra lại các trường bắt buộc!");
+          }}
           autoComplete="off"
         >
           <Divider orientation="left">Thông tin nhà hàng</Divider>
@@ -165,9 +290,61 @@ export default function AdminCreateRestaurant() {
             </Col>
           </Row>
 
-          <Form.Item label="Giờ mở cửa" name="openingHours">
-            <Input placeholder="VD: 08:00 - 22:00" />
-          </Form.Item>
+          <Row gutter={16}>
+            <Col xs={24} md={8}>
+              <Form.Item label="Thành phố" name="city">
+                <Input placeholder="VD: TP. Hồ Chí Minh" />
+              </Form.Item>
+            </Col>
+
+            <Col xs={24} md={8}>
+              <Form.Item label="Quận/Huyện" name="district">
+                <Input placeholder="VD: Quận 1" />
+              </Form.Item>
+            </Col>
+
+            <Col xs={24} md={8}>
+              <Form.Item label="Danh mục" name="category">
+                <Select placeholder="Chọn danh mục" allowClear>
+                  <Select.Option value="FOOD">Đồ ăn</Select.Option>
+                  <Select.Option value="DRINK">Đồ uống</Select.Option>
+                  <Select.Option value="BOTH">Cả hai</Select.Option>
+                  <Select.Option value="OTHER">Khác</Select.Option>
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Row gutter={16}>
+            <Col xs={24} md={8}>
+              <Form.Item label="Giờ mở cửa" name="openingHours">
+                <Input placeholder="VD: 08:00 - 22:00" />
+              </Form.Item>
+            </Col>
+
+            <Col xs={24} md={8}>
+              <Form.Item label="Phí giao hàng (₫)" name="deliveryFee">
+                <InputNumber
+                  style={{ width: "100%" }}
+                  placeholder="VD: 20000"
+                  min={0}
+                  formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                  parser={(value) => value.replace(/\$\s?|(,*)/g, '')}
+                />
+              </Form.Item>
+            </Col>
+
+            <Col xs={24} md={8}>
+              <Form.Item label="Thời gian giao hàng ước tính (phút)" name="estimatedDeliveryTime">
+                <InputNumber
+                  style={{ width: "100%" }}
+                  placeholder="VD: 30"
+                  min={0}
+                  max={300}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
 
           <Divider orientation="left">Thông tin tài khoản đăng nhập</Divider>
 
@@ -229,6 +406,7 @@ export default function AdminCreateRestaurant() {
               type="primary"
               htmlType="submit"
               loading={loading}
+              disabled={loading}
               size="large"
               className="acr-btn"
             >

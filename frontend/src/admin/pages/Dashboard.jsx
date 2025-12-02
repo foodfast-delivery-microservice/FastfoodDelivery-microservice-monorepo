@@ -132,13 +132,13 @@ export default function RestaurantDashboard() {
         const rawOrders = ordersResult.value;
 
         filteredOrders = rawOrders;
-        if (restaurantFilter !== "all") {
-          filteredOrders = filteredOrders.filter(
-            (o) => String(o.merchantId) === String(restaurantFilter)
-          );
-        }
+      if (restaurantFilter !== "all") {
+        filteredOrders = filteredOrders.filter(
+          (o) => String(o.merchantId) === String(restaurantFilter)
+        );
+      }
 
-        setOrders(filteredOrders);
+      setOrders(filteredOrders);
       } else {
         const errPayload = serializeError(ordersResult.reason);
         setErrors((prev) => ({ ...prev, orders: errPayload }));

@@ -194,6 +194,39 @@
   background: #f8f9fb;
 }
 
+.btn.primary {
+  background: #ff7a00;
+  color: #fff;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn.primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn.primary:hover:not(:disabled) {
+  background: #e56c00;
+}
+
+.btn.secondary {
+  background: #fff;
+  color: #333;
+  border: 1px solid #e3e6ea;
+  padding: 6px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn.secondary:hover {
+  background: #f4f6f8;
+}
+
 /* ====== PERSONALIZED PAGINATION FOR RESTAURANT DASHBOARD ====== */
 
 .orders-pagination {

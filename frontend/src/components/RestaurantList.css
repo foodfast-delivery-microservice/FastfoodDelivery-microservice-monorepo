@@ -4,20 +4,41 @@
     padding-bottom: 40px;
 }
 
+/* Banner wrapper - ensure banner is fully visible and not covered */
+.banner-wrapper {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    margin-bottom: 0;
+}
+
+.restaurant-list-page .banner-container {
+    position: relative;
+    z-index: 1;
+    margin-bottom: 0;
+    display: block;
+    width: 100%;
+}
+
+/* Container should not cover banner */
 .container {
     max-width: 1200px;
     margin: 0 auto;
     padding: 0 16px;
+    position: relative;
+    z-index: 2;
+    /* Provide natural spacing after banner */
+    margin-top: 32px;
 }
 
-/* Filter Section */
+/* Filter Section - no overlap, stays inside container */
 .filter-section {
     background: white;
     padding: 16px;
     border-radius: 12px;
-    margin-top: -40px;
-    /* Overlap banner slightly */
+    margin-top: 0;
     position: relative;
+    z-index: 10;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
     margin-bottom: 24px;
 }

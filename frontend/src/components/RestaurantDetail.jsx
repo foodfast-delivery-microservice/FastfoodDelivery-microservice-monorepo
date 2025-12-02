@@ -4,6 +4,13 @@ import { fetchRestaurantById, fetchRestaurantMenu } from '../services/restaurant
 import Product from './Product';
 import './RestaurantDetail.css'; // We'll create this CSS next
 
+const toAbsoluteUrl = (src) => {
+  if (!src) return null;
+  if (src.startsWith?.("http")) return src;
+  const base = "http://localhost:8080";
+  return src.startsWith("/") ? `${base}${src}` : `${base}/${src}`;
+};
+
 const RestaurantDetail = ({ onAdd }) => {
   const { id } = useParams();
   const [restaurant, setRestaurant] = useState(null);
@@ -51,7 +58,12 @@ const RestaurantDetail = ({ onAdd }) => {
         <div className="header-container">
           <div className="header-image">
             <img
-              src={restaurant.image || restaurant.img || '/Images/Logo.png'}
+              src={
+                toAbsoluteUrl(restaurant.imageUrl) ||
+                toAbsoluteUrl(restaurant.image) ||
+                toAbsoluteUrl(restaurant.img) ||
+                '/Images/Logo.png'
+              }
               alt={restaurant.name}
               onError={(e) => { e.target.src = '/Images/Logo.png'; }}
             />
@@ -91,7 +103,8 @@ const RestaurantDetail = ({ onAdd }) => {
                     key={product.id} 
                     product={{
                       ...product,
-                      img: product.image || product.img,
+                      imageUrl: product.imageUrl || product.image || product.img,
+                      img: product.img || product.imageUrl || product.image,
                       restaurant: restaurant?.name || product.restaurantName,
                       restaurantId: restaurant?.merchantId || product.merchantId,
                       restaurantName: restaurant?.name || product.restaurantName

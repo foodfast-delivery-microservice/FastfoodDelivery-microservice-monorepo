@@ -14,3 +14,7 @@ build/
 
 # Bỏ qua các file cấu hình của VS Code
 .vscode/
+
+# Bỏ qua thư mục uploads (files được upload từ users)
+uploads/
+**/uploads/

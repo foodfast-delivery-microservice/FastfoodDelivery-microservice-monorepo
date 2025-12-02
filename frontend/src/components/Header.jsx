@@ -122,8 +122,6 @@ function Header({ cartCount }) {
           </div>
         </div>
 
-        <button onClick={() => navigate("/restaurant")}>Nhà hàng</button>
-
         {/* CART */}
         <Link to="/Cart" className="cart-button">
           Giỏ hàng ({cartCount > 0 ? cartCount : 0})

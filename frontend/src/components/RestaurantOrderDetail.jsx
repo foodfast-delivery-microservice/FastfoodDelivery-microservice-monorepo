@@ -1,11 +1,8 @@
-import React, { useEffect, useState, useCallback, useMemo } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import "./RestaurantOrderDetail.css";
 import http from "../services/http";
 import { useParams, useNavigate } from "react-router-dom";
-import { getMissionByOrderId, getTrackingByOrderId } from "../services/droneApi";
-import { MapContainer, TileLayer, Marker, Popup, Polyline } from "react-leaflet";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
+import OrderTrackingMap from "./OrderTrackingMap";
 
 const toDate = (input) => {
     if (!input) return null;
@@ -40,157 +37,98 @@ const formatDuration = (value) => {
     return Number.isFinite(parsed) ? `${parsed} phút` : "—";
 };
 
-// Leaflet marker icons
-const droneIcon = new L.Icon({
-    iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png",
-    shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png",
-    iconSize: [25, 41],
-    iconAnchor: [12, 41],
-    popupAnchor: [1, -34],
-    shadowSize: [41, 41]
-});
-
-const pickupIcon = new L.Icon({
-    iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png",
-    shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png",
-    iconSize: [25, 41],
-    iconAnchor: [12, 41],
-    popupAnchor: [1, -34],
-    shadowSize: [41, 41]
-});
-
-const deliveryIcon = new L.Icon({
-    iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png",
-    shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png",
-    iconSize: [25, 41],
-    iconAnchor: [12, 41],
-    popupAnchor: [1, -34],
-    shadowSize: [41, 41]
-});
-
-const baseIcon = new L.Icon({
-    iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-grey.png",
-    shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png",
-    iconSize: [25, 41],
-    iconAnchor: [12, 41],
-    popupAnchor: [1, -34],
-    shadowSize: [41, 41]
-});
-
 export default function RestaurantOrderDetail() {
     const { id } = useParams();
     const navigate = useNavigate();
 
     const [order, setOrder] = useState(null);
     const [mission, setMission] = useState(null);
+    const [missionReady, setMissionReady] = useState(false);
     const [tracking, setTracking] = useState(null);
-    const [trackingLoading, setTrackingLoading] = useState(false);
+    const [trackingReady, setTrackingReady] = useState(false);
     const [trackingError, setTrackingError] = useState(null);
-    const [autoRefresh, setAutoRefresh] = useState(true);
+
+    const handleMissionUpdate = useCallback((data) => {
+        setMissionReady(true);
+        setMission(data);
+    }, []);
+
+    const handleTrackingUpdate = useCallback((data) => {
+        setTrackingReady(true);
+        setTracking(data);
+        setTrackingError(null);
+    }, []);
+
+    const handleTrackingError = useCallback((message) => {
+        setTrackingReady(true);
+        setTrackingError(message || null);
+    }, []);
 
     const fetchOrder = useCallback(async () => {
         try {
-            const res = await http.get(`/orders/${id}`);
-            const data = res.data?.data;
+            const res = await http.get(`/orders/merchants/me/${id}`);
+            const data = res.data?.data || res.data;
 
             if (!data) {
                 alert("Đơn hàng không tồn tại");
                 navigate("/restaurant/orders");
                 return;
             }
+            const rawDelivery = data.deliveryAddress || {};
+            const deliveryParts = [
+                rawDelivery.addressLine1,
+                rawDelivery.ward,
+                rawDelivery.district,
+                rawDelivery.city,
+            ].filter(Boolean);
+
+            const mappedItems = (data.orderItems || []).map((it) => ({
+                id: it.id,
+                productId: it.productId,
+                name: it.productName,
+                quantity: it.quantity,
+                price: Number(it.unitPrice ?? 0),
+                lineTotal: Number(it.lineTotal ?? 0),
+            }));
 
             setOrder({
                 ...data,
-                total: data.grandTotal,
-                // Map items if available, or handle empty
-                items: data.items || []
+                receiverName:
+                    rawDelivery.receiverName ||
+                    data.customerName ||
+                    data.userName ||
+                    "Khách hàng",
+                receiverPhone:
+                    rawDelivery.receiverPhone ||
+                    rawDelivery.phoneNumber ||
+                    data.customerPhone ||
+                    "",
+                fullAddress:
+                    deliveryParts.join(", ") ||
+                    rawDelivery.address ||
+                    rawDelivery.addressLine1 ||
+                    data.fullAddress ||
+                    "N/A",
+                total: Number(data.grandTotal ?? 0),
+                items: mappedItems,
             });
         } catch (err) {
             console.error("Lỗi load order:", err);
+            if (err?.response?.status === 403) {
+                alert("Bạn không có quyền xem đơn hàng này.");
+                navigate("/restaurantadmin");
+            } else if (err?.response?.status === 404) {
+                alert("Đơn hàng không tồn tại.");
+                navigate("/restaurantadmin");
+            } else {
+                alert("Không thể tải đơn hàng. Vui lòng thử lại sau.");
+            }
         }
     }, [id, navigate]);
-
-    const fetchMission = useCallback(async () => {
-        if (!id) return;
-        try {
-            const data = await getMissionByOrderId(id);
-            setMission(data);
-        } catch (err) {
-            setMission(null);
-        }
-    }, [id]);
-
-    const fetchTracking = useCallback(async () => {
-        if (!id) return;
-        try {
-            setTrackingLoading(true);
-            const data = await getTrackingByOrderId(id);
-            setTracking(data);
-            setTrackingError(null);
-        } catch (err) {
-            if (err?.response?.status === 404) {
-                setTracking(null);
-                setTrackingError("Chưa có nhiệm vụ drone nào cho đơn này.");
-            } else {
-                console.error("Lỗi tracking drone:", err);
-                setTrackingError("Không thể tải thông tin tracking drone.");
-            }
-        } finally {
-            setTrackingLoading(false);
-        }
-    }, [id]);
 
     useEffect(() => {
         fetchOrder();
     }, [fetchOrder]);
-
-    useEffect(() => {
-        fetchMission();
-        fetchTracking();
-    }, [fetchMission, fetchTracking]);
-
-    useEffect(() => {
-        if (!autoRefresh) return;
-        const timer = setInterval(() => {
-            fetchTracking();
-        }, 10000);
-        return () => clearInterval(timer);
-    }, [autoRefresh, fetchTracking]);
-
-    // Calculate map center and bounds from mission/tracking data
-    const mapData = useMemo(() => {
-        if (!mission && !tracking) return null;
-
-        const points = [];
-        let center = null;
-
-        // Drone current position (from tracking)
-        if (tracking?.currentLatitude != null && tracking?.currentLongitude != null) {
-            points.push([tracking.currentLatitude, tracking.currentLongitude]);
-            center = [tracking.currentLatitude, tracking.currentLongitude];
-        }
-
-        // Pickup location (from mission)
-        if (mission?.pickupLatitude != null && mission?.pickupLongitude != null) {
-            points.push([mission.pickupLatitude, mission.pickupLongitude]);
-            if (!center) center = [mission.pickupLatitude, mission.pickupLongitude];
-        }
-
-        // Delivery location (from mission)
-        if (mission?.deliveryLatitude != null && mission?.deliveryLongitude != null) {
-            points.push([mission.deliveryLatitude, mission.deliveryLongitude]);
-        }
-
-        // Base location (from tracking or mission - if available)
-        if (tracking?.baseLatitude != null && tracking?.baseLongitude != null) {
-            points.push([tracking.baseLatitude, tracking.baseLongitude]);
-        }
-
-        // Default center (Ho Chi Minh City)
-        if (!center) center = [10.776389, 106.700806];
-
-        return { center, points };
-    }, [mission, tracking]);
 
     if (!order) return <p>⏳ Đang tải chi tiết đơn...</p>;
 
@@ -269,12 +207,16 @@ export default function RestaurantOrderDetail() {
                         </div>
                     </div>
                 ) : (
-                    <p>Chưa có nhiệm vụ drone nào được khởi tạo cho đơn hàng này.</p>
+                    <p>
+                        {missionReady
+                            ? "Chưa có nhiệm vụ drone nào được khởi tạo cho đơn hàng này."
+                            : "Đang tải thông tin nhiệm vụ drone..."}
+                    </p>
                 )}
 
                 <div className="tracking-section">
                     <h4>📡 Tracking thời gian thực</h4>
-                    {trackingLoading ? (
+                    {!trackingReady ? (
                         <p>Đang tải dữ liệu tracking...</p>
                     ) : tracking ? (
                         <ul className="tracking-info">
@@ -296,163 +238,14 @@ export default function RestaurantOrderDetail() {
                         <p>{trackingError || "Chưa có dữ liệu tracking."}</p>
                     )}
 
-                    {/* Map Tracking */}
-                    {mapData && (
-                        <div className="tracking-map-container">
-                            <h5>🗺️ Bản đồ theo dõi</h5>
-                            <MapContainer
-                                center={mapData.center}
-                                zoom={13}
-                                style={{ height: "400px", width: "100%", borderRadius: "8px" }}
-                                scrollWheelZoom={true}
-                            >
-                                <TileLayer
-                                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                                />
-                                
-                                {/* Drone current position */}
-                                {tracking?.currentLatitude != null && tracking?.currentLongitude != null && (
-                                    <Marker
-                                        position={[tracking.currentLatitude, tracking.currentLongitude]}
-                                        icon={droneIcon}
-                                    >
-                                        <Popup>
-                                            <strong>🚁 Drone hiện tại</strong>
-                                            <br />
-                                            {tracking.droneSerialNumber || tracking.droneId}
-                                            <br />
-                                            Pin: {tracking.batteryLevel ?? "—"}%
-                                            <br />
-                                            Trạng thái: {tracking.status || "—"}
-                                        </Popup>
-                                    </Marker>
-                                )}
-
-                                {/* Pickup location */}
-                                {mission?.pickupLatitude != null && mission?.pickupLongitude != null && (
-                                    <Marker
-                                        position={[mission.pickupLatitude, mission.pickupLongitude]}
-                                        icon={pickupIcon}
-                                    >
-                                        <Popup>
-                                            <strong>📍 Điểm lấy hàng</strong>
-                                        </Popup>
-                                    </Marker>
-                                )}
-
-                                {/* Delivery location */}
-                                {mission?.deliveryLatitude != null && mission?.deliveryLongitude != null && (
-                                    <Marker
-                                        position={[mission.deliveryLatitude, mission.deliveryLongitude]}
-                                        icon={deliveryIcon}
-                                    >
-                                        <Popup>
-                                            <strong>🏠 Điểm giao hàng</strong>
-                                        </Popup>
-                                    </Marker>
-                                )}
-
-                                {/* Base location (if available) */}
-                                {tracking?.baseLatitude != null && tracking?.baseLongitude != null && (
-                                    <Marker
-                                        position={[tracking.baseLatitude, tracking.baseLongitude]}
-                                        icon={baseIcon}
-                                    >
-                                        <Popup>
-                                            <strong>🏠 Base của drone</strong>
-                                        </Popup>
-                                    </Marker>
-                                )}
-
-                                {/* Route line: Base -> Pickup -> Delivery -> Base */}
-                                {mission && tracking && (
-                                    <>
-                                        {/* Base to Pickup (if drone hasn't reached pickup yet) */}
-                                        {tracking.status === "ASSIGNED" && mission.pickupLatitude != null && tracking.baseLatitude != null && (
-                                            <Polyline
-                                                positions={[
-                                                    [tracking.baseLatitude, tracking.baseLongitude],
-                                                    [mission.pickupLatitude, mission.pickupLongitude]
-                                                ]}
-                                                color="blue"
-                                                dashArray="5, 5"
-                                            />
-                                        )}
-                                        
-                                        {/* Pickup to Delivery (if drone is delivering) */}
-                                        {tracking.status === "IN_PROGRESS" && mission.pickupLatitude != null && mission.deliveryLatitude != null && (
-                                            <Polyline
-                                                positions={[
-                                                    [mission.pickupLatitude, mission.pickupLongitude],
-                                                    [mission.deliveryLatitude, mission.deliveryLongitude]
-                                                ]}
-                                                color="green"
-                                                dashArray="5, 5"
-                                            />
-                                        )}
-
-                                        {/* Current position to target */}
-                                        {tracking.currentLatitude != null && (
-                                            <>
-                                                {tracking.status === "ASSIGNED" && mission.pickupLatitude != null && (
-                                                    <Polyline
-                                                        positions={[
-                                                            [tracking.currentLatitude, tracking.currentLongitude],
-                                                            [mission.pickupLatitude, mission.pickupLongitude]
-                                                        ]}
-                                                        color="red"
-                                                        weight={3}
-                                                    />
-                                                )}
-                                                {tracking.status === "IN_PROGRESS" && mission.deliveryLatitude != null && (
-                                                    <Polyline
-                                                        positions={[
-                                                            [tracking.currentLatitude, tracking.currentLongitude],
-                                                            [mission.deliveryLatitude, mission.deliveryLongitude]
-                                                        ]}
-                                                        color="orange"
-                                                        weight={3}
-                                                    />
-                                                )}
-                                                {tracking.status === "COMPLETED" && tracking.baseLatitude != null && (
-                                                    <Polyline
-                                                        positions={[
-                                                            [tracking.currentLatitude, tracking.currentLongitude],
-                                                            [tracking.baseLatitude, tracking.baseLongitude]
-                                                        ]}
-                                                        color="grey"
-                                                        dashArray="5, 5"
-                                                    />
-                                                )}
-                                            </>
-                                        )}
-                                    </>
-                                )}
-                            </MapContainer>
-                        </div>
-                    )}
-
-                    <div className="tracking-actions">
-                        <button
-                            className="btn primary"
-                            onClick={fetchTracking}
-                            disabled={trackingLoading}
-                        >
-                            {trackingLoading ? "Đang cập nhật..." : "Làm mới"}
-                        </button>
-                        <label className="tracking-auto">
-                            <input
-                                type="checkbox"
-                                checked={autoRefresh}
-                                onChange={(e) => setAutoRefresh(e.target.checked)}
-                            />
-                            Tự động cập nhật mỗi 10s
-                        </label>
-                    </div>
-                    <p className="tracking-note">
-                        Việc gán drone hiện được thực hiện trong bảng đơn hàng của Dashboard nhà hàng.
-                    </p>
+                    <OrderTrackingMap
+                        orderId={id}
+                        deliveryAddress={order.fullAddress}
+                        showHeader={false}
+                        onMissionChange={handleMissionUpdate}
+                        onTrackingChange={handleTrackingUpdate}
+                        onTrackingError={handleTrackingError}
+                    />
                 </div>
             </div>
         </div>

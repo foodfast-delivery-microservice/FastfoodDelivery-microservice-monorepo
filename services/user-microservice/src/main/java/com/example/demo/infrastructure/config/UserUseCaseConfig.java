@@ -4,6 +4,7 @@ import com.example.demo.application.usecase.*;
 import com.example.demo.domain.repository.RestaurantRepository;
 import com.example.demo.domain.repository.UserRepository;
 import com.example.demo.infrastructure.messaging.EventPublisher;
+import com.example.demo.infrastructure.service.GeocodingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -31,8 +32,8 @@ public class UserUseCaseConfig {
     }
 
     @Bean
-    public CreateUserUseCase createUserUseCase(UserRepository userRepository, RestaurantRepository restaurantRepository, PasswordEncoder passwordEncoder) {
-        return new CreateUserUseCase(userRepository, restaurantRepository, passwordEncoder);
+    public CreateUserUseCase createUserUseCase(UserRepository userRepository, RestaurantRepository restaurantRepository, PasswordEncoder passwordEncoder, GeocodingService geocodingService) {
+        return new CreateUserUseCase(userRepository, restaurantRepository, passwordEncoder, geocodingService);
     }
 
     @Bean
