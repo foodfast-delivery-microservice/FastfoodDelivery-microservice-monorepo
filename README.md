@@ -368,6 +368,9 @@ cd services/registry-service && mvn clean package
 ## 📖 Documentation
 
 - **[PRD.md](docs/PRD.md)**: Comprehensive Product Requirements Document with use cases, sequence diagrams, and API documentation
+- **[HUONG_DAN_DEPLOY.md](docs/HUONG_DAN_DEPLOY.md)**: Hướng dẫn deploy chi tiết cho 3 môi trường (Development, Staging, Production)
+- **[DEPLOYMENT.md](docs/DEPLOYMENT.md)**: Deployment guide (English)
+- **[DEPLOYMENT_QUICK_REFERENCE.md](DEPLOYMENT_QUICK_REFERENCE.md)**: Quick reference for production deployment
 - **[product-service-merchant.md](docs/product-service-merchant.md)**: Product Service merchant-specific documentation
 
 ## 🔐 Security
