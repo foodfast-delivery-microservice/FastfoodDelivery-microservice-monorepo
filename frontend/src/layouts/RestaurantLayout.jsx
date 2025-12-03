@@ -48,14 +48,6 @@ export default function RestaurantLayout() {
             🍔 Sản phẩm
           </Link>
 
-          <Link
-            to="/restaurantadmin/drones"
-            className={`restaurant-link ${location.pathname.includes("/drones") ? "active" : ""
-              }`}
-          >
-            🚁 Quản lý Drones
-          </Link>
-
           <button className="logout-btn" onClick={handleLogout}>
             🔒 Đăng xuất
           </button>

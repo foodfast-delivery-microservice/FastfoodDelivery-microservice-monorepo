@@ -151,18 +151,28 @@ public class SimulateDroneMovementUseCase {
      * Determine the target coordinates based on mission status
      */
     private GpsCoordinate determineTarget(DroneMission mission, Drone drone) {
-        // 1. Ưu tiên cao nhất: Đang quay về -> Mục tiêu là Base
-        // (Bất kể Mission status là gì, nếu Drone state là RETURNING thì phải về)
-        if (drone.getState() == State.RETURNING) {
+        Status missionStatus = mission.getStatus();
+        
+        // 1. Nếu mission status là ASSIGNED (mission mới), đi đến pickup
+        // (Kể cả khi drone đang RETURNING, nếu có mission mới thì đi pickup)
+        if (missionStatus == Status.ASSIGNED) {
+            return new GpsCoordinate(mission.getPickupLatitude(), mission.getPickupLongitude());
+        }
+        
+        // 2. Nếu drone đang RETURNING và không có mission mới, về base
+        // (Chỉ khi mission đã COMPLETED hoặc không có mission mới)
+        if (drone.getState() == State.RETURNING && missionStatus != Status.ASSIGNED) {
             return new GpsCoordinate(drone.getBaseLatitude(), drone.getBaseLongitude());
         }
 
-        // 2. Xử lý dựa trên Mission Status và Drone State
-        return switch (mission.getStatus()) {
-
-            // Trường hợp mới nhận nhiệm vụ: Chắc chắn phải đi lấy hàng
-            case ASSIGNED -> new GpsCoordinate(mission.getPickupLatitude(), mission.getPickupLongitude());
-
+        // 3. Xử lý dựa trên Mission Status và Drone State
+        // Switch expression phải cover tất cả các giá trị của enum Status
+        return switch (missionStatus) {
+            case ASSIGNED -> {
+                // ASSIGNED đã được xử lý ở trên, nhưng cần case này để switch expression complete
+                yield new GpsCoordinate(mission.getPickupLatitude(), mission.getPickupLongitude());
+            }
+            
             case IN_PROGRESS -> {
                 // Logic quan trọng: Phân định rõ đang đi Lấy hay đi Giao
                 if (drone.getState() == State.DELIVERING) {
@@ -176,7 +186,8 @@ public class SimulateDroneMovementUseCase {
             }
 
             // Các trạng thái kết thúc -> Không cần di chuyển (hoặc đã xử lý ở RETURNING trên cùng)
-            case COMPLETED, CANCELLED -> null;
+            case COMPLETED -> null;
+            case CANCELLED -> null;
         };
     }
 
@@ -249,15 +260,20 @@ public class SimulateDroneMovementUseCase {
             // Clear accumulated battery consumption when mission completes
             accumulatedBatteryConsumption.remove(drone.getId());
             
-            // Drone back to idle or charging
-            if (drone.getBatteryLevel() < 50) {
+            // Drone về base: quyết định IDLE hay CHARGING dựa trên pin
+            // Logic: Pin <= 20% → CHARGING, Pin > 20% → IDLE
+            // (Nhất quán với logic tự động sạc trong DroneSimulationBattery)
+            int batteryLevel = drone.getBatteryLevel();
+            if (batteryLevel <= 20) {
+                // Pin thấp → sạc ngay
                 drone.setState(State.CHARGING);
-                log.info("Drone {} started CHARGING (Battery: {}%)",
-                        drone.getSerialNumber(), drone.getBatteryLevel());
+                log.info("🔌 Drone {} returned to base with low battery ({}%). Started CHARGING.",
+                        drone.getSerialNumber(), batteryLevel);
             } else {
+                // Pin đủ → IDLE, sẵn sàng nhận mission mới
                 drone.setState(State.IDLE);
-                log.info("Drone {} is now IDLE (Battery: {}%)",
-                        drone.getSerialNumber(), drone.getBatteryLevel());
+                log.info("✅ Drone {} returned to base. Battery: {}%. Now IDLE and ready for new missions.",
+                        drone.getSerialNumber(), batteryLevel);
             }
             droneRepository.save(drone);
         }
@@ -266,9 +282,10 @@ public class SimulateDroneMovementUseCase {
     /**
      * Handle battery depletion - drone hết pin giữa chừng
      * Khi drone hết pin, nó sẽ:
-     * 1. Dừng lại tại vị trí hiện tại
-     * 2. Chuyển state sang MAINTENANCE
-     * 3. Mission có thể bị     CANCELLED hoặc cần rescue
+     * 1. Kiểm tra xem có đang ở base không
+     * 2. Nếu đang RETURNING và đã ở base: Chuyển sang CHARGING (đã hoàn thành delivery)
+     * 3. Nếu không ở base: Chuyển state sang MAINTENANCE (cần sửa chữa/nạp pin)
+     * 4. Mission có thể bị CANCELLED hoặc cần rescue
      */
     private void handleBatteryDepleted(DroneMission mission, Drone drone) {
         // Save current state before changing it
@@ -282,6 +299,41 @@ public class SimulateDroneMovementUseCase {
         // Set battery to 0 to prevent negative values
         drone.setBatteryLevel(0);
 
+        // Check if drone is at or near base location
+        GpsCoordinate currentPos = new GpsCoordinate(
+                drone.getCurrentLatitude(),
+                drone.getCurrentLongitude());
+        GpsCoordinate basePos = new GpsCoordinate(
+                drone.getBaseLatitude(),
+                drone.getBaseLongitude());
+        double distanceToBase = HaversineDistanceCalculator.calculate(
+                currentPos.getLatitude(), currentPos.getLongitude(),
+                basePos.getLatitude(), basePos.getLongitude());
+
+        // If drone is RETURNING and already at base (or very close), it should charge instead of maintenance
+        if (previousState == State.RETURNING && distanceToBase <= ARRIVAL_THRESHOLD_KM) {
+            // Drone ran out of battery but is already at base - delivery was successful
+            log.warn("⚠️ Drone {} ran out of battery but is at base. Starting CHARGING instead of MAINTENANCE.",
+                    drone.getSerialNumber());
+            
+            // Mission completed successfully
+            mission.setStatus(Status.COMPLETED);
+            mission.setCompletedAt(LocalDateTime.now());
+            missionRepository.save(mission);
+            
+            // Change drone state to CHARGING (not MAINTENANCE) since it's at base
+            drone.setState(State.CHARGING);
+            droneRepository.save(drone);
+            
+            // Clear accumulated battery consumption
+            accumulatedBatteryConsumption.remove(drone.getId());
+            
+            log.info("✅ Drone {} is now CHARGING at base. Mission {} completed successfully.",
+                    drone.getSerialNumber(), mission.getId());
+            return;
+        }
+
+        // Otherwise, drone is not at base - needs maintenance/rescue
         // Change drone state to MAINTENANCE (cần sửa chữa/nạp pin)
         drone.setState(State.MAINTENANCE);
         droneRepository.save(drone);
@@ -291,7 +343,7 @@ public class SimulateDroneMovementUseCase {
         // - If going to pickup/delivery: Mission should be cancelled
         if (previousState == State.RETURNING) {
             // Drone was returning to base after delivery - delivery was successful
-            log.warn("⚠️ Drone ran out of battery while returning to base. Delivery was successful.");
+            log.warn("⚠️ Drone ran out of battery while returning to base (not at base yet). Delivery was successful.");
             mission.setStatus(Status.COMPLETED);
             mission.setCompletedAt(LocalDateTime.now());
         } else {

@@ -1,7 +1,9 @@
 package com.example.droneservice.infrastructure.scheduler;
 
 import com.example.droneservice.application.usecase.SimulateDroneMovementUseCase;
+import com.example.droneservice.domain.model.Drone;
 import com.example.droneservice.domain.model.DroneMission;
+import com.example.droneservice.domain.model.State;
 import com.example.droneservice.domain.model.Status;
 import com.example.droneservice.domain.repository.DroneMissionRepository;
 import com.example.droneservice.infrastructure.config.RabbitMQConfig;
@@ -148,16 +150,20 @@ public class DroneSimulationScheduler {
      * Publish drone status update event for real-time tracking
      */
     private void publishStatusUpdate(DroneMission mission) {
+        Drone drone = mission.getDrone();
         DroneStatusUpdateEvent event = DroneStatusUpdateEvent.builder()
                 .missionId(mission.getId())
                 .orderId(mission.getOrderId())
-                .droneId(mission.getDrone().getId())
-                .droneSerialNumber(mission.getDrone().getSerialNumber())
-                .currentLatitude(mission.getDrone().getCurrentLatitude())
-                .currentLongitude(mission.getDrone().getCurrentLongitude())
-                .batteryLevel(mission.getDrone().getBatteryLevel())
+                .droneId(drone.getId())
+                .droneSerialNumber(drone.getSerialNumber())
+                .currentLatitude(drone.getCurrentLatitude())
+                .currentLongitude(drone.getCurrentLongitude())
+                .batteryLevel(drone.getBatteryLevel())
                 .status(mission.getStatus())
-                .estimatedArrivalMinutes(calculateETA(mission))
+                .estimatedArrivalMinutes(calculateETA(mission)) // Keep for backward compatibility
+                .estimatedPickupMinutes(calculatePickupETA(mission, drone))
+                .estimatedDeliveryMinutes(calculateDeliveryETA(mission, drone))
+                .estimatedReturnToBaseMinutes(calculateReturnToBaseETA(mission, drone))
                 .build();
 
         rabbitTemplate.convertAndSend(
@@ -223,7 +229,7 @@ public class DroneSimulationScheduler {
     }
 
     /**
-     * Calculate estimated time of arrival in minutes
+     * Calculate estimated time of arrival in minutes (total mission completion)
      */
     private Integer calculateETA(DroneMission mission) {
         if (mission.getStartedAt() == null || mission.getEstimatedDurationMinutes() == null) {
@@ -238,5 +244,110 @@ public class DroneSimulationScheduler {
                 estimatedCompletion).toMinutes();
 
         return Math.max(0, (int) minutesRemaining);
+    }
+
+    /**
+     * Calculate ETA to pickup location (for merchant)
+     */
+    private Integer calculatePickupETA(DroneMission mission, Drone drone) {
+        if (drone.getCurrentLatitude() == null || drone.getCurrentLongitude() == null
+                || mission.getPickupLatitude() == null || mission.getPickupLongitude() == null) {
+            return null;
+        }
+
+        State droneState = drone.getState();
+        
+        // If drone is already at pickup or past pickup, return null
+        if (droneState == State.DELIVERING || droneState == State.RETURNING) {
+            return null; // Already passed pickup
+        }
+
+        // Calculate distance to pickup
+        double distanceKm = HaversineDistanceCalculator.calculate(
+                drone.getCurrentLatitude(), drone.getCurrentLongitude(),
+                mission.getPickupLatitude(), mission.getPickupLongitude());
+
+        // Drone speed: 40 km/h = 0.667 km/min
+        double speedKmPerMin = 40.0 / 60.0;
+        int minutes = (int) Math.ceil(distanceKm / speedKmPerMin);
+
+        return Math.max(0, minutes);
+    }
+
+    /**
+     * Calculate ETA to delivery location (for user)
+     */
+    private Integer calculateDeliveryETA(DroneMission mission, Drone drone) {
+        if (drone.getCurrentLatitude() == null || drone.getCurrentLongitude() == null
+                || mission.getDeliveryLatitude() == null || mission.getDeliveryLongitude() == null) {
+            return null;
+        }
+
+        State droneState = drone.getState();
+        
+        // If drone is returning to base, delivery is already done
+        if (droneState == State.RETURNING) {
+            return null; // Already delivered
+        }
+
+        // Calculate distance to delivery
+        double distanceKm = HaversineDistanceCalculator.calculate(
+                drone.getCurrentLatitude(), drone.getCurrentLongitude(),
+                mission.getDeliveryLatitude(), mission.getDeliveryLongitude());
+
+        // Drone speed: 40 km/h = 0.667 km/min
+        double speedKmPerMin = 40.0 / 60.0;
+        int minutes = (int) Math.ceil(distanceKm / speedKmPerMin);
+
+        return Math.max(0, minutes);
+    }
+
+    /**
+     * Calculate ETA to return to base (for admin)
+     */
+    private Integer calculateReturnToBaseETA(DroneMission mission, Drone drone) {
+        if (drone.getCurrentLatitude() == null || drone.getCurrentLongitude() == null
+                || drone.getBaseLatitude() == null || drone.getBaseLongitude() == null) {
+            return null;
+        }
+
+        State droneState = drone.getState();
+        
+        // If drone is not returning yet, calculate total time from current position
+        double distanceKm = 0.0;
+
+        if (droneState == State.RETURNING) {
+            // Already delivered, just calculate distance to base
+            distanceKm = HaversineDistanceCalculator.calculate(
+                    drone.getCurrentLatitude(), drone.getCurrentLongitude(),
+                    drone.getBaseLatitude(), drone.getBaseLongitude());
+        } else if (droneState == State.DELIVERING) {
+            // Still delivering, calculate: current → delivery → base
+            double toDelivery = HaversineDistanceCalculator.calculate(
+                    drone.getCurrentLatitude(), drone.getCurrentLongitude(),
+                    mission.getDeliveryLatitude(), mission.getDeliveryLongitude());
+            double deliveryToBase = HaversineDistanceCalculator.calculate(
+                    mission.getDeliveryLatitude(), mission.getDeliveryLongitude(),
+                    drone.getBaseLatitude(), drone.getBaseLongitude());
+            distanceKm = toDelivery + deliveryToBase;
+        } else {
+            // Going to pickup, calculate: current → pickup → delivery → base
+            double toPickup = HaversineDistanceCalculator.calculate(
+                    drone.getCurrentLatitude(), drone.getCurrentLongitude(),
+                    mission.getPickupLatitude(), mission.getPickupLongitude());
+            double pickupToDelivery = HaversineDistanceCalculator.calculate(
+                    mission.getPickupLatitude(), mission.getPickupLongitude(),
+                    mission.getDeliveryLatitude(), mission.getDeliveryLongitude());
+            double deliveryToBase = HaversineDistanceCalculator.calculate(
+                    mission.getDeliveryLatitude(), mission.getDeliveryLongitude(),
+                    drone.getBaseLatitude(), drone.getBaseLongitude());
+            distanceKm = toPickup + pickupToDelivery + deliveryToBase;
+        }
+
+        // Drone speed: 40 km/h = 0.667 km/min
+        double speedKmPerMin = 40.0 / 60.0;
+        int minutes = (int) Math.ceil(distanceKm / speedKmPerMin);
+
+        return Math.max(0, minutes);
     }
 }

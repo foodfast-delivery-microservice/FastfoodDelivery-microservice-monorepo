@@ -127,6 +127,38 @@ export default function Checkout({ cart, setCart }) {
     setGeocodingStatus("searching");
     const trimmedAddress = address.trim();
     
+    // ✅ ƯU TIÊN: Kiểm tra xem có phải là tọa độ không (format: "lat lng" hoặc "lat, lng")
+    const coordPattern = /(-?\d+\.?\d*)\s+(-?\d+\.?\d*)/;
+    const coordMatch = trimmedAddress.match(coordPattern);
+    
+    if (coordMatch) {
+      const parsedLat = parseFloat(coordMatch[1]);
+      const parsedLng = parseFloat(coordMatch[2]);
+      
+      if (isFinite(parsedLat) && isFinite(parsedLng)) {
+        // Validate lat/lng ranges
+        if (parsedLat >= -90 && parsedLat <= 90 && parsedLng >= -180 && parsedLng <= 180) {
+          console.log(`✅ [getCoordinatesForAddress] Phát hiện tọa độ từ input: ${parsedLat}, ${parsedLng}`);
+          setGeocodingStatus("found");
+          
+          // Return với format giống geocoding result
+          const result = {
+            lat: parsedLat,
+            lng: parsedLng,
+            ward: "Not Specified",
+            district: "Not Specified",
+            city: "Ho Chi Minh",
+            isDetailed: true
+          };
+          
+          setGeocodingResult(result);
+          return result;
+        } else {
+          console.warn(`⚠️ [getCoordinatesForAddress] Tọa độ ngoài phạm vi hợp lệ: ${parsedLat}, ${parsedLng}`);
+        }
+      }
+    }
+    
     // Phát hiện loại địa chỉ:
     // 1. City only (như "TP.HCM") - KHÔNG extract ward/district
     // 2. Detailed address (có số nhà/ward/district) - Extract ward/district

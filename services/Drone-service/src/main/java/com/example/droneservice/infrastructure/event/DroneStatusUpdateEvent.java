@@ -32,5 +32,9 @@ public class DroneStatusUpdateEvent {
 
     private Status status;
 
-    private Integer estimatedArrivalMinutes;
+    private Integer estimatedArrivalMinutes; // Deprecated: use specific ETA fields below
+    // Specific ETA fields for different roles
+    private Integer estimatedPickupMinutes; // Time to reach pickup location (for merchant)
+    private Integer estimatedDeliveryMinutes; // Time to reach delivery location (for user)
+    private Integer estimatedReturnToBaseMinutes; // Time to return to base (for admin)
 }

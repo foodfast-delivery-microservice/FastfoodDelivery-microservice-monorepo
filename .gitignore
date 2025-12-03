@@ -18,3 +18,8 @@ build/
 # Bỏ qua thư mục uploads (files được upload từ users)
 uploads/
 **/uploads/
+
+# Bỏ qua file environment variables
+.env
+.env.local
+.env.*.local

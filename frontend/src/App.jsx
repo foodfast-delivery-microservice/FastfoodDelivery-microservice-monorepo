@@ -38,7 +38,6 @@ import AdminDroneManager from "./admin/pages/AdminDroneManager";
 import RestaurantDashboard from "./components/RestaurantDashboard";
 import RestaurantOrderDetail from "./components/RestaurantOrderDetail";
 import RestaurantProducts from "./components/RestaurantProducts";
-import DroneList from "./components/DroneList";
 
 /* ✅ Protected Routes */
 const SESSION_KEY = "app_session";
@@ -257,7 +256,6 @@ function App() {
             <Route index element={<RestaurantDashboard />} />
             <Route path="products" element={<RestaurantProducts />} />
             <Route path="order/:id" element={<RestaurantOrderDetail />} />
-            <Route path="drones" element={<DroneList />} />
           </Route>
 
           {/* MERCHANT DASHBOARD (alias, dùng chung layout với restaurantadmin) */}
@@ -272,7 +270,6 @@ function App() {
             <Route index element={<RestaurantDashboard />} />
             <Route path="products" element={<RestaurantProducts />} />
             <Route path="order/:id" element={<RestaurantOrderDetail />} />
-            <Route path="drones" element={<DroneList />} />
           </Route>
         </Routes>
       </BrowserRouter>

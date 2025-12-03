@@ -693,7 +693,7 @@ export default function WaitingForConfirmation() {
                     <div style={{ marginTop: "10px", fontSize: "14px", color: "#666" }}>
                       <p>🚁 Drone: {tracking.droneSerialNumber || tracking.droneId || "—"}</p>
                       <p>🔋 Pin: {tracking.batteryLevel ?? "—"}%</p>
-                      <p>⏱️ ETA: {tracking.estimatedArrivalMinutes ?? "—"} phút</p>
+                      <p>⏱️ Dự kiến giao hàng: {tracking.estimatedDeliveryMinutes != null ? `${tracking.estimatedDeliveryMinutes} phút` : (tracking.estimatedArrivalMinutes != null ? `${tracking.estimatedArrivalMinutes} phút` : "—")}</p>
                     </div>
                   )}
                 </div>

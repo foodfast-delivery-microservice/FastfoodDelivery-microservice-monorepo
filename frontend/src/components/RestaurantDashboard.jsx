@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState, useCallback } from "react";
 import "./RestaurantDashboard.css";
 import http from "../services/http";
 import { useAuth } from "../context/AuthContext";
-import { message } from "antd";
+import { message, notification, Modal } from "antd";
 import { fetchRestaurantByMerchantId } from "../services/restaurants";
 import { getDrones, assignDroneToOrder } from "../services/droneApi";
 import {
@@ -30,32 +30,58 @@ const toNumber = (value) => {
 
 const geocodeAddress = async (address) => {
   if (!address) return null;
-  try {
-    const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(
-      address
-    )}`;
-    const response = await fetch(url, {
-      headers: {
-        "Accept-Language": "vi",
-        "User-Agent": "FastFoodDeliveryDashboard/1.0",
-      },
-    });
-    if (!response.ok) {
-      console.warn("Geocoding request failed", response.status);
-      return null;
+  
+  // Tạo nhiều biến thể query để tăng khả năng tìm thấy
+  const addressVariations = [
+    `${address}, Ho Chi Minh City, Vietnam`,
+    `${address}, Thành phố Hồ Chí Minh, Vietnam`,
+    `${address}, TP. Hồ Chí Minh, Vietnam`,
+    `${address}, TP.HCM, Vietnam`,
+    `${address}, Vietnam`,
+    address // Thử query gốc cuối cùng
+  ];
+  
+  for (let i = 0; i < addressVariations.length; i++) {
+    const query = addressVariations[i];
+    try {
+      // Nominatim yêu cầu delay ít nhất 1 giây giữa các request
+      if (i > 0) {
+        await new Promise(resolve => setTimeout(resolve, 1100));
+      }
+      
+      const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(query)}&countrycodes=vn`;
+      const response = await fetch(url, {
+        headers: {
+          "Accept-Language": "vi",
+          "User-Agent": "FastFoodDeliveryDashboard/1.0",
+        },
+      });
+      
+      if (!response.ok) {
+        if (response.status === 429) {
+          // Rate limit, đợi thêm
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        }
+        continue;
+      }
+      
+      const payload = await response.json();
+      if (Array.isArray(payload) && payload.length > 0) {
+        const lat = toNumber(payload[0]?.lat);
+        const lng = toNumber(payload[0]?.lon);
+        if (lat !== null && lng !== null) {
+          console.log(`✅ [geocodeAddress] Success with query ${i + 1}/${addressVariations.length}: "${query}"`);
+          return { lat, lng };
+        }
+      }
+    } catch (err) {
+      console.warn(`⚠️ [geocodeAddress] Error with query "${query}":`, err.message);
+      // Continue to next variation
     }
-    const payload = await response.json();
-    if (!Array.isArray(payload) || payload.length === 0) {
-      return null;
-    }
-    const lat = toNumber(payload[0]?.lat);
-    const lng = toNumber(payload[0]?.lon);
-    if (lat === null || lng === null) return null;
-    return { lat, lng };
-  } catch (err) {
-    console.error("Geocoding error:", err);
-    return null;
   }
+  
+  console.warn(`⚠️ [geocodeAddress] All geocoding attempts failed for: "${address}"`);
+  return null;
 };
 
 export default function RestaurantDashboard() {
@@ -86,6 +112,10 @@ export default function RestaurantDashboard() {
   // Trạng thái đang chọn / đang cập nhật cho từng đơn
   const [statusDraft, setStatusDraft] = useState({});
   const [updatingStatus, setUpdatingStatus] = useState({});
+  
+  // State cho error modal
+  const [errorModalVisible, setErrorModalVisible] = useState(false);
+  const [errorModalContent, setErrorModalContent] = useState(null);
 
   const resolveRestaurantCoordinates = useCallback(async (orderDetail) => {
     console.log("🏪 [resolveRestaurantCoordinates] orderDetail:", orderDetail);
@@ -208,6 +238,28 @@ export default function RestaurantDashboard() {
     // Fallback: try addressLine1 if fullAddress is not good
     if (!addressToGeocode || addressToGeocode.includes('Not Specified')) {
       addressToGeocode = delivery.addressLine1 || orderDetail?.note;
+    }
+    
+    // Try to parse coordinates from string (format: "lat lng" or "lat, lng")
+    if (addressToGeocode) {
+      // Pattern: two numbers separated by space or comma
+      const coordPattern = /(-?\d+\.?\d*)\s+(-?\d+\.?\d*)/;
+      const match = addressToGeocode.match(coordPattern);
+      
+      if (match) {
+        const parsedLat = toNumber(match[1]);
+        const parsedLng = toNumber(match[2]);
+        
+        if (parsedLat !== null && parsedLng !== null) {
+          // Validate lat/lng ranges
+          if (parsedLat >= -90 && parsedLat <= 90 && parsedLng >= -180 && parsedLng <= 180) {
+            console.log("✅ [resolveDeliveryCoordinates] Parsed coordinates from string:", parsedLat, parsedLng);
+            return { lat: parsedLat, lng: parsedLng };
+          } else {
+            console.warn("⚠️ [resolveDeliveryCoordinates] Parsed coordinates out of range:", parsedLat, parsedLng);
+          }
+        }
+      }
     }
     
     console.log("📍 [resolveDeliveryCoordinates] Attempting geocode for:", addressToGeocode);
@@ -386,26 +438,50 @@ export default function RestaurantDashboard() {
 
         console.log("📍 [Drone] Delivery coordinates:", deliveryCoords);
 
-        // Sử dụng tọa độ mặc định nếu không tìm được
-        const defaultCoords = { lat: 10.776389, lng: 106.700806 }; // Trung tâm TP.HCM
-        const finalPickupCoords = pickupCoords || defaultCoords;
-        const finalDeliveryCoords = deliveryCoords || defaultCoords;
+        // Validation: Không cho phép assign nếu không có tọa độ chính xác
+        if (!pickupCoords) {
+          message.error("❌ Không thể xác định tọa độ nhà hàng. Vui lòng kiểm tra thông tin nhà hàng.");
+          return;
+        }
+        
+        if (!deliveryCoords) {
+          message.error("❌ Không thể xác định tọa độ giao hàng. Vui lòng kiểm tra địa chỉ giao hàng hoặc yêu cầu khách hàng nhập tọa độ (lat lng).");
+          return;
+        }
 
-        if (!pickupCoords || !deliveryCoords) {
-          const missing = [];
-          if (!pickupCoords) missing.push("nhà hàng");
-          if (!deliveryCoords) missing.push("giao hàng");
-          message.warning(`Đang sử dụng tọa độ mặc định cho: ${missing.join(", ")}`);
+        const finalPickupCoords = pickupCoords;
+        const finalDeliveryCoords = deliveryCoords;
+
+        // Validation: Đảm bảo tọa độ là số hợp lệ
+        const pickupLat = Number(finalPickupCoords.lat);
+        const pickupLng = Number(finalPickupCoords.lng);
+        const deliveryLat = Number(finalDeliveryCoords.lat);
+        const deliveryLng = Number(finalDeliveryCoords.lng);
+
+        if (!Number.isFinite(pickupLat) || !Number.isFinite(pickupLng)) {
+          message.error("❌ Tọa độ nhà hàng không hợp lệ. Vui lòng kiểm tra lại.");
+          return;
+        }
+
+        if (!Number.isFinite(deliveryLat) || !Number.isFinite(deliveryLng)) {
+          message.error("❌ Tọa độ giao hàng không hợp lệ. Vui lòng kiểm tra lại.");
+          return;
         }
 
         // Tạo payload với tọa độ nhà hàng làm pickup location
+        // Đảm bảo tất cả giá trị là numbers, không có undefined
         const payload = {
-          orderId,
-          pickupLatitude: finalPickupCoords.lat,
-          pickupLongitude: finalPickupCoords.lng,
-          deliveryLatitude: finalDeliveryCoords.lat,
-          deliveryLongitude: finalDeliveryCoords.lng,
+          orderId: Number(orderId),
+          pickupLatitude: pickupLat,
+          pickupLongitude: pickupLng,
+          deliveryLatitude: deliveryLat,
+          deliveryLongitude: deliveryLng,
         };
+
+        // Chỉ thêm droneId nếu có giá trị (không gửi undefined)
+        if (chosenDroneId) {
+          payload.droneId = Number(chosenDroneId);
+        }
 
         console.log("🚁 [Drone] Gọi API assignDroneToOrder với payload:", payload);
         console.log("🏪 [Drone] Pickup (nhà hàng):", finalPickupCoords);
@@ -432,17 +508,77 @@ export default function RestaurantDashboard() {
             stack: err?.stack
           });
         
-          let errorMessage =
-            err?.response?.data?.message ||
-            err?.response?.data?.error ||
-            err?.message ||
-            "Không thể gán drone. Vui lòng kiểm tra console để biết chi tiết.";
+          // Lấy error message từ response
+          // Backend trả về ApiResponse với structure: { status, message, data, errorCode, timestamp }
+          const errorData = err?.response?.data;
+          console.log("🔍 [Drone] Error data structure:", errorData);
+          
+          // Thử nhiều cách để lấy message
+          let errorMessage = 
+            errorData?.message || 
+            errorData?.data?.message ||
+            errorData?.error || 
+            err?.message || 
+            "Không thể gán drone. Vui lòng thử lại.";
+          
+          console.log("🔍 [Drone] Parsed error message:", errorMessage);
 
+          // Xử lý các trường hợp lỗi cụ thể
           if (err?.response?.status === 403) {
             errorMessage = "Bạn không có quyền thao tác trên đơn hàng này.";
+            message.error(`❌ ${errorMessage}`, 5);
+          } else if (errorMessage.includes("không đủ pin") || errorMessage.includes("insufficient battery") || errorMessage.includes("không đủ pin để hoàn thành")) {
+            console.log("🔋 [Drone] Detected battery error, parsing details...");
+            
+            // Parse thông tin từ error message về pin
+            const batteryMatch = errorMessage.match(/Pin hiện tại: (\d+)%/);
+            const requiredMatch = errorMessage.match(/Pin cần thiết: ([\d.]+)%/);
+            const distanceMatch = errorMessage.match(/Quãng đường: ([\d.]+) km/);
+            const droneNameMatch = errorMessage.match(/Drone ([^\s(]+)/);
+            
+            console.log("🔍 [Drone] Parsed values:", {
+              batteryMatch,
+              requiredMatch,
+              distanceMatch,
+              droneNameMatch
+            });
+            
+            const currentBattery = batteryMatch ? batteryMatch[1] : null;
+            const requiredBattery = requiredMatch ? parseFloat(requiredMatch[1]).toFixed(1) : null;
+            const distance = distanceMatch ? parseFloat(distanceMatch[1]).toFixed(2) : null;
+            const droneName = droneNameMatch ? droneNameMatch[1] : "drone đã chọn";
+            
+            console.log("🔍 [Drone] Extracted info:", {
+              currentBattery,
+              requiredBattery,
+              distance,
+              droneName
+            });
+            
+            // Tạo nội dung chi tiết cho popup
+            const modalContent = {
+              droneName,
+              currentBattery,
+              requiredBattery,
+              distance
+            };
+            
+            // Set state để hiển thị modal
+            setErrorModalContent(modalContent);
+            setErrorModalVisible(true);
+            
+            console.log("✅ [Drone] Modal state set, should display now");
+            
+            // Cũng hiển thị message.error để đảm bảo user thấy thông báo
+            message.error(`🔋 Drone ${droneName} không đủ pin (${currentBattery}% / ${requiredBattery}% cần)`, 6);
+          } else if (errorMessage.includes("không tồn tại") || errorMessage.includes("not found")) {
+            message.error(`❌ ${errorMessage}`, 5);
+          } else if (errorMessage.includes("trạng thái") || errorMessage.includes("state")) {
+            message.warning(`⚠️ ${errorMessage}`, 6);
+          } else {
+            // Error message thông thường
+            message.error(`❌ ${errorMessage}`, 5);
           }
-        
-          message.error(`❌ ${errorMessage}`);
         } finally {
         setAssigningDrone((prev) => ({ ...prev, [orderId]: false }));
         }
@@ -690,6 +826,9 @@ export default function RestaurantDashboard() {
               ? findDroneById(order.droneId)
               : null;
             const normalizedStatus = (oStatus || "").toLowerCase();
+            const isProcessing =
+              normalizedStatus.includes("processing") ||
+              normalizedStatus.includes("đang xử lý");
             const isDelivering =
               normalizedStatus.includes("đang giao") ||
               normalizedStatus.includes("delivering");
@@ -754,7 +893,7 @@ export default function RestaurantDashboard() {
                     ) : (
                       <span>—</span>
                     )
-                  ) : (
+                  ) : isProcessing ? (
                     <div className="drone-assign">
                       <select
                         value={assignmentValue}
@@ -798,6 +937,8 @@ export default function RestaurantDashboard() {
                         {assigningDrone[order.id] ? "Đang gán..." : "Gán drone"}
                       </button>
                     </div>
+                  ) : (
+                    <span className="text-muted">Chờ thanh toán và xử lý</span>
                   )}
                 </td>
 
@@ -883,6 +1024,68 @@ export default function RestaurantDashboard() {
           </button>
         </div>
       )}
+
+      {/* Error Modal for battery insufficient */}
+      <Modal
+        open={errorModalVisible}
+        title={
+          <span style={{ color: '#ff4d4f', fontSize: '18px', fontWeight: 600 }}>
+            🔋 Drone {errorModalContent?.droneName || 'đã chọn'} không đủ pin
+          </span>
+        }
+        onOk={() => {
+          setErrorModalVisible(false);
+          setErrorModalContent(null);
+        }}
+        onCancel={() => {
+          setErrorModalVisible(false);
+          setErrorModalContent(null);
+        }}
+        okText="Đã hiểu"
+        cancelText="Đóng"
+        width={500}
+      >
+        {errorModalContent && (
+          <div style={{ lineHeight: '1.8', fontSize: '14px' }}>
+            <div style={{ marginBottom: '12px', fontWeight: 500, color: '#ff4d4f' }}>
+              Drone không đủ pin để hoàn thành đơn hàng này
+            </div>
+            {errorModalContent.currentBattery && (
+              <div style={{ marginBottom: '8px' }}>
+                <span style={{ color: '#8c8c8c' }}>Pin hiện tại: </span>
+                <strong style={{ color: '#ff4d4f', fontSize: '16px' }}>
+                  {errorModalContent.currentBattery}%
+                </strong>
+              </div>
+            )}
+            {errorModalContent.requiredBattery && (
+              <div style={{ marginBottom: '8px' }}>
+                <span style={{ color: '#8c8c8c' }}>Pin cần thiết: </span>
+                <strong style={{ color: '#52c41a', fontSize: '16px' }}>
+                  {errorModalContent.requiredBattery}%
+                </strong>
+              </div>
+            )}
+            {errorModalContent.distance && (
+              <div style={{ marginBottom: '12px' }}>
+                <span style={{ color: '#8c8c8c' }}>Quãng đường: </span>
+                <strong style={{ color: '#1890ff', fontSize: '16px' }}>
+                  {errorModalContent.distance} km
+                </strong>
+              </div>
+            )}
+            <div style={{ 
+              marginTop: '16px', 
+              paddingTop: '12px', 
+              borderTop: '1px solid #f0f0f0',
+              color: '#1890ff',
+              fontWeight: 500
+            }}>
+              💡 Vui lòng chọn drone khác có đủ pin để hoàn thành đơn hàng
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

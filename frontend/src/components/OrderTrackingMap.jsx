@@ -161,8 +161,10 @@ export default function OrderTrackingMap({
               {formatCoordinate(tracking.currentLongitude)}
             </li>
             <li>
-              <b>ETA:</b>{" "}
-              {tracking.estimatedArrivalMinutes != null
+              <b>Dự kiến giao hàng:</b>{" "}
+              {tracking.estimatedDeliveryMinutes != null
+                ? `${tracking.estimatedDeliveryMinutes} phút`
+                : tracking.estimatedArrivalMinutes != null
                 ? `${tracking.estimatedArrivalMinutes} phút`
                 : "Đang tính toán"}
             </li>

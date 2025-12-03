@@ -87,6 +87,12 @@
             <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
 
+        <!-- WebClient for calling external services -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webflux</artifactId>
+        </dependency>
+
         <!--   Rabbit mq     -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

@@ -496,7 +496,9 @@ export default function AdminDroneManager() {
                                 {tracking && (
                                   <>
                                     <p>🔋 Pin: {tracking.batteryLevel ?? "—"}%</p>
-                                    {tracking.estimatedArrivalMinutes != null && (
+                                    {tracking.estimatedReturnToBaseMinutes != null ? (
+                                      <p>⏱️ Dự kiến về base: {tracking.estimatedReturnToBaseMinutes} phút</p>
+                                    ) : tracking.estimatedArrivalMinutes != null && (
                                       <p>⏱️ ETA: {tracking.estimatedArrivalMinutes} phút</p>
                                     )}
                                   </>

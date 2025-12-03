@@ -18,6 +18,10 @@ public class AssignDroneRequest {
     @NotNull(message = "Order ID is required")
     private Long orderId;
 
+    // Optional: If provided, will try to assign this specific drone
+    // If not provided or drone is not available, will auto-select available drone
+    private Long droneId;
+
     @NotNull(message = "Pickup latitude is required")
     @Min(value = -90, message = "Latitude must be >= -90")
     @Max(value = 90, message = "Latitude must be <= 90")

@@ -228,10 +228,12 @@ export default function RestaurantOrderDetail() {
                                 {formatCoordinate(tracking.currentLongitude)}
                             </li>
                             <li>
-                                <b>ETA:</b>{" "}
-                                {tracking.estimatedArrivalMinutes != null
+                                <b>Dự kiến đến lấy hàng:</b>{" "}
+                                {tracking.estimatedPickupMinutes != null
+                                    ? `${tracking.estimatedPickupMinutes} phút`
+                                    : tracking.estimatedArrivalMinutes != null
                                     ? `${tracking.estimatedArrivalMinutes} phút`
-                                    : "Đang tính toán"}
+                                    : "Đã lấy hàng hoặc đang tính toán"}
                             </li>
                         </ul>
                     ) : (

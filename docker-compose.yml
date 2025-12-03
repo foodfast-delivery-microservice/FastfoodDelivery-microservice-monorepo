@@ -56,9 +56,11 @@ services:
     ports:
       - "8081:8081"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-db:3306/userservice
-      SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: 1234
+      # Sử dụng Railway DB nếu có biến môi trường RAILWAY_MYSQL_HOST, nếu không thì dùng local MySQL
+      # Để dùng Railway: tạo file .env với RAILWAY_MYSQL_HOST, RAILWAY_MYSQL_PORT, RAILWAY_MYSQL_USER, RAILWAY_MYSQL_PASSWORD
+      SPRING_DATASOURCE_URL: ${RAILWAY_DATASOURCE_URL:-jdbc:mysql://mysql-db:3306/userservice}
+      SPRING_DATASOURCE_USERNAME: ${RAILWAY_MYSQL_USER:-root}
+      SPRING_DATASOURCE_PASSWORD: ${RAILWAY_MYSQL_PASSWORD:-1234}
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://registry-service:8761/eureka/
       SPRING_RABBITMQ_HOST: rabbitmq-broker
       APP_JWT_SECRETKEY: g5rhnoLF2O4S/p5wPKY9ojbK3X2g6ifB6cG9lkaLUg9quMDtO1PSI4J6biyJHZ5uAnyTbuTyaWRpHy+BADU7NQ==
@@ -77,9 +79,10 @@ services:
     ports:
       - "8082:8082"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-db:3306/productmicroservice
-      SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: 1234
+      # Sử dụng Railway DB nếu có biến môi trường RAILWAY_DATASOURCE_URL_PRODUCT, nếu không thì dùng local MySQL
+      SPRING_DATASOURCE_URL: ${RAILWAY_DATASOURCE_URL_PRODUCT:-jdbc:mysql://mysql-db:3306/productmicroservice}
+      SPRING_DATASOURCE_USERNAME: ${RAILWAY_MYSQL_USER:-root}
+      SPRING_DATASOURCE_PASSWORD: ${RAILWAY_MYSQL_PASSWORD:-1234}
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://registry-service:8761/eureka/
       APP_JWT_SECRETKEY: g5rhnoLF2O4S/p5wPKY9ojbK3X2g6ifB6cG9lkaLUg9quMDtO1PSI4J6biyJHZ5uAnyTbuTyaWRpHy+BADU7NQ==
       SPRING_RABBITMQ_HOST: rabbitmq-broker
@@ -98,9 +101,10 @@ services:
     ports:
       - "8083:8083"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-db:3306/orderservice
-      SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: 1234
+      # Sử dụng Railway DB nếu có biến môi trường RAILWAY_DATASOURCE_URL_ORDER, nếu không thì dùng local MySQL
+      SPRING_DATASOURCE_URL: ${RAILWAY_DATASOURCE_URL_ORDER:-jdbc:mysql://mysql-db:3306/orderservice}
+      SPRING_DATASOURCE_USERNAME: ${RAILWAY_MYSQL_USER:-root}
+      SPRING_DATASOURCE_PASSWORD: ${RAILWAY_MYSQL_PASSWORD:-1234}
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://registry-service:8761/eureka/
       SPRING_RABBITMQ_HOST: rabbitmq-broker
     depends_on:
@@ -118,9 +122,10 @@ services:
     ports:
       - "8084:8084"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-db:3306/paymentservice
-      SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: 1234
+      # Sử dụng Railway DB nếu có biến môi trường RAILWAY_DATASOURCE_URL_PAYMENT, nếu không thì dùng local MySQL
+      SPRING_DATASOURCE_URL: ${RAILWAY_DATASOURCE_URL_PAYMENT:-jdbc:mysql://mysql-db:3306/paymentservice}
+      SPRING_DATASOURCE_USERNAME: ${RAILWAY_MYSQL_USER:-root}
+      SPRING_DATASOURCE_PASSWORD: ${RAILWAY_MYSQL_PASSWORD:-1234}
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://registry-service:8761/eureka/
       SPRING_RABBITMQ_HOST: rabbitmq-broker
     depends_on:
@@ -137,9 +142,10 @@ services:
     ports:
       - "8085:8085"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-db:3306/droneservice
-      SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: 1234
+      # Sử dụng Railway DB nếu có biến môi trường RAILWAY_DATASOURCE_URL_DRONE, nếu không thì dùng local MySQL
+      SPRING_DATASOURCE_URL: ${RAILWAY_DATASOURCE_URL_DRONE:-jdbc:mysql://mysql-db:3306/droneservice}
+      SPRING_DATASOURCE_USERNAME: ${RAILWAY_MYSQL_USER:-root}
+      SPRING_DATASOURCE_PASSWORD: ${RAILWAY_MYSQL_PASSWORD:-1234}
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://registry-service:8761/eureka/
       SPRING_RABBITMQ_HOST: rabbitmq-broker
     depends_on:

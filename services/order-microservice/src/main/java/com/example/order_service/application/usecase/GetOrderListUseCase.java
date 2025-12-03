@@ -4,7 +4,9 @@ import com.example.order_service.application.dto.OrderItemResponse;
 import com.example.order_service.application.dto.OrderListRequest;
 import com.example.order_service.application.dto.OrderListResponse;
 import com.example.order_service.application.dto.PageResponse;
+import com.example.order_service.domain.model.DeliveryAddress;
 import com.example.order_service.domain.model.Order;
+import com.example.order_service.domain.model.OrderItem;
 import com.example.order_service.domain.model.OrderStatus;
 import com.example.order_service.domain.repository.OrderRepository;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +19,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -114,7 +117,11 @@ public class GetOrderListUseCase {
 
     private OrderListResponse mapToOrderListResponse(Order order) {
         // Map order items to OrderItemResponse
-        List<OrderItemResponse> orderItems = order.getOrderItems().stream()
+        List<OrderItem> items = order.getOrderItems();
+        if (items == null) {
+            items = new ArrayList<>();
+        }
+        List<OrderItemResponse> orderItems = items.stream()
                 .map(item -> OrderItemResponse.builder()
                         .id(item.getId())
                         .productId(item.getProductId())
@@ -126,12 +133,18 @@ public class GetOrderListUseCase {
                         .build())
                 .collect(Collectors.toList());
 
+        // Handle null deliveryAddress
+        DeliveryAddress deliveryAddress = order.getDeliveryAddress();
+        String receiverName = deliveryAddress != null ? deliveryAddress.getReceiverName() : null;
+        String receiverPhone = deliveryAddress != null ? deliveryAddress.getReceiverPhone() : null;
+        String fullAddress = deliveryAddress != null ? deliveryAddress.getFullAddress() : null;
+
         return OrderListResponse.builder()
                 .id(order.getId())
                 .orderCode(order.getOrderCode())
                 .userId(order.getUserId())
                 .merchantId(order.getMerchantId())
-                .status(order.getStatus().name())
+                .status(order.getStatus() != null ? order.getStatus().name() : null)
                 .currency(order.getCurrency())
                 .subtotal(order.getSubtotal())
                 .discount(order.getDiscount())
@@ -139,10 +152,10 @@ public class GetOrderListUseCase {
                 .grandTotal(order.getGrandTotal())
                 .note(order.getNote())
                 .createdAt(order.getCreatedAt())
-                .receiverName(order.getDeliveryAddress().getReceiverName())
-                .receiverPhone(order.getDeliveryAddress().getReceiverPhone())
-                .fullAddress(order.getDeliveryAddress().getFullAddress())
-                .itemCount(order.getOrderItems().size())
+                .receiverName(receiverName)
+                .receiverPhone(receiverPhone)
+                .fullAddress(fullAddress)
+                .itemCount(orderItems.size())
                 .orderItems(orderItems) // Thêm items list
                 .build();
     }
