@@ -28,8 +28,9 @@ public class WebClientConfig {
     public WebClient productWebClient(WebClient.Builder builder) {
         // Cấu hình HttpClient với timeout
         HttpClient httpClient = HttpClient.create()
-                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 500) // Connect timeout: 500ms
-                .responseTimeout(Duration.ofSeconds(60)) // Response timeout: 60s
+                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 1000) // Connect timeout: 1s (dư cho Docker khởi động chậm)
+                // Giới hạn thời gian chờ phản hồi để tránh request bị treo quá lâu khi service downstream gặp sự cố
+                .responseTimeout(Duration.ofSeconds(60)) // Response timeout: 5s
                 .doOnConnected(conn ->
                         conn.addHandlerLast(new ReadTimeoutHandler(60, TimeUnit.SECONDS))
                                 .addHandlerLast(new WriteTimeoutHandler(60, TimeUnit.SECONDS))
@@ -48,8 +49,8 @@ public class WebClientConfig {
     public WebClient userWebClient(WebClient.Builder builder) {
         // Cấu hình HttpClient với timeout
         HttpClient httpClient = HttpClient.create()
-                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 500) // Connect timeout: 500ms
-                .responseTimeout(Duration.ofSeconds(60)) // Response timeout: 60s
+                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 1000) // Connect timeout: 1s
+                .responseTimeout(Duration.ofSeconds(5)) // Response timeout: 5s
                 .doOnConnected(conn ->
                         conn.addHandlerLast(new ReadTimeoutHandler(60, TimeUnit.SECONDS))
                                 .addHandlerLast(new WriteTimeoutHandler(60, TimeUnit.SECONDS))
@@ -65,8 +66,8 @@ public class WebClientConfig {
     public WebClient paymentWebClient(WebClient.Builder builder) {
         // Cấu hình HttpClient với timeout
         HttpClient httpClient = HttpClient.create()
-                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 500) // Connect timeout: 500ms
-                .responseTimeout(Duration.ofSeconds(60)) // Response timeout: 60s
+                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 1000) // Connect timeout: 1s
+                .responseTimeout(Duration.ofSeconds(5)) // Response timeout: 5s
                 .doOnConnected(conn ->
                         conn.addHandlerLast(new ReadTimeoutHandler(60, TimeUnit.SECONDS))
                                 .addHandlerLast(new WriteTimeoutHandler(60, TimeUnit.SECONDS))

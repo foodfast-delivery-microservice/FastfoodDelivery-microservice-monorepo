@@ -10,6 +10,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Scheduler để simulate battery drain và charging cho drones
@@ -25,6 +26,10 @@ import java.util.List;
 public class DroneSimulationBattery {
 
     private final DroneRepository droneRepository;
+
+    // Đếm số tick IDLE cho từng drone để trừ pin rất chậm
+    // Key: droneId, Value: số lần tick (mỗi tick = 5s)
+    private final ConcurrentHashMap<Long, Integer> idleTickCounter = new ConcurrentHashMap<>();
 
     // Chạy mỗi 5 giây
     @Scheduled(fixedRate = 5000)
@@ -88,29 +93,40 @@ public class DroneSimulationBattery {
     }
 
     /**
-     * Xử lý tiêu hao năng lượng khi rảnh rỗi
-     * Trừ 0.5% mỗi 5s = 6% mỗi phút (realistic hơn)
+     * Xử lý tiêu hao năng lượng khi rảnh rỗi (IDLE)
+     * Mục tiêu: pin tụt rất chậm, chỉ giảm ~1% mỗi 5 phút
+     * - Scheduler tick mỗi 5s → 60 tick = 5 phút
+     * - Sau 60 tick mới trừ 1%
      */
     private void handleIdleConsumption(Drone drone, int currentLevel) {
-        if (currentLevel > 0) {
-            // Giảm từ 1% xuống 0.5% để realistic hơn
-            // Có thể dùng Math.max(0, currentLevel - 1) nếu muốn trừ 1%
-            int newLevel = Math.max(0, currentLevel - 1);
+        if (currentLevel <= 0) {
+            // Clear counter when hết pin
+            idleTickCounter.remove(drone.getId());
+            return;
+        }
 
-            // Chỉ log khi có thay đổi đáng kể (mỗi 10%)
-            if (currentLevel % 10 == 0 && currentLevel != newLevel) {
-                drone.setBatteryLevel(newLevel);
-                log.debug("⚡ Drone {} idle consumption. Battery: {}%",
-                        drone.getSerialNumber(), newLevel);
-            } else {
-                drone.setBatteryLevel(newLevel);
-            }
+        Long droneId = drone.getId();
+        int ticks = idleTickCounter.getOrDefault(droneId, 0) + 1;
+
+        // Mỗi 60 tick (≈ 5 phút) mới trừ 1% pin
+        if (ticks >= 60) {
+            int newLevel = Math.max(0, currentLevel - 1);
+            drone.setBatteryLevel(newLevel);
+            idleTickCounter.put(droneId, 0); // reset counter
+
+            log.debug("⚡ Drone {} idle consumption. Battery: {}% → {}% (every ~5 minutes)",
+                    drone.getSerialNumber(), currentLevel, newLevel);
 
             // Cảnh báo khi pin thấp
             if (newLevel <= 20 && currentLevel > 20) {
                 log.warn("⚠️ Drone {} battery is low: {}%. Consider charging.",
                         drone.getSerialNumber(), newLevel);
             }
+        } else {
+            // Chưa tới ngưỡng trừ pin, chỉ tăng bộ đếm
+            idleTickCounter.put(droneId, ticks);
+            log.trace("⚡ Drone {} idle tick {}/60 (no battery change). Current: {}%",
+                    drone.getSerialNumber(), ticks, currentLevel);
         }
     }
 }

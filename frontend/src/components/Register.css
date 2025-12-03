@@ -43,6 +43,24 @@
   color: #d2191a;
 }
 
+/* ===== Field group & label ===== */
+.field-group {
+  margin-bottom: 8px;
+}
+
+.field-group label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #4a4a4a;
+}
+
+.required {
+  color: #d2191a;
+  margin-left: 2px;
+}
+
 /* ===== Input ===== */
 .register-box input {
   width: 100%;

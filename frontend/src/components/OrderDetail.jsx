@@ -1,8 +1,12 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { message } from "antd";
 import { getOrderById } from "../services/orders";
 import { fetchProductById } from "../services/products";
+import { getRefundSummary, requestRefund } from "../services/refunds";
 import OrderTrackingMap from "./OrderTrackingMap";
+import RefundInfo from "./RefundInfo";
+import RefundRequestForm from "./RefundRequestForm";
 import "./OrderDetail.css";
 
 const buildImageUrl = (src) => {
@@ -34,116 +38,169 @@ export default function OrderDetail() {
   const [order, setOrder] = useState(null);
   const [itemsWithImage, setItemsWithImage] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refundSummary, setRefundSummary] = useState(null);
+  const [refundSummaryLoading, setRefundSummaryLoading] = useState(true);
+  const [refundSummaryError, setRefundSummaryError] = useState(null);
+  const [showRefundForm, setShowRefundForm] = useState(false);
+  const [recentRefund, setRecentRefund] = useState(null);
+  const [refundSubmitting, setRefundSubmitting] = useState(false);
+  const [refundSubmitError, setRefundSubmitError] = useState(null);
+
+  const loadOrder = useCallback(async () => {
+    if (!id) return;
+    setLoading(true);
+    try {
+      const orderData = await getOrderById(id);
+
+      if (!orderData) {
+        alert("Không tìm thấy đơn hàng!");
+        navigate("/order-history");
+        return;
+      }
+
+      const status = (orderData.status || "").toUpperCase();
+      if (status === "DELIVERING" || status === "CONFIRMED") {
+        navigate(`/waiting/${id}`);
+        return;
+      }
+
+      const rawDelivery = orderData.deliveryAddress || orderData.shippingAddress || {};
+      const deliveryParts = [
+        rawDelivery.addressLine1,
+        rawDelivery.ward,
+        rawDelivery.district,
+        rawDelivery.city,
+      ].filter(Boolean);
+
+      const formattedOrder = {
+        ...orderData,
+        date: orderData.createdAt ? new Date(orderData.createdAt) : null,
+        code: orderData.orderCode || `ORD-${orderData.id}`,
+        currency: orderData.currency || "VND",
+        note: orderData.note || orderData.customerNote || "",
+        items: orderData.items || orderData.orderItems || [],
+        subtotal:
+          orderData.subtotal ?? orderData.totalBeforeDiscount ?? orderData.totalAmount ?? 0,
+        shippingFee: orderData.shippingFee ?? orderData.deliveryFee ?? 0,
+        discount: orderData.discount ?? orderData.totalDiscount ?? 0,
+        grandTotal:
+          orderData.grandTotal ?? orderData.totalAmount ?? orderData.total ?? 0,
+        deliveryInfo: {
+          receiverName:
+            rawDelivery.receiverName ||
+            orderData.customer?.name ||
+            "Khách hàng",
+          receiverPhone:
+            rawDelivery.receiverPhone ||
+            orderData.customer?.phone ||
+            rawDelivery.phoneNumber ||
+            "",
+          addressLine1:
+            rawDelivery.addressLine1 ||
+            rawDelivery.address ||
+            rawDelivery.addressLine2 ||
+            "",
+          fullAddress:
+            deliveryParts.join(", ") ||
+            rawDelivery.address ||
+            rawDelivery.addressLine1 ||
+            "N/A",
+        },
+      };
+
+      setOrder(formattedOrder);
+
+      const items = await Promise.all(
+        formattedOrder.items.map(async (item) => {
+          try {
+            const productId = item.productId || item.id;
+            const product = await fetchProductById(productId);
+
+            return {
+              ...item,
+              image: buildImageUrl(
+                product?.imageUrl ||
+                product?.img ||
+                product?.image
+              ) || "/Images/Logo.png",
+              name: product?.name || item.productName || item.name
+            };
+          } catch (err) {
+            console.warn(`Failed to fetch product info for ${item.productId}`, err);
+            return {
+              ...item,
+              image: "/Images/Logo.png"
+            };
+          }
+        })
+      );
+
+      setItemsWithImage(items);
+    } catch (err) {
+      console.error("🔥 Lỗi load order:", err);
+      if (err?.response?.status === 404) {
+        alert("Không tìm thấy đơn hàng!");
+        navigate("/order-history");
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [id, navigate]);
 
   useEffect(() => {
-    const loadOrder = async () => {
-      try {
-        // Fetch order details from backend
-        const orderData = await getOrderById(id);
-
-        if (!orderData) {
-          alert("Không tìm thấy đơn hàng!");
-          navigate("/order-history");
-          return;
-        }
-
-        // Check status for redirection
-        const status = (orderData.status || "").toUpperCase();
-        if (status === "DELIVERING" || status === "CONFIRMED") {
-          navigate(`/waiting/${id}`);
-          return;
-        }
-
-        const rawDelivery = orderData.deliveryAddress || orderData.shippingAddress || {};
-        const deliveryParts = [
-          rawDelivery.addressLine1,
-          rawDelivery.ward,
-          rawDelivery.district,
-          rawDelivery.city,
-        ].filter(Boolean);
-
-        const formattedOrder = {
-          ...orderData,
-          date: orderData.createdAt ? new Date(orderData.createdAt) : null,
-          code: orderData.orderCode || `ORD-${orderData.id}`,
-          currency: orderData.currency || "VND",
-          note: orderData.note || orderData.customerNote || "",
-          // Ensure items array exists
-          items: orderData.items || orderData.orderItems || [],
-          subtotal:
-            orderData.subtotal ?? orderData.totalBeforeDiscount ?? orderData.totalAmount ?? 0,
-          shippingFee: orderData.shippingFee ?? orderData.deliveryFee ?? 0,
-          discount: orderData.discount ?? orderData.totalDiscount ?? 0,
-          grandTotal:
-            orderData.grandTotal ?? orderData.totalAmount ?? orderData.total ?? 0,
-          deliveryInfo: {
-            receiverName:
-              rawDelivery.receiverName ||
-              orderData.customer?.name ||
-              "Khách hàng",
-            receiverPhone:
-              rawDelivery.receiverPhone ||
-              orderData.customer?.phone ||
-              rawDelivery.phoneNumber ||
-              "",
-            addressLine1:
-              rawDelivery.addressLine1 ||
-              rawDelivery.address ||
-              rawDelivery.addressLine2 ||
-              "",
-            fullAddress:
-              deliveryParts.join(", ") ||
-              rawDelivery.address ||
-              rawDelivery.addressLine1 ||
-              "N/A",
-          },
-        };
-
-        setOrder(formattedOrder);
-
-        // ⭐ Fetch ảnh từng món from Product Service
-        const items = await Promise.all(
-          formattedOrder.items.map(async (item) => {
-            try {
-              // item.productId is likely what we have from backend
-              const productId = item.productId || item.id;
-              const product = await fetchProductById(productId);
-
-              return {
-                ...item,
-                // Use fetched product image, or fallback
-                image: buildImageUrl(
-                  product?.imageUrl ||
-                  product?.img ||
-                  product?.image
-                ) || "/Images/Logo.png",
-                name: product?.name || item.productName || item.name
-              };
-            } catch (err) {
-              console.warn(`Failed to fetch product info for ${item.productId}`, err);
-              return {
-                ...item,
-                image: "/Images/Logo.png"
-              };
-            }
-          })
-        );
-
-        setItemsWithImage(items);
-      } catch (err) {
-        console.error("🔥 Lỗi load order:", err);
-        // Handle 404 specifically if needed
-        if (err?.response?.status === 404) {
-          alert("Không tìm thấy đơn hàng!");
-          navigate("/order-history");
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-
     loadOrder();
-  }, [id, navigate]);
+  }, [loadOrder]);
+
+  const loadRefundSummary = useCallback(async () => {
+    if (!id) return;
+    setRefundSummaryLoading(true);
+    try {
+      const summary = await getRefundSummary(id);
+      setRefundSummary(summary);
+      setRefundSummaryError(null);
+    } catch (err) {
+      console.error("Không thể tải thông tin thanh toán:", err);
+      setRefundSummaryError("Không thể tải thông tin thanh toán hiện tại.");
+    } finally {
+      setRefundSummaryLoading(false);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    loadRefundSummary();
+  }, [loadRefundSummary]);
+
+  const handleRefundSubmit = async ({ amount, reason }) => {
+    setRefundSubmitError(null);
+    setRefundSubmitting(true);
+    try {
+      const response = await requestRefund(id, {
+        refundAmount: amount,
+        reason,
+      });
+      setRecentRefund({ ...response, reason });
+      message.success("Đã gửi yêu cầu hoàn tiền.");
+      setShowRefundForm(false);
+      await loadOrder();
+      await loadRefundSummary();
+    } catch (err) {
+      console.error("Không thể gửi yêu cầu hoàn tiền:", err);
+      const msg =
+        err?.response?.data?.message ||
+        err?.message ||
+        "Không thể gửi yêu cầu hoàn tiền.";
+      setRefundSubmitError(msg);
+      message.error(msg);
+    } finally {
+      setRefundSubmitting(false);
+    }
+  };
+
+  const normalizedStatus = (order?.status || "").toUpperCase();
+  const isRefundEligible = normalizedStatus === "DELIVERED";
+  const isRefunded = normalizedStatus === "REFUNDED";
+  const hasPaymentRecord = Boolean(refundSummary);
+  const canRequestRefund = isRefundEligible && hasPaymentRecord && !isRefunded;
 
 
   if (loading) return <p>⏳ Đang tải...</p>;
@@ -265,6 +322,73 @@ export default function OrderDetail() {
               {formatMoney(order.grandTotal, order.currency)}
             </strong>
           </div>
+        </div>
+
+        <div className="refund-section">
+          <div className="refund-section-header">
+            <h3>Hoàn tiền</h3>
+            <span
+              className={`refund-status-pill ${
+                isRefunded ? "pill-success" : "pill-idle"
+              }`}
+            >
+              {isRefunded ? "ĐÃ HOÀN" : "CHƯA HOÀN"}
+            </span>
+          </div>
+
+          <RefundInfo
+            order={order}
+            summary={refundSummary}
+            recentRefund={recentRefund}
+            loading={refundSummaryLoading}
+            error={refundSummaryError}
+            formatMoney={formatMoney}
+          />
+
+          {isRefunded ? (
+            <p className="refund-info-note">
+              Đơn hàng đã hoàn tất hoàn tiền. Nếu bạn vẫn gặp sự cố, vui lòng
+              liên hệ bộ phận hỗ trợ của chúng tôi.
+            </p>
+          ) : (
+            <>
+              {canRequestRefund && !showRefundForm && (
+                <button
+                  type="button"
+                  className="refund-action-btn"
+                  onClick={() => setShowRefundForm(true)}
+                >
+                  Yêu cầu hoàn tiền
+                </button>
+              )}
+
+              {showRefundForm && (
+                <RefundRequestForm
+                  amount={order.grandTotal}
+                  currency={order.currency}
+                  loading={refundSubmitting}
+                  error={refundSubmitError}
+                  onSubmit={handleRefundSubmit}
+                  onCancel={() => setShowRefundForm(false)}
+                  formatMoney={formatMoney}
+                />
+              )}
+
+              {!hasPaymentRecord && !refundSummaryLoading && (
+                <p className="refund-info-note">
+                  Chúng tôi chưa ghi nhận giao dịch thanh toán cho đơn hàng này,
+                  vì vậy chưa thể tạo yêu cầu hoàn tiền.
+                </p>
+              )}
+
+              {!isRefundEligible && (
+                <p className="refund-info-note">
+                  Bạn chỉ có thể yêu cầu hoàn tiền sau khi đơn ở trạng thái
+                  DELIVERED.
+                </p>
+              )}
+            </>
+          )}
         </div>
 
         {/* ================== DRONE TRACKING ================== */}

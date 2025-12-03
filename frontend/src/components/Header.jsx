@@ -154,6 +154,13 @@ function Header({ cartCount }) {
                   Lịch sử đơn hàng
                 </button>
 
+                <button
+                  className="dropdown-item"
+                  onClick={() => navigate("/refunds")}
+                >
+                  Hoàn tiền của tôi
+                </button>
+
                 <button className="dropdown-item" onClick={handleLogout}>
                   Đăng xuất
                 </button>

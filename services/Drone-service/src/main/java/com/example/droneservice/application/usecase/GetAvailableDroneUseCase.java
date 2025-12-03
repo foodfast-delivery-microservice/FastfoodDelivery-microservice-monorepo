@@ -24,7 +24,8 @@ public class GetAvailableDroneUseCase {
 
     private final DroneRepository droneRepository;
 
-    private static final double BATTERY_CONSUMPTION_PER_KM = 2.0; // 2% battery per km
+    // Mức tiêu hao pin: 1% cho mỗi 1km bay (phải đồng bộ với SimulateDroneMovementUseCase)
+    private static final double BATTERY_CONSUMPTION_PER_KM = 1.0; // 1% battery per km
     private static final int MINIMUM_BATTERY_RESERVE = 10; // Keep 10% reserve
 
     /**
