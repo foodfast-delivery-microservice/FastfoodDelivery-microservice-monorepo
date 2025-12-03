@@ -262,6 +262,8 @@ public class UpdateOrderStatusUseCase {
                 .district(deliveryAddress.getDistrict())
                 .city(deliveryAddress.getCity())
                 .fullAddress(deliveryAddress.getFullAddress())
+                .lat(deliveryAddress.getLat())
+                .lng(deliveryAddress.getLng())
                 .build();
     }
 

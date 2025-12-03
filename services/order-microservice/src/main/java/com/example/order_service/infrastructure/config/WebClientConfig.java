@@ -29,10 +29,10 @@ public class WebClientConfig {
         // Cấu hình HttpClient với timeout
         HttpClient httpClient = HttpClient.create()
                 .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 500) // Connect timeout: 500ms
-                .responseTimeout(Duration.ofSeconds(1)) // Response timeout: 1s
+                .responseTimeout(Duration.ofSeconds(60)) // Response timeout: 60s
                 .doOnConnected(conn ->
-                        conn.addHandlerLast(new ReadTimeoutHandler(1, TimeUnit.SECONDS))
-                                .addHandlerLast(new WriteTimeoutHandler(1, TimeUnit.SECONDS))
+                        conn.addHandlerLast(new ReadTimeoutHandler(60, TimeUnit.SECONDS))
+                                .addHandlerLast(new WriteTimeoutHandler(60, TimeUnit.SECONDS))
                 );
 
         // 4. SỬA LẠI:
@@ -49,10 +49,10 @@ public class WebClientConfig {
         // Cấu hình HttpClient với timeout
         HttpClient httpClient = HttpClient.create()
                 .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 500) // Connect timeout: 500ms
-                .responseTimeout(Duration.ofSeconds(1)) // Response timeout: 1s
+                .responseTimeout(Duration.ofSeconds(60)) // Response timeout: 60s
                 .doOnConnected(conn ->
-                        conn.addHandlerLast(new ReadTimeoutHandler(1, TimeUnit.SECONDS))
-                                .addHandlerLast(new WriteTimeoutHandler(1, TimeUnit.SECONDS))
+                        conn.addHandlerLast(new ReadTimeoutHandler(60, TimeUnit.SECONDS))
+                                .addHandlerLast(new WriteTimeoutHandler(60, TimeUnit.SECONDS))
                 );
 
         return builder
@@ -66,10 +66,10 @@ public class WebClientConfig {
         // Cấu hình HttpClient với timeout
         HttpClient httpClient = HttpClient.create()
                 .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 500) // Connect timeout: 500ms
-                .responseTimeout(Duration.ofSeconds(1)) // Response timeout: 1s
+                .responseTimeout(Duration.ofSeconds(60)) // Response timeout: 60s
                 .doOnConnected(conn ->
-                        conn.addHandlerLast(new ReadTimeoutHandler(1, TimeUnit.SECONDS))
-                                .addHandlerLast(new WriteTimeoutHandler(1, TimeUnit.SECONDS))
+                        conn.addHandlerLast(new ReadTimeoutHandler(60, TimeUnit.SECONDS))
+                                .addHandlerLast(new WriteTimeoutHandler(60, TimeUnit.SECONDS))
                 );
 
         return builder

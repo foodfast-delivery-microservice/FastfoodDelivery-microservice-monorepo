@@ -27,10 +27,10 @@ public class WebClientConfig {
     public WebClient orderWebClient(WebClient.Builder builder) {
         HttpClient httpClient = HttpClient.create()
                 .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 500)
-                .responseTimeout(Duration.ofSeconds(2))
+                .responseTimeout(Duration.ofSeconds(60))
                 .doOnConnected(conn ->
-                        conn.addHandlerLast(new ReadTimeoutHandler(2, TimeUnit.SECONDS))
-                                .addHandlerLast(new WriteTimeoutHandler(2, TimeUnit.SECONDS))
+                        conn.addHandlerLast(new ReadTimeoutHandler(60, TimeUnit.SECONDS))
+                                .addHandlerLast(new WriteTimeoutHandler(60, TimeUnit.SECONDS))
                 );
 
         return builder
@@ -44,10 +44,10 @@ public class WebClientConfig {
     public WebClient userWebClient(WebClient.Builder builder) {
         HttpClient httpClient = HttpClient.create()
                 .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 500)
-                .responseTimeout(Duration.ofSeconds(2))
+                .responseTimeout(Duration.ofSeconds(60))
                 .doOnConnected(conn ->
-                        conn.addHandlerLast(new ReadTimeoutHandler(2, TimeUnit.SECONDS))
-                                .addHandlerLast(new WriteTimeoutHandler(2, TimeUnit.SECONDS))
+                        conn.addHandlerLast(new ReadTimeoutHandler(60, TimeUnit.SECONDS))
+                                .addHandlerLast(new WriteTimeoutHandler(60, TimeUnit.SECONDS))
                 );
 
         return builder
