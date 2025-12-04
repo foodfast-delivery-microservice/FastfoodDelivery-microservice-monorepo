@@ -30,6 +30,7 @@ import RestaurantLayout from "./layouts/RestaurantLayout";
 import Dashboard from "./admin/pages/Dashboard";
 import Orders from "./admin/pages/Orders";
 import Users from "./admin/pages/Users";
+import Restaurants from "./admin/pages/Restaurants";
 import AdminOrderDetail from "./admin/components/OrdersDetail";
 import Products from "./admin/pages/Products";
 import AdminCreateRestaurant from "./admin/pages/AdminCreateRestaurant";
@@ -246,6 +247,7 @@ function App() {
             <Route path="orders/:id" element={<AdminOrderDetail />} />
             <Route path="products" element={<Products />} />
             <Route path="users" element={<Users />} />
+            <Route path="restaurants" element={<Restaurants />} />
             <Route path="create-restaurant" element={<AdminCreateRestaurant />} />
             <Route path="drones" element={<AdminDroneManager />} />
           </Route>

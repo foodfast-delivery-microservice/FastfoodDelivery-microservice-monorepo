@@ -48,7 +48,7 @@ public class UserUseCaseConfig {
 
     @Bean
     public DeleteUserByIdUseCase deleteUserByIdUseCase() {
-        return new DeleteUserByIdUseCase(userRepository);
+        return new DeleteUserByIdUseCase(userRepository, restaurantRepository, eventPublisher);
     }
 
     @Bean

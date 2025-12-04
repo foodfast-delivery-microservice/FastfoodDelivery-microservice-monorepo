@@ -40,4 +40,8 @@ public interface ProductRepository extends JpaRepository<Product,Long> {
     @Modifying
     @Query("UPDATE Product p SET p.active = true WHERE p.merchantId = :merchantId")
     int reactivateProductsByMerchantId(@Param("merchantId") Long merchantId);
+
+    @Modifying
+    @Query("DELETE FROM Product p WHERE p.merchantId = :merchantId")
+    void deleteProductsByMerchantId(@Param("merchantId") Long merchantId);
 }

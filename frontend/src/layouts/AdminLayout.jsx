@@ -31,6 +31,9 @@ export default function AdminLayout() {
           <Link to="/admin/users" className={location.pathname.includes("/admin/users") ? "active" : ""}>
             Users
           </Link>
+          <Link to="/admin/restaurants" className={location.pathname.includes("/admin/restaurants") ? "active" : ""}>
+            Restaurants
+          </Link>
           <Link
             to="/admin/drones"
             className={location.pathname.includes("/admin/drones") ? "active" : ""}

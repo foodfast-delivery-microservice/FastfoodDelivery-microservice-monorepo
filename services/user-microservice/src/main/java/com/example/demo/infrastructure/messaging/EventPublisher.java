@@ -2,6 +2,7 @@ package com.example.demo.infrastructure.messaging;
 
 import com.example.demo.infrastructure.messaging.event.MerchantActivatedEvent;
 import com.example.demo.infrastructure.messaging.event.MerchantDeactivatedEvent;
+import com.example.demo.infrastructure.messaging.event.MerchantDeletedEvent;
 import com.example.demo.interfaces.rest.dto.event.UserUpdatedEventDTO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -51,6 +52,19 @@ public class EventPublisher {
             );
         } catch (Exception e) {
             log.error("Failed to publish MerchantActivatedEvent for merchantId: {}", merchantActivatedEvent.getMerchantId(), e);
+        }
+    }
+
+    public void publishMerchantDeleted(MerchantDeletedEvent merchantDeletedEvent) {
+        try {
+            log.info("Publishing MerchantDeletedEvent for merchantId: {}", merchantDeletedEvent.getMerchantId());
+            rabbitTemplate.convertAndSend(
+                    USER_EVENTS_EXCHANGE,
+                    "merchant.deleted",
+                    merchantDeletedEvent
+            );
+        } catch (Exception e) {
+            log.error("Failed to publish MerchantDeletedEvent for merchantId: {}", merchantDeletedEvent.getMerchantId(), e);
         }
     }
 }
