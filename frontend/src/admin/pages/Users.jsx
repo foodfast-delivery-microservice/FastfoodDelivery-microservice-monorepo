@@ -9,21 +9,20 @@ import {
   Form,
   message,
   Popover,
+  Space,
+  Popconfirm,
 } from "antd";
 import http from "../../services/http";
 
 export default function Users() {
   const [users, setUsers] = useState([]);
-  const [restaurants, setRestaurants] = useState([]);
   const [search, setSearch] = useState("");
-  const [roleFilter, setRoleFilter] = useState("all");
 
   const [modalVisible, setModalVisible] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
 
   const [loadingIds, setLoadingIds] = useState([]);
-
-  const roles = ["all", "admin", "customer", "restaurant"];
+  const [deletingIds, setDeletingIds] = useState([]);
 
   // ==========================
   // LOAD USERS
@@ -32,38 +31,18 @@ export default function Users() {
     try {
       const res = await http.get("/users");
       const data = res.data?.data || [];
-      setUsers(data);
+      // Chỉ lấy users có role là "user"
+      const userRoleOnly = data.filter((u) => (u.role || "").toLowerCase() === "user");
+      setUsers(userRoleOnly);
     } catch (err) {
       console.error("Lỗi load users:", err);
       message.error("Không tải được danh sách users");
     }
   };
 
-  // ==========================
-  // LOAD RESTAURANTS
-  // ==========================
-  const loadRestaurants = async () => {
-    try {
-      const res = await http.get("/restaurants", { params: { size: 100 } });
-      const data = res.data?.data?.content || [];
-      setRestaurants(data);
-    } catch (err) {
-      console.error("Lỗi load restaurants:", err);
-    }
-  };
-
   useEffect(() => {
     loadUsers();
-    loadRestaurants();
   }, []);
-
-  // ==========================
-  // LẤY TÊN NHÀ HÀNG
-  // ==========================
-  const getRestaurantName = (merchantId) => {
-    const res = restaurants.find((r) => r.merchantId === merchantId);
-    return res ? res.name : "—";
-  };
 
   // ==========================
   // FILTER USERS
@@ -71,8 +50,7 @@ export default function Users() {
   const filteredUsers = users.filter((u) => {
     const fullname = (u.fullName || `${u.firstname || ""} ${u.lastname || ""}`.trim() || "").toLowerCase();
     const matchName = fullname.includes(search.toLowerCase());
-    const matchRole = roleFilter === "all" || (u.role || "").toLowerCase() === roleFilter;
-    return matchName && matchRole;
+    return matchName;
   });
 
   // ==========================
@@ -129,20 +107,28 @@ export default function Users() {
   };
 
   // ==========================
+  // DELETE USER
+  // ==========================
+  const handleDelete = async (user) => {
+    setDeletingIds((prev) => [...prev, user.id]);
+    try {
+      await http.delete(`/users/${user.id}`);
+      message.success("Xóa người dùng thành công!");
+      loadUsers();
+    } catch (err) {
+      console.error("Lỗi xóa user:", err);
+      const errorMessage = err?.response?.data?.message || err?.message || "Xóa người dùng thất bại";
+      message.error(`❌ ${errorMessage}`);
+    } finally {
+      setDeletingIds((prev) => prev.filter((id) => id !== user.id));
+    }
+  };
+
+  // ==========================
   // TABLE COLUMNS
   // ==========================
   const columns = [
     { title: "ID", dataIndex: "id", key: "id" },
-    // ⭐ CỘT TÊN NHÀ HÀNG
-    {
-      title: "Nhà hàng",
-      key: "restaurantName",
-      render: (_, user) =>
-        (user.role || "").toLowerCase() === "merchant" || (user.role || "").toLowerCase() === "restaurant"
-          ? getRestaurantName(user.id) // Merchant ID is User ID
-          : "—",
-    },
-
     {
       title: "Tên đầy đủ",
       key: "fullname",
@@ -238,7 +224,26 @@ export default function Users() {
     {
       title: "Hành động",
       key: "action",
-      render: (_, r) => <Button onClick={() => handleEdit(r)}>Sửa</Button>,
+      render: (_, r) => {
+        const isDeleting = deletingIds.includes(r.id);
+        return (
+          <Space>
+            <Button onClick={() => handleEdit(r)}>Sửa</Button>
+            <Popconfirm
+              title="Xóa người dùng"
+              description="Bạn có chắc chắn muốn xóa người dùng này?"
+              onConfirm={() => handleDelete(r)}
+              okText="Xóa"
+              cancelText="Hủy"
+              okButtonProps={{ danger: true }}
+            >
+              <Button danger disabled={isDeleting} loading={isDeleting}>
+                Xóa
+              </Button>
+            </Popconfirm>
+          </Space>
+        );
+      },
     },
   ];
 
@@ -257,18 +262,6 @@ export default function Users() {
           onChange={(e) => setSearch(e.target.value)}
           allowClear
         />
-
-        <Select
-          value={roleFilter}
-          onChange={setRoleFilter}
-          style={{ width: 200 }}
-        >
-          {roles.map((r) => (
-            <Select.Option key={r} value={r}>
-              {r === "all" ? "Tất cả" : r}
-            </Select.Option>
-          ))}
-        </Select>
       </div>
 
       <Table

@@ -6,8 +6,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
-
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 @RestControllerAdvice
 @Slf4j
@@ -82,6 +82,13 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
     }
 
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ApiResponse<Void>> handleNoResourceFoundException(NoResourceFoundException ex) {
+        // Silently handle missing images - no logging needed as this is expected when products are deleted
+        // Just return 404 without any response body to avoid cluttering logs
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+    }
+
     @ExceptionHandler(NullPointerException.class)
     public ResponseEntity<ApiResponse<Void>> handleNullPointerException(NullPointerException ex) {
         log.error("NullPointerException occurred: {}", ex.getMessage(), ex);
@@ -95,7 +102,10 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleException(Exception ex) {
-        log.error("Unexpected error occurred: {}", ex.getMessage(), ex);
+        // Don't log NoResourceFoundException as error since it's already handled above
+        if (!(ex instanceof NoResourceFoundException)) {
+            log.error("Unexpected error occurred: {}", ex.getMessage(), ex);
+        }
         ApiResponse<Void> response = new ApiResponse<>(
                 HttpStatus.INTERNAL_SERVER_ERROR,
                 "An unexpected error occurred: " + ex.getMessage(),

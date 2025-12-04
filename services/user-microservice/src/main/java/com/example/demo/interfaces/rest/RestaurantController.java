@@ -113,6 +113,26 @@ public class RestaurantController {
         return ResponseEntity.ok(response);
     }
 
+    @PatchMapping("/{restaurantId}/status")
+    public ResponseEntity<ApiResponse<RestaurantDetailResponse>> updateRestaurantStatusByAdmin(
+            @PathVariable @NonNull Long restaurantId,
+            @Valid @RequestBody RestaurantStatusRequest request,
+            Authentication authentication) {
+        // Check if user is admin
+        if (!hasRole(authentication, "ROLE_ADMIN")) {
+            throw new AccessDeniedException("Admin access required");
+        }
+        
+        Restaurant restaurant = restaurantRepository.findById(restaurantId)
+                .orElseThrow(() -> new ResourceNotFoundException("Restaurant not found"));
+        restaurant.setActive(request.getActive());
+        Restaurant saved = restaurantRepository.save(restaurant);
+        ApiResponse<RestaurantDetailResponse> response =
+                new ApiResponse<>(HttpStatus.OK, "restaurant status updated",
+                        RestaurantDetailResponse.fromEntity(saved), null);
+        return ResponseEntity.ok(response);
+    }
+
     private Long resolveMerchantId(Authentication authentication) {
         if (authentication == null || !authentication.isAuthenticated()) {
             throw new AccessDeniedException("Authentication required");
