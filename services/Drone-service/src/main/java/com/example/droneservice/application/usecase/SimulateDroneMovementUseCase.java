@@ -30,7 +30,7 @@ public class SimulateDroneMovementUseCase {
 
     private static final double DRONE_SPEED_KMH = 40.0; // 40 km/h
     private static final int SIMULATION_INTERVAL_SECONDS = 2; // Called every 2 seconds
-    private static final double BATTERY_CONSUMPTION_PER_KM = 2.0; // 2% per km
+    private static final double BATTERY_CONSUMPTION_PER_KM = 1.0; // 1% per km
     private static final double ARRIVAL_THRESHOLD_KM = 0.05; // 50 meters = arrived
     
     // Accumulate fractional battery consumption per drone to avoid rounding errors

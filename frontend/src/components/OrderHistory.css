@@ -93,18 +93,26 @@
 }
 
 /* Colors */
-.status-tag.đã-giao {
+.status-tag.delivered,
+.status-tag.refunded {
   background: #4caf50;
   color: #fff;
 }
 
-.status-tag.chờ-xác-nhận {
+.status-tag.pending,
+.status-tag.confirmed {
   background: #f1c40f;
   color: #1c1b18;
 }
 
-.status-tag.đang-giao {
+.status-tag.delivering,
+.status-tag.processing {
   background: #ff9800;
+  color: #fff;
+}
+
+.status-tag.cancelled {
+  background: #b0b0b0;
   color: #fff;
 }
 

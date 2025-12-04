@@ -5,6 +5,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -26,4 +28,8 @@ public class DeliveryAddressResponse {
     private String normalizedDistrictName;
 
     private String fullAddress;
+
+    // GPS coordinates (already stored in DeliveryAddress entity)
+    private BigDecimal lat;
+    private BigDecimal lng;
 }

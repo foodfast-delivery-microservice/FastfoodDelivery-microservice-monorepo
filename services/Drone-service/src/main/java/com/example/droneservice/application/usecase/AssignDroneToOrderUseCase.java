@@ -104,7 +104,8 @@ public class AssignDroneToOrderUseCase {
                         candidate.getBaseLatitude(), candidate.getBaseLongitude(),
                         request.getPickupLatitude(), request.getPickupLongitude(),
                         request.getDeliveryLatitude(), request.getDeliveryLongitude());
-                requiredBattery = totalDistance * 2.0; // 2% per km
+                // Tiêu hao: 1% mỗi km
+                requiredBattery = totalDistance * 1.0; // 1% per km
             } else {
                 // RETURNING: Current → Pickup (hoặc Current → Base → Pickup) → Delivery → Base
                 // QUAN TRỌNG: Cả 2 route đều phải tính đủ pin để về base cuối cùng
@@ -133,7 +134,8 @@ public class AssignDroneToOrderUseCase {
                 double route2Distance = currentToBase + baseToPickup + pickupToDelivery + deliveryToBase;
                 
                 totalDistance = Math.min(route1Distance, route2Distance);
-                requiredBattery = totalDistance * 2.0; // 2% per km
+                // Tiêu hao: 1% mỗi km
+                requiredBattery = totalDistance * 1.0; // 1% per km
             }
             
             minimumBatteryNeeded = requiredBattery + 10; // +10% reserve
@@ -215,8 +217,8 @@ public class AssignDroneToOrderUseCase {
                             drone.getSerialNumber(), drone.getState()));
         }
         
-        // Validate battery: Pin cần = Tổng quãng đường × 2% mỗi km + 10% dự phòng
-        double requiredBattery = totalDistance * 2.0; // 2% per km
+        // Validate battery: Pin cần = Tổng quãng đường × 1% mỗi km + 10% dự phòng
+        double requiredBattery = totalDistance * 1.0; // 1% per km
         double minimumBatteryNeeded = requiredBattery + 10; // +10% reserve
         
         if (drone.getBatteryLevel() < minimumBatteryNeeded) {

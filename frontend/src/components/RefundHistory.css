@@ -1,0 +1,98 @@
+.refund-history-page {
+  max-width: 900px;
+  margin: 40px auto;
+  padding: 0 20px;
+  font-family: "Segoe UI", sans-serif;
+}
+
+.refund-history-page h2 {
+  text-align: center;
+  margin-bottom: 24px;
+  color: #ff7a00;
+}
+
+.refund-history-loading,
+.refund-history-error,
+.refund-history-empty {
+  text-align: center;
+  color: #555;
+  margin-top: 40px;
+}
+
+.refund-history-error {
+  color: #b42318;
+}
+
+.refund-history-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.refund-card {
+  border: 1px solid #ffe1c5;
+  border-radius: 14px;
+  padding: 20px;
+  background: #fffefb;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.05);
+}
+
+.refund-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.refund-card-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: #2b2623;
+}
+
+.refund-card-header span {
+  font-size: 0.9rem;
+  color: #777;
+}
+
+.refund-pill {
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: #e0f7ea;
+  color: #0c6b3c;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.refund-card-body p {
+  margin: 6px 0;
+  color: #444;
+}
+
+.refund-card-body strong {
+  color: #b35700;
+}
+
+.refund-card-actions {
+  margin-top: 14px;
+  text-align: right;
+}
+
+.refund-detail-btn {
+  border: none;
+  background: #ff7a00;
+  color: #fff;
+  padding: 8px 16px;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.refund-detail-btn:hover {
+  background: #e86a00;
+}
+

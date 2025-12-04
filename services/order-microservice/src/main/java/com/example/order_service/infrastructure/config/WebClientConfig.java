@@ -13,67 +13,85 @@ import reactor.netty.http.client.HttpClient;
 import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 
+
 @Configuration
 public class WebClientConfig {
 
-    // --- CẤU HÌNH CHUNG CHO CÁC SERVICE NỘI BỘ ---
-    // Tăng lên 10s để tránh lỗi Timeout khi chạy Local/Docker
-    private static final int CONNECT_TIMEOUT_MS = 10000; // 10 giây
-    private static final long READ_TIMEOUT_SEC = 10;     // 10 giây
-
+    // 3. TẠO MỘT BEAN WebClient.Builder
     @Bean
-    @LoadBalanced
+    @LoadBalanced // <-- BẮT BUỘC: Bảo Spring Cloud quản lý builder này
     public WebClient.Builder webClientBuilder() {
         return WebClient.builder();
     }
 
-    // Hàm tiện ích để tạo HttpClient với cấu hình "thoải mái" hơn
-    private HttpClient createResilientHttpClient() {
-        return HttpClient.create()
-                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, CONNECT_TIMEOUT_MS)
-                .responseTimeout(Duration.ofSeconds(READ_TIMEOUT_SEC))
-                .doOnConnected(conn ->
-                        conn.addHandlerLast(new ReadTimeoutHandler(READ_TIMEOUT_SEC, TimeUnit.SECONDS))
-                                .addHandlerLast(new WriteTimeoutHandler(READ_TIMEOUT_SEC, TimeUnit.SECONDS))
-                );
-    }
-
     @Bean
     public WebClient productWebClient(WebClient.Builder builder) {
+        // Cấu hình HttpClient với timeout
+        HttpClient httpClient = HttpClient.create()
+                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 1000) // Connect timeout: 1s (dư cho Docker khởi động chậm)
+                // Giới hạn thời gian chờ phản hồi để tránh request bị treo quá lâu khi service downstream gặp sự cố
+                .responseTimeout(Duration.ofSeconds(60)) // Response timeout: 5s
+                .doOnConnected(conn ->
+                        conn.addHandlerLast(new ReadTimeoutHandler(60, TimeUnit.SECONDS))
+                                .addHandlerLast(new WriteTimeoutHandler(60, TimeUnit.SECONDS))
+                );
+
+        // 4. SỬA LẠI:
+        //    Dùng TÊN ĐĂNG KÝ (spring.application.name) của product-service
+        //    (Giả sử nó là "product-service" hoặc "PRODUCT-SERVICE")
         return builder
                 .baseUrl("http://product-service/api/v1/products")
-                .clientConnector(new ReactorClientHttpConnector(createResilientHttpClient()))
+                .clientConnector(new ReactorClientHttpConnector(httpClient))
                 .build();
     }
 
     @Bean
     public WebClient userWebClient(WebClient.Builder builder) {
+        // Cấu hình HttpClient với timeout
+        HttpClient httpClient = HttpClient.create()
+                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 1000) // Connect timeout: 1s
+                .responseTimeout(Duration.ofSeconds(5)) // Response timeout: 5s
+                .doOnConnected(conn ->
+                        conn.addHandlerLast(new ReadTimeoutHandler(60, TimeUnit.SECONDS))
+                                .addHandlerLast(new WriteTimeoutHandler(60, TimeUnit.SECONDS))
+                );
+
         return builder
                 .baseUrl("http://user-service/api/v1/users")
-                .clientConnector(new ReactorClientHttpConnector(createResilientHttpClient()))
+                .clientConnector(new ReactorClientHttpConnector(httpClient))
                 .build();
     }
 
     @Bean
     public WebClient paymentWebClient(WebClient.Builder builder) {
+        // Cấu hình HttpClient với timeout
+        HttpClient httpClient = HttpClient.create()
+                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 1000) // Connect timeout: 1s
+                .responseTimeout(Duration.ofSeconds(5)) // Response timeout: 5s
+                .doOnConnected(conn ->
+                        conn.addHandlerLast(new ReadTimeoutHandler(60, TimeUnit.SECONDS))
+                                .addHandlerLast(new WriteTimeoutHandler(60, TimeUnit.SECONDS))
+                );
+
         return builder
                 .baseUrl("http://payment-service/api/v1/payments")
-                .clientConnector(new ReactorClientHttpConnector(createResilientHttpClient()))
+                .clientConnector(new ReactorClientHttpConnector(httpClient))
                 .build();
     }
 
     /**
-     * WebClient dùng để gọi AddressKit (External API)
-     * External API cũng nên tăng timeout lên 5s vì phụ thuộc tốc độ mạng internet
+     * WebClient dùng để gọi AddressKit (Cas AddressKit - danh mục hành chính).
+     * Không cần load balancing vì đây là dịch vụ bên ngoài, truy cập qua Internet.
+     * Xem tài liệu: https://addresskit.cas.so/
      */
     @Bean
     public WebClient addressKitWebClient() {
         HttpClient httpClient = HttpClient.create()
-                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 5000)
-                .responseTimeout(Duration.ofSeconds(5))
+                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 2000) // Connect timeout: 2s
+                .responseTimeout(Duration.ofSeconds(3)) // Response timeout: 3s
                 .doOnConnected(conn ->
-                        conn.addHandlerLast(new ReadTimeoutHandler(5, TimeUnit.SECONDS))
-                                .addHandlerLast(new WriteTimeoutHandler(5, TimeUnit.SECONDS))
+                        conn.addHandlerLast(new ReadTimeoutHandler(3, TimeUnit.SECONDS))
+                                .addHandlerLast(new WriteTimeoutHandler(3, TimeUnit.SECONDS))
                 );
 
         return WebClient.builder()
@@ -83,16 +101,16 @@ public class WebClientConfig {
     }
 
     /**
-     * WebClient dùng để gọi Nominatim (External API)
+     * WebClient dùng để gọi Nominatim (OpenStreetMap) cho geocoding.
      */
     @Bean
     public WebClient nominatimWebClient() {
         HttpClient httpClient = HttpClient.create()
-                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 5000)
-                .responseTimeout(Duration.ofSeconds(5))
+                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 2000)
+                .responseTimeout(Duration.ofSeconds(3))
                 .doOnConnected(conn ->
-                        conn.addHandlerLast(new ReadTimeoutHandler(5, TimeUnit.SECONDS))
-                                .addHandlerLast(new WriteTimeoutHandler(5, TimeUnit.SECONDS))
+                        conn.addHandlerLast(new ReadTimeoutHandler(3, TimeUnit.SECONDS))
+                                .addHandlerLast(new WriteTimeoutHandler(3, TimeUnit.SECONDS))
                 );
 
         return WebClient.builder()

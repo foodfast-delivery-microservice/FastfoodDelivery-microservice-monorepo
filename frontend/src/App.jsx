@@ -14,6 +14,7 @@ import ProductDetail from "./components/ProductDetail";
 import Cart from "./components/Cart";
 import Checkout from "./components/Checkout";
 import OrderHistory from "./components/OrderHistory";
+import RefundHistory from "./components/RefundHistory";
 import Login from "./components/Login";
 import Register from "./components/Register";
 import RestaurantList from "./components/RestaurantList";
@@ -211,6 +212,11 @@ function App() {
             <Route path="order-history" element={
               <ProtectedRoute>
                 <OrderHistory />
+              </ProtectedRoute>
+            } />
+            <Route path="refunds" element={
+              <ProtectedRoute>
+                <RefundHistory />
               </ProtectedRoute>
             } />
             <Route path="order/:id" element={

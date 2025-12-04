@@ -48,14 +48,3 @@ export const updateOrderStatus = async (orderId, status) => {
   return unwrapData(data)
 }
 
-export const requestRefund = async (orderId, payload) => {
-  const { data } = await http.post(`/orders/${orderId}/refund`, payload)
-  return unwrapData(data)
-}
-
-
-
-
-
-
-

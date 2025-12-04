@@ -6,6 +6,7 @@ import { register } from "../services/auth";
 
 function Register() {
   const [username, setUsername] = useState("");
+  // có thể tách fullName riêng nếu muốn, hiện tại dùng username là tên hiển thị đăng nhập
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [phonenumber, setPhonenumber] = useState("");
@@ -28,7 +29,13 @@ function Register() {
         username: username.trim(),
         email: email.trim(),
         password: password.trim(),
-        role: "CUSTOMER",
+        // map thêm các field profile mà backend hỗ trợ
+        phone: phonenumber.trim() || null,
+        address: address.trim() || null,
+        fullName: username.trim(), // nếu sau này có input Họ tên riêng, hãy đổi sang state fullName
+        // Backend expects roles matching User.UserRole enum: USER or MERCHANT (ADMIN is forbidden)
+        // For normal customers, we should use USER
+        role: "USER",
       });
 
       message.success("Đăng ký thành công! Vui lòng đăng nhập.", 2);
@@ -46,29 +53,82 @@ function Register() {
   };
 
   return (
-    <div className="register-container-simple">
-      <h2>Đăng ký tài khoản</h2>
+    <div className="register-container">
+      <div className="register-box">
+        <h2>Đăng ký tài khoản</h2>
 
-      <input type="text" placeholder="Tên đăng nhập" value={username} onChange={e => setUsername(e.target.value)} />
-      <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} />
-      <input type="text" placeholder="Số điện thoại" value={phonenumber} onChange={e => setPhonenumber(e.target.value)} />
-      <input type="password" placeholder="Mật khẩu" value={password} onChange={e => setPassword(e.target.value)} />
-      <input type="text" placeholder="Địa chỉ" value={address} onChange={e => setAddress(e.target.value)} />
+        <div className="field-group">
+          <label>
+            Tên đăng nhập <span className="required">*</span>
+          </label>
+          <input
+            type="text"
+            placeholder="Ví dụ: meowlover_99"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+          />
+        </div>
 
-      {error && <p className="error-message">{error}</p>}
+        <div className="field-group">
+          <label>
+            Email <span className="required">*</span>
+          </label>
+          <input
+            type="email"
+            placeholder="you@example.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+        </div>
 
-      <button onClick={handleRegister} disabled={loading}>
-        {loading ? "Đang xử lý..." : "Đăng ký"}
-      </button>
+        <div className="field-group">
+          <label>Số điện thoại</label>
+          <input
+            type="text"
+            placeholder="Số điện thoại liên hệ giao hàng"
+            value={phonenumber}
+            onChange={(e) => setPhonenumber(e.target.value)}
+          />
+        </div>
 
-      <p>
-        Đã có tài khoản?{" "}
-        <Link to="/login" style={{ textDecoration: "none", color: "#d2191a" }}>
-          Đăng nhập
-        </Link>
-      </p>
+        <div className="field-group">
+          <label>
+            Mật khẩu <span className="required">*</span>
+          </label>
+          <input
+            type="password"
+            placeholder="Tối thiểu 6 ký tự"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+        </div>
+
+        <div className="field-group">
+          <label>Địa chỉ giao hàng</label>
+          <input
+            type="text"
+            placeholder="Ví dụ: 273 An Dương Vương, Q.5, TP.HCM"
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+          />
+        </div>
+
+        {error && <p className="register-error">{error}</p>}
+
+        <button className="register-btn" onClick={handleRegister} disabled={loading}>
+          {loading ? "Đang xử lý..." : "Tạo tài khoản"}
+        </button>
+
+        <p className="to-login">
+          Đã có tài khoản?
+          <Link to="/login">Đăng nhập</Link>
+        </p>
+      </div>
     </div>
   );
 }
 
 export default Register;
+
+
+
