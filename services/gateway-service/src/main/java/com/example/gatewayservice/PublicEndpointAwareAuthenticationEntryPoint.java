@@ -64,9 +64,10 @@ public class PublicEndpointAwareAuthenticationEntryPoint implements Authenticati
             return true;
         }
 
-        // GET /api/v1/restaurants/** - public (nhưng không bao gồm /me/**)
+        // GET /api/v1/restaurants/** - public (nhưng không bao gồm /me/** và /admin/**)
         if ("GET".equals(method) && uri.startsWith("/api/v1/restaurants") &&
-                !uri.startsWith("/api/v1/restaurants/me")) {
+                !uri.startsWith("/api/v1/restaurants/me") &&
+                !uri.startsWith("/api/v1/restaurants/admin")) {
             return true;
         }
 

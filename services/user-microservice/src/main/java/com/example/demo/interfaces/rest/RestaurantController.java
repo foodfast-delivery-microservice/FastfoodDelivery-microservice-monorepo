@@ -101,10 +101,19 @@ public class RestaurantController {
             @RequestParam(defaultValue = "20") int size,
             Authentication authentication) {
         
+        System.out.println("🍽️ [RestaurantController] /admin/all - Authentication: " + (authentication != null ? authentication.getName() : "null"));
+        if (authentication != null) {
+            System.out.println("🔐 [RestaurantController] Authorities: " + authentication.getAuthorities());
+            System.out.println("✅ [RestaurantController] Is authenticated: " + authentication.isAuthenticated());
+        }
+        
         // Kiểm tra admin role
         if (authentication == null || !hasRole(authentication, "ROLE_ADMIN")) {
+            System.out.println("❌ [RestaurantController] Access denied - authentication is null or not ADMIN");
             throw new AccessDeniedException("Admin access required");
         }
+        
+        System.out.println("✅ [RestaurantController] Admin access granted");
         
         // Admin muốn xem tất cả restaurants (kể cả inactive)
         List<Restaurant> allRestaurants = restaurantRepository.findAll();

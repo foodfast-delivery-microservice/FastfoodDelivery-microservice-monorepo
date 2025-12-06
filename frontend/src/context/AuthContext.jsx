@@ -39,8 +39,8 @@ export function AuthProvider({ children }) {
             const profileResponse = await getProfile();
             const userProfile = profileResponse?.data || profileResponse;
 
-            // Merge thông tin mới nhất vào session
-            const updatedSession = { ...parsedSession, ...userProfile };
+            // Merge thông tin mới nhất vào session, nhưng GIỮ NGUYÊN accessToken từ session gốc
+            const updatedSession = { ...parsedSession, ...userProfile, accessToken: parsedSession.accessToken };
 
             // Nếu user bị ban
             if (userProfile.status === "banned" || userProfile.active === false) {

@@ -48,12 +48,20 @@ public class SecurityConfig {
                                                 .requestMatchers(HttpMethod.GET, "/api/v1/products/**").permitAll()
 
                                                 // Restaurant endpoints
+                                                // Restaurant admin endpoints - require ADMIN role
+                                                .requestMatchers(HttpMethod.GET, "/api/v1/restaurants/admin/**").hasRole("ADMIN")
+                                                .requestMatchers(HttpMethod.PATCH, "/api/v1/restaurants/*/status").hasRole("ADMIN")
+                                                .requestMatchers(HttpMethod.PUT, "/api/v1/restaurants/*").hasRole("ADMIN")
+                                                
+                                                // Restaurant merchant endpoints
                                                 .requestMatchers("/api/v1/restaurants/me/**")
                                                 .hasAnyRole("MERCHANT", "ADMIN")
                                                 .requestMatchers(HttpMethod.PUT, "/api/v1/restaurants/me")
                                                 .hasAnyRole("MERCHANT", "ADMIN")
                                                 .requestMatchers(HttpMethod.PATCH, "/api/v1/restaurants/me/**")
                                                 .hasAnyRole("MERCHANT", "ADMIN")
+                                                
+                                                // Public restaurant endpoints
                                                 .requestMatchers(HttpMethod.GET, "/api/v1/restaurants/**").permitAll()
 
                                                 // USER endpoints - specific patterns FIRST
