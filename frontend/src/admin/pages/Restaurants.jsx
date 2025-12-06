@@ -32,8 +32,13 @@ export default function Restaurants() {
   // ==========================
   const loadRestaurants = async () => {
     try {
-      // Lấy tất cả restaurants với size lớn
-      const res = await http.get("/restaurants", { params: { size: 1000 } });
+      // Admin cần lấy TẤT CẢ restaurants (kể cả inactive) để quản lý
+      // Sử dụng endpoint riêng cho admin
+      const res = await http.get("/restaurants/admin/all", { 
+        params: { 
+          size: 1000
+        } 
+      });
       const data = res.data?.data?.content || res.data?.data || [];
       setRestaurants(data);
     } catch (err) {

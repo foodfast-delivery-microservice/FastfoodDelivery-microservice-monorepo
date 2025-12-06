@@ -17,6 +17,7 @@ import com.example.demo.interfaces.rest.dto.restaurant.UpdateRestaurantRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -32,6 +33,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
+import java.util.Locale;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/v1/restaurants")
@@ -51,10 +56,71 @@ public class RestaurantController {
             @RequestParam(required = false) String category,
             @RequestParam(required = false) String city,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) Boolean includeInactive,
+            Authentication authentication) {
 
+        // Nếu có includeInactive=true, lấy tất cả restaurants (kể cả inactive)
+        // Chỉ admin mới biết dùng parameter này, nên không cần kiểm tra authentication ở đây
+        // Security sẽ được kiểm tra ở SecurityConfig nếu cần
+        if (Boolean.TRUE.equals(includeInactive)) {
+            // Admin muốn xem tất cả restaurants (kể cả inactive)
+            List<Restaurant> allRestaurants = restaurantRepository.findAll();
+            List<RestaurantResponse> filtered = allRestaurants.stream()
+                    .filter(r -> name == null || (r.getName() != null && r.getName().toLowerCase(Locale.ROOT).contains(name.toLowerCase(Locale.ROOT))))
+                    .filter(r -> category == null || (r.getCategory() != null && r.getCategory().equalsIgnoreCase(category)))
+                    .filter(r -> city == null || (r.getCity() != null && r.getCity().equalsIgnoreCase(city)))
+                    .map(RestaurantResponse::fromEntity)
+                    .filter(r -> r != null)
+                    .collect(Collectors.toList());
+
+            int start = (int) PageRequest.of(Math.max(page, 0), Math.min(size, 100)).getOffset();
+            int end = Math.min(start + Math.min(size, 100), filtered.size());
+            List<RestaurantResponse> pageContent = start > end ? List.<RestaurantResponse>of() : filtered.subList(start, end);
+            Page<RestaurantResponse> result = new PageImpl<>(pageContent, PageRequest.of(Math.max(page, 0), Math.min(size, 100)), filtered.size());
+            
+            ApiResponse<Page<RestaurantResponse>> response =
+                    new ApiResponse<>(HttpStatus.OK, "restaurants", result, null);
+            return ResponseEntity.ok(response);
+        }
+
+        // Mặc định: chỉ lấy restaurants active và approved (cho public/guest)
         Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(size, 100));
         Page<RestaurantResponse> result = getRestaurantsUseCase.execute(name, category, city, pageable);
+        ApiResponse<Page<RestaurantResponse>> response =
+                new ApiResponse<>(HttpStatus.OK, "restaurants", result, null);
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/admin/all")
+    public ResponseEntity<ApiResponse<Page<RestaurantResponse>>> listAllRestaurantsForAdmin(
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) String city,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            Authentication authentication) {
+        
+        // Kiểm tra admin role
+        if (authentication == null || !hasRole(authentication, "ROLE_ADMIN")) {
+            throw new AccessDeniedException("Admin access required");
+        }
+        
+        // Admin muốn xem tất cả restaurants (kể cả inactive)
+        List<Restaurant> allRestaurants = restaurantRepository.findAll();
+        List<RestaurantResponse> filtered = allRestaurants.stream()
+                .filter(r -> name == null || (r.getName() != null && r.getName().toLowerCase(Locale.ROOT).contains(name.toLowerCase(Locale.ROOT))))
+                .filter(r -> category == null || (r.getCategory() != null && r.getCategory().equalsIgnoreCase(category)))
+                .filter(r -> city == null || (r.getCity() != null && r.getCity().equalsIgnoreCase(city)))
+                .map(RestaurantResponse::fromEntity)
+                .filter(r -> r != null)
+                .collect(Collectors.toList());
+
+        int start = (int) PageRequest.of(Math.max(page, 0), Math.min(size, 100)).getOffset();
+        int end = Math.min(start + Math.min(size, 100), filtered.size());
+        List<RestaurantResponse> pageContent = start > end ? List.<RestaurantResponse>of() : filtered.subList(start, end);
+        Page<RestaurantResponse> result = new PageImpl<>(pageContent, PageRequest.of(Math.max(page, 0), Math.min(size, 100)), filtered.size());
+        
         ApiResponse<Page<RestaurantResponse>> response =
                 new ApiResponse<>(HttpStatus.OK, "restaurants", result, null);
         return ResponseEntity.ok(response);
@@ -129,6 +195,40 @@ public class RestaurantController {
         Restaurant saved = restaurantRepository.save(restaurant);
         ApiResponse<RestaurantDetailResponse> response =
                 new ApiResponse<>(HttpStatus.OK, "restaurant status updated",
+                        RestaurantDetailResponse.fromEntity(saved), null);
+        return ResponseEntity.ok(response);
+    }
+
+    @PutMapping("/{restaurantId}")
+    public ResponseEntity<ApiResponse<RestaurantDetailResponse>> updateRestaurantByAdmin(
+            @PathVariable @NonNull Long restaurantId,
+            @Valid @RequestBody UpdateRestaurantRequest request,
+            Authentication authentication) {
+        // Check if user is admin
+        if (!hasRole(authentication, "ROLE_ADMIN")) {
+            throw new AccessDeniedException("Admin access required");
+        }
+        
+        Restaurant restaurant = restaurantRepository.findById(restaurantId)
+                .orElseThrow(() -> new ResourceNotFoundException("Restaurant not found"));
+        
+        // Update restaurant fields
+        if (request.getName() != null) restaurant.setName(request.getName());
+        if (request.getDescription() != null) restaurant.setDescription(request.getDescription());
+        if (request.getAddress() != null) restaurant.setAddress(request.getAddress());
+        if (request.getCity() != null) restaurant.setCity(request.getCity());
+        if (request.getDistrict() != null) restaurant.setDistrict(request.getDistrict());
+        if (request.getCategory() != null) restaurant.setCategory(request.getCategory());
+        if (request.getPhone() != null) restaurant.setPhone(request.getPhone());
+        if (request.getEmail() != null) restaurant.setEmail(request.getEmail());
+        if (request.getOpeningHours() != null) restaurant.setOpeningHours(request.getOpeningHours());
+        if (request.getDeliveryFee() != null) restaurant.setDeliveryFee(request.getDeliveryFee());
+        if (request.getEstimatedDeliveryTime() != null) restaurant.setEstimatedDeliveryTime(request.getEstimatedDeliveryTime());
+        if (request.getImage() != null) restaurant.setImage(request.getImage());
+        
+        Restaurant saved = restaurantRepository.save(restaurant);
+        ApiResponse<RestaurantDetailResponse> response =
+                new ApiResponse<>(HttpStatus.OK, "restaurant updated by admin",
                         RestaurantDetailResponse.fromEntity(saved), null);
         return ResponseEntity.ok(response);
     }
