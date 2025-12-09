@@ -36,8 +36,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                     FilterChain filterChain) throws ServletException, IOException {
 
         String authHeader = request.getHeader("Authorization");
+        String requestPath = request.getRequestURI();
+        
+        System.out.println("🌐 [JWT Filter] Request path: " + requestPath);
+        System.out.println("🔑 [JWT Filter] Authorization header present: " + (authHeader != null));
 
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            System.out.println("⚠️ [JWT Filter] No valid Authorization header, skipping authentication");
             filterChain.doFilter(request, response);
             return;
         }
@@ -55,9 +60,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             Jwt jwt = decoder.decode(token);
 
             String username = jwt.getSubject();
+            String roleFromToken = jwt.getClaimAsString("role");
+            System.out.println("🔑 [JWT Filter] Decoded token - username: " + username + ", role from token: " + roleFromToken);
 
             if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                 UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+                
+                System.out.println("👤 [JWT Filter] Loaded user - username: " + userDetails.getUsername());
+                System.out.println("🔐 [JWT Filter] User authorities: " + userDetails.getAuthorities());
 
                 UsernamePasswordAuthenticationToken authToken =
                         new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
@@ -65,11 +75,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
                 SecurityContextHolder.getContext().setAuthentication(authToken);
+                System.out.println("✅ [JWT Filter] Authentication set successfully");
+            } else {
+                System.out.println("⚠️ [JWT Filter] Username is null or authentication already exists");
             }
 
         } catch (JwtException e) {
             // Nếu token sai hoặc hết hạn thì bỏ qua
-            System.out.println("Invalid JWT: " + e.getMessage());
+            System.out.println("❌ [JWT Filter] Invalid JWT: " + e.getMessage());
+            e.printStackTrace();
         }
 
         filterChain.doFilter(request, response);

@@ -39,8 +39,8 @@ function Login() {
       const userProfile = profileResponse?.data || profileResponse;
 
       // 4. Cập nhật AuthContext
-      // Kết hợp token và thông tin user
-      const sessionData = { ...session, ...userProfile };
+      // Kết hợp token và thông tin user, đảm bảo accessToken được giữ nguyên
+      const sessionData = { ...session, ...userProfile, accessToken: session.accessToken };
       setSession(sessionData);
 
       // 5. Merge cart (giữ nguyên logic cũ nhưng điều chỉnh key nếu cần)
