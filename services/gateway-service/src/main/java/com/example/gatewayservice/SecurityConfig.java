@@ -1,5 +1,6 @@
 package com.example.gatewayservice;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -17,22 +18,14 @@ import java.util.List;
 
 @Configuration
 @EnableWebSecurity
+@RequiredArgsConstructor
 public class SecurityConfig {
 
         private final JwtTokenForwardFilter jwtTokenForwardFilter;
         private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
-        private final PublicEndpointFilter publicEndpointFilter;
+        // final PublicEndpointFilter publicEndpointFilter;
         private final PublicEndpointBearerTokenResolver publicEndpointBearerTokenResolver;
 
-        public SecurityConfig(JwtTokenForwardFilter jwtTokenForwardFilter,
-                        JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint,
-                        PublicEndpointFilter publicEndpointFilter,
-                        PublicEndpointBearerTokenResolver publicEndpointBearerTokenResolver) {
-                this.jwtTokenForwardFilter = jwtTokenForwardFilter;
-                this.jwtAuthenticationEntryPoint = jwtAuthenticationEntryPoint;
-                this.publicEndpointFilter = publicEndpointFilter;
-                this.publicEndpointBearerTokenResolver = publicEndpointBearerTokenResolver;
-        }
 
         @Bean
         SecurityFilterChain filterChain(HttpSecurity http, JwtAuthConverter jwtAuthConverter) throws Exception {
@@ -54,7 +47,12 @@ public class SecurityConfig {
                                                 .hasAnyRole("MERCHANT", "ADMIN")
                                                 .requestMatchers(HttpMethod.PATCH, "/api/v1/restaurants/me/**")
                                                 .hasAnyRole("MERCHANT", "ADMIN")
+                                                 // 1. Phải khai báo luật cho ADMIN trước (Cụ thể hơn ưu tiên trước)
+                                                .requestMatchers(HttpMethod.GET, "/api/v1/restaurants/admin/all").hasRole("ADMIN")
+
+                                                // 2. Sau đó mới đến luật Public cho các cái còn lại (Tổng quát hơn để sau)
                                                 .requestMatchers(HttpMethod.GET, "/api/v1/restaurants/**").permitAll()
+
 
                                                 // USER endpoints - specific patterns FIRST
                                                 // Validation endpoint for inter-service calls
@@ -126,20 +124,18 @@ public class SecurityConfig {
                                                 .requestMatchers(HttpMethod.GET, "/api/v1/missions/**")
                                                 .hasAnyRole("ADMIN", "SERVICE")
                                                 .anyRequest().authenticated())
-                                .addFilterBefore(publicEndpointFilter, UsernamePasswordAuthenticationFilter.class)
+                                //.addFilterBefore(publicEndpointFilter, UsernamePasswordAuthenticationFilter.class)
                                 .addFilterAfter(jwtTokenForwardFilter, UsernamePasswordAuthenticationFilter.class)
 
                                 .oauth2ResourceServer(oauth2 -> oauth2
                                                 .bearerTokenResolver(publicEndpointBearerTokenResolver)
                                                 .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthConverter))
-                                                .authenticationEntryPoint(
-                                                                new PublicEndpointAwareAuthenticationEntryPoint(
-                                                                                jwtAuthenticationEntryPoint)))
+                                                .authenticationEntryPoint(jwtAuthenticationEntryPoint))
 
                                 .exceptionHandling(exception -> exception
                                                 .authenticationEntryPoint(
-                                                                new PublicEndpointAwareAuthenticationEntryPoint(
-                                                                                jwtAuthenticationEntryPoint)));
+
+                                                                                jwtAuthenticationEntryPoint));
 
                 return http.build();
         }

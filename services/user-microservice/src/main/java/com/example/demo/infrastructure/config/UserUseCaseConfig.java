@@ -62,6 +62,11 @@ public class UserUseCaseConfig {
     }
 
     @Bean
+    public GetRestaurantsForAdminUseCase getRestaurantsForAdminUseCase(RestaurantRepository restaurantRepository) {
+        return new GetRestaurantsForAdminUseCase(restaurantRepository);
+    }
+
+    @Bean
     public GetRestaurantByIdUseCase getRestaurantByIdUseCase() {
         return new GetRestaurantByIdUseCase(restaurantRepository);
     }

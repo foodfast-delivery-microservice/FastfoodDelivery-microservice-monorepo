@@ -1,9 +1,11 @@
 import React, { useState } from "react";
 import { Form, Input, Button, message, Card, Row, Col, Divider, InputNumber, Select } from "antd";
+import { useNavigate } from "react-router-dom";
 import http from "../../services/http";
 import "./AdminCreateRestaurant.css";
 
 export default function AdminCreateRestaurant() {
+  const navigate = useNavigate();
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
 
@@ -19,16 +21,16 @@ export default function AdminCreateRestaurant() {
       logApi("Geocoding skipped", "No address provided");
       return null;
     }
-    
+
     try {
       // Add delay to respect Nominatim usage policy (max 1 request per second)
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
+
       const searchQuery = `${address}, Vietnam`;
       const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(
         searchQuery
       )}&format=json&limit=1&countrycodes=vn&addressdetails=1`;
-      
+
       logApi("Geocoding request", { url, address: searchQuery });
 
       const response = await fetch(url, {
@@ -39,27 +41,27 @@ export default function AdminCreateRestaurant() {
           'Accept': 'application/json',
         }
       });
-      
-      logApi("Geocoding response status", { 
-        status: response.status, 
+
+      logApi("Geocoding response status", {
+        status: response.status,
         statusText: response.statusText,
-        ok: response.ok 
+        ok: response.ok
       });
-      
+
       if (!response.ok) {
         const errorText = await response.text();
-        logApi("Geocoding HTTP error", { 
-          status: response.status, 
+        logApi("Geocoding HTTP error", {
+          status: response.status,
           statusText: response.statusText,
           body: errorText
         });
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
-      
+
       const data = await response.json();
-      logApi("Geocoding response data", { 
+      logApi("Geocoding response data", {
         dataLength: Array.isArray(data) ? data.length : 'not array',
-        data: data 
+        data: data
       });
 
       if (!data || !Array.isArray(data) || data.length === 0) {
@@ -69,13 +71,13 @@ export default function AdminCreateRestaurant() {
 
       const result = data[0];
       logApi("Geocoding first result", result);
-      
+
       const lat = parseFloat(result.lat);
       const lng = parseFloat(result.lon);
 
       if (isNaN(lat) || isNaN(lng)) {
-        logApi("Geocoding failed", "Invalid coordinates", { 
-          lat: result.lat, 
+        logApi("Geocoding failed", "Invalid coordinates", {
+          lat: result.lat,
           lng: result.lon,
           parsedLat: lat,
           parsedLng: lng
@@ -123,26 +125,26 @@ export default function AdminCreateRestaurant() {
         try {
           message.loading({ content: "Đang tìm tọa độ địa chỉ...", key: "geocoding" });
           logApi("Starting geocoding", { address: values.restaurantAddress });
-          
+
           coords = await geocodeAddress(values.restaurantAddress);
-          
+
           logApi("Geocoding result", { coords, hasLat: !!coords?.lat, hasLng: !!coords?.lng });
-          
+
           if (coords && coords.lat != null && coords.lng != null && !isNaN(coords.lat) && !isNaN(coords.lng)) {
-            message.success({ 
-              content: `✅ Đã tìm thấy tọa độ: ${coords.lat.toFixed(6)}, ${coords.lng.toFixed(6)}`, 
-              key: "geocoding", 
-              duration: 3 
+            message.success({
+              content: `✅ Đã tìm thấy tọa độ: ${coords.lat.toFixed(6)}, ${coords.lng.toFixed(6)}`,
+              key: "geocoding",
+              duration: 3
             });
             logApi("Geocoded coordinates", coords);
           } else {
-            message.warning({ 
-              content: "⚠️ Không tìm thấy tọa độ. Nhà hàng sẽ được tạo không có tọa độ.", 
+            message.warning({
+              content: "⚠️ Không tìm thấy tọa độ. Nhà hàng sẽ được tạo không có tọa độ.",
               key: "geocoding",
               duration: 4
             });
-            logApi("Geocoding returned null or invalid", { 
-              coords, 
+            logApi("Geocoding returned null or invalid", {
+              coords,
               address: values.restaurantAddress,
               latValid: coords?.lat != null && !isNaN(coords.lat),
               lngValid: coords?.lng != null && !isNaN(coords.lng)
@@ -155,8 +157,8 @@ export default function AdminCreateRestaurant() {
             message: geocodeError?.message,
             stack: geocodeError?.stack
           });
-          message.error({ 
-            content: "❌ Lỗi khi tìm tọa độ. Tiếp tục tạo nhà hàng không có tọa độ.", 
+          message.error({
+            content: "❌ Lỗi khi tìm tọa độ. Tiếp tục tạo nhà hàng không có tọa độ.",
             key: "geocoding",
             duration: 3
           });
@@ -201,14 +203,19 @@ export default function AdminCreateRestaurant() {
       logApi("POST /users response", response?.data);
 
       const userData = response?.data?.data || response?.data;
-      
+
       if (userData) {
         message.success(
           `✅ Tạo nhà hàng thành công! Username: ${userData.username || values.username}`
         );
-        
+
         // Reset form
         form.resetFields();
+
+        // Navigate to restaurant list to show the newly created restaurant
+        setTimeout(() => {
+          navigate("/admin/restaurants");
+        }, 1000); // Small delay to let user see the success message
       } else {
         message.warning("Tạo user thành công nhưng không nhận được response data");
       }
@@ -218,7 +225,7 @@ export default function AdminCreateRestaurant() {
         error?.response?.data?.error ||
         error?.message ||
         "Không thể tạo nhà hàng";
-      
+
       logApi("Error creating restaurant", {
         message: errorMessage,
         status: error?.response?.status,

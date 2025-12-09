@@ -34,16 +34,30 @@ export default function Restaurants() {
     try {
       // Admin cần lấy TẤT CẢ restaurants (kể cả inactive) để quản lý
       // Sử dụng endpoint riêng cho admin
-      const res = await http.get("/restaurants/admin/all", { 
-        params: { 
-          size: 1000
-        } 
-      });
-      const data = res.data?.data?.content || res.data?.data || [];
+      console.log("🔄 Đang gọi API: /restaurants/admin/all");
+      const res = await http.get("/restaurants/admin/all");
+      console.log(res);
+      const data = res.data?.content || [];
+      console.log("✅ Nhận được data:", data);
+      console.log("📊 Số lượng restaurants:", data.length);
       setRestaurants(data);
     } catch (err) {
-      console.error("Lỗi load restaurants:", err);
-      message.error("Không tải được danh sách nhà hàng");
+      console.error("❌ Lỗi load restaurants:", err);
+      console.error("📋 Chi tiết lỗi:", {
+        message: err?.message,
+        response: err?.response?.data,
+        status: err?.response?.status,
+        headers: err?.response?.headers
+      });
+
+      // Hiển thị thông báo lỗi cụ thể hơn
+      if (err?.response?.status === 403) {
+        message.error("❌ Bạn không có quyền truy cập. Vui lòng đăng nhập với tài khoản ADMIN");
+      } else if (err?.message?.includes("CORS")) {
+        message.error("❌ Lỗi CORS. Vui lòng kiểm tra cấu hình backend");
+      } else {
+        message.error("❌ Không tải được danh sách nhà hàng");
+      }
     }
   };
 
@@ -57,12 +71,12 @@ export default function Restaurants() {
   const filteredRestaurants = restaurants.filter((r) => {
     const name = (r.name || "").toLowerCase();
     const matchName = name.includes(search.toLowerCase());
-    
-    const matchActive = 
-      statusFilter === "all" || 
+
+    const matchActive =
+      statusFilter === "all" ||
       (statusFilter === "active" && r.active !== false) ||
       (statusFilter === "inactive" && r.active === false);
-    
+
     const matchApproved =
       approvedFilter === "all" ||
       (approvedFilter === "approved" && r.approved === true) ||
@@ -76,7 +90,7 @@ export default function Restaurants() {
   // ==========================
   const handleChangeActive = async (restaurant, newActive) => {
     const currentActive = restaurant.active !== false;
-    
+
     if (currentActive === newActive) return;
 
     setLoadingIds((prev) => [...prev, restaurant.id]);
@@ -101,7 +115,7 @@ export default function Restaurants() {
 
   const handleChangeApproved = async (restaurant, newApproved) => {
     const currentApproved = restaurant.approved === true;
-    
+
     if (currentApproved === newApproved) return;
 
     setLoadingIds((prev) => [...prev, restaurant.id]);
@@ -110,7 +124,7 @@ export default function Restaurants() {
       if (restaurant.merchantId) {
         const userRes = await http.get(`/users/${restaurant.merchantId}`);
         const user = userRes.data?.data;
-        
+
         if (user) {
           await http.patch(`/users/${user.id}`, { approved: newApproved });
           message.success(
@@ -256,10 +270,10 @@ export default function Restaurants() {
     } catch (err) {
       console.error("Lỗi xóa restaurant:", err);
       const errorMessage = err?.response?.data?.message || err?.message || "Xóa nhà hàng thất bại";
-      
+
       // Kiểm tra nếu là MerchantDeletionNotAllowedException
-      if (errorMessage.includes("merchant đang hoạt động") || 
-          errorMessage.includes("MerchantDeletionNotAllowedException")) {
+      if (errorMessage.includes("merchant đang hoạt động") ||
+        errorMessage.includes("MerchantDeletionNotAllowedException")) {
         message.error("❌ Không thể xóa merchant đang hoạt động. Vui lòng vô hiệu hóa merchant trước khi xóa.");
       } else {
         message.error(`❌ ${errorMessage}`);

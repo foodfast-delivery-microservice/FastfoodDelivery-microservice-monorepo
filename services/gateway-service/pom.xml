@@ -37,7 +37,11 @@
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
         </dependency>
-
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <optional>true</optional>
+        </dependency>
         <!-- Optional: Spring Boot Actuator để health check -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

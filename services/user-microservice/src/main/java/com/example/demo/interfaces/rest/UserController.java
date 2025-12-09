@@ -95,6 +95,8 @@ public class UserController {
         return ResponseEntity.ok(result);
     }
 
+
+
     /**
      * Validate user endpoint for Order Service
      * Allows USER role to validate if user exists and is active

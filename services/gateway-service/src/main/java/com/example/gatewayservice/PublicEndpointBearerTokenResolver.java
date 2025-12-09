@@ -40,7 +40,7 @@ public class PublicEndpointBearerTokenResolver implements BearerTokenResolver {
         if ("GET".equals(method) && uri.matches("/api/v1/products/merchants/\\d+")) {
             return true;
         }
-        
+
         // GET /api/v1/products/** - public
         if ("GET".equals(method) && uri.startsWith("/api/v1/products") &&
                 !uri.startsWith("/api/v1/products/merchants")) {
@@ -49,7 +49,8 @@ public class PublicEndpointBearerTokenResolver implements BearerTokenResolver {
 
         // GET /api/v1/restaurants/** - public (nhưng không bao gồm /me/**)
         if ("GET".equals(method) && uri.startsWith("/api/v1/restaurants") &&
-                !uri.startsWith("/api/v1/restaurants/me")) {
+                !uri.startsWith("/api/v1/restaurants/me") &&
+                !uri.startsWith("/api/v1/restaurants/admin")) {
             return true;
         }
 
