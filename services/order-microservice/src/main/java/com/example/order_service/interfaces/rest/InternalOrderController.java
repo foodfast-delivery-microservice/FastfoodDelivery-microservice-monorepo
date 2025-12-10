@@ -10,7 +10,8 @@ import org.springframework.web.bind.annotation.*;
 
 /**
  * Internal API controller for service-to-service calls
- * These endpoints do not require authentication and are only for internal microservice communication
+ * These endpoints do not require authentication and are only for internal
+ * microservice communication
  */
 @RestController
 @RequestMapping("/api/internal/orders")
@@ -19,12 +20,36 @@ import org.springframework.web.bind.annotation.*;
 public class InternalOrderController {
 
     private final GetOrderDetailUseCase getOrderDetailUseCase;
+    private final com.example.order_service.application.usecase.CheckMerchantOrdersUseCase checkMerchantOrdersUseCase;
+
+    /**
+     * Check if merchant can be deleted (all orders must be DELIVERED or CANCELLED)
+     * GET /api/internal/orders/merchant/{merchantId}/can-delete
+     * 
+     * This endpoint is used by user-service to validate merchant deletion
+     */
+    @GetMapping("/merchant/{merchantId}/can-delete")
+    public ResponseEntity<com.example.order_service.application.usecase.CheckMerchantOrdersUseCase.MerchantOrderCheckResult> checkMerchantCanBeDeleted(
+            @PathVariable Long merchantId) {
+        log.info("Internal API: Checking if merchant {} can be deleted", merchantId);
+
+        try {
+            var result = checkMerchantOrdersUseCase.execute(merchantId);
+            log.info("Internal API: Merchant {} deletion check result: canDelete={}, activeOrders={}",
+                    merchantId, result.isCanDelete(), result.getActiveOrderCount());
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            log.error("Internal API: Error checking merchant deletion for merchantId: {}", merchantId, e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
 
     /**
      * Get order detail by order ID (Internal API - no authentication required)
      * GET /api/internal/orders/{orderId}
      * 
-     * This endpoint is used by other microservices (e.g., payment-service) to get order information
+     * This endpoint is used by other microservices (e.g., payment-service) to get
+     * order information
      */
     @GetMapping("/{orderId}")
     public ResponseEntity<OrderDetailResponse> getOrderDetailInternal(@PathVariable Long orderId) {
@@ -43,4 +68,3 @@ public class InternalOrderController {
         }
     }
 }
-

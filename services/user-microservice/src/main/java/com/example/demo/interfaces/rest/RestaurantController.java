@@ -45,47 +45,46 @@ public class RestaurantController {
     private final UserRepository userRepository;
     private final GetRestaurantsForAdminUseCase getRestaurantsForAdminUseCase;
 
-//    @GetMapping
-//    public ResponseEntity<ApiResponse<Page<RestaurantResponse>>> listRestaurants(
-//            @RequestParam(required = false) String name,
-//            @RequestParam(required = false) String category,
-//            @RequestParam(required = false) String city,
-//            @RequestParam(defaultValue = "0") int page,
-//            @RequestParam(defaultValue = "20") int size,
-//            @RequestParam(required = false) Boolean includeInactive,
-//            Authentication authentication) {
-//
-//        // Nếu có includeInactive=true, lấy tất cả restaurants (kể cả inactive)
-//        // Chỉ admin mới biết dùng parameter này, nên không cần kiểm tra authentication ở đây
-//        // Security sẽ được kiểm tra ở SecurityConfig nếu cần
-//        if (Boolean.TRUE.equals(includeInactive)) {
-//            // Admin muốn xem tất cả restaurants (kể cả inactive)
-//            List<Restaurant> allRestaurants = restaurantRepository.findAll();
-//            List<RestaurantResponse> filtered = allRestaurants.stream()
-//                    .filter(r -> name == null || (r.getName() != null && r.getName().toLowerCase(Locale.ROOT).contains(name.toLowerCase(Locale.ROOT))))
-//                    .filter(r -> category == null || (r.getCategory() != null && r.getCategory().equalsIgnoreCase(category)))
-//                    .filter(r -> city == null || (r.getCity() != null && r.getCity().equalsIgnoreCase(city)))
-//                    .map(RestaurantResponse::fromEntity)
-//                    .filter(r -> r != null)
-//                    .collect(Collectors.toList());
-//
-//            int start = (int) PageRequest.of(Math.max(page, 0), Math.min(size, 100)).getOffset();
-//            int end = Math.min(start + Math.min(size, 100), filtered.size());
-//            List<RestaurantResponse> pageContent = start > end ? List.<RestaurantResponse>of() : filtered.subList(start, end);
-//            Page<RestaurantResponse> result = new PageImpl<>(pageContent, PageRequest.of(Math.max(page, 0), Math.min(size, 100)), filtered.size());
-//
-//            ApiResponse<Page<RestaurantResponse>> response =
-//                    new ApiResponse<>(HttpStatus.OK, "restaurants", result, null);
-//            return ResponseEntity.ok(response);
-//        }
-//
-//        // Mặc định: chỉ lấy restaurants active và approved (cho public/guest)
-//        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(size, 100));
-//        Page<RestaurantResponse> result = getRestaurantsUseCase.execute(name, category, city, pageable);
-//        ApiResponse<Page<RestaurantResponse>> response =
-//                new ApiResponse<>(HttpStatus.OK, "restaurants", result, null);
-//        return ResponseEntity.ok(response);
-//    }
+    // Endpoint public cho user thường (Guest/Customer)
+    @GetMapping
+    public ResponseEntity<ApiResponse<Page<RestaurantResponse>>> listRestaurants(
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) String city,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) Boolean includeInactive,
+            Authentication authentication) {
+
+        // Logic 1: Admin muốn xem tất cả (bao gồm inactive)
+        // Cần check quyền Admin ở đây hoặc tin tưởng vào param (tốt nhất là check quyền)
+        if (Boolean.TRUE.equals(includeInactive)) {
+            // Kiem tra quyen Admin cho chac chan
+            if (authentication != null && hasRole(authentication, "USER")) {
+                List<Restaurant> allRestaurants = restaurantRepository.findAll();
+                List<RestaurantResponse> filtered = allRestaurants.stream()
+                        .filter(r -> name == null || (r.getName() != null && r.getName().toLowerCase(Locale.ROOT).contains(name.toLowerCase(Locale.ROOT))))
+                        .filter(r -> category == null || (r.getCategory() != null && r.getCategory().equalsIgnoreCase(category)))
+                        .filter(r -> city == null || (r.getCity() != null && r.getCity().equalsIgnoreCase(city)))
+                        .map(RestaurantResponse::fromEntity)
+                        .collect(Collectors.toList());
+
+                int start = (int) PageRequest.of(Math.max(page, 0), Math.min(size, 100)).getOffset();
+                int end = Math.min(start + Math.min(size, 100), filtered.size());
+                List<RestaurantResponse> pageContent = start > end ? List.of() : filtered.subList(start, end);
+
+                Page<RestaurantResponse> result = new PageImpl<>(pageContent, PageRequest.of(Math.max(page, 0), Math.min(size, 100)), filtered.size());
+                return ResponseEntity.ok(new ApiResponse<>(HttpStatus.OK, "All restaurants (admin view)", result, null));
+            }
+        }
+
+        // Logic 2: User thường/Guest chỉ xem được quán Active & Approved
+        // Sử dụng UseCase: GetRestaurantsUseCase
+        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(size, 100));
+        Page<RestaurantResponse> result = getRestaurantsUseCase.execute(name, category, city, pageable);
+
+        return ResponseEntity.ok(new ApiResponse<>(HttpStatus.OK, "restaurants", result, null));
+    }
 
     @GetMapping("/admin/all")
     public ResponseEntity<Page<Restaurant>> getRestaurants(

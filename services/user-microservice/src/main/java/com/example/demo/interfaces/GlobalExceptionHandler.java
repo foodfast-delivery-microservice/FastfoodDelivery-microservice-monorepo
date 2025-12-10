@@ -89,4 +89,15 @@ public class GlobalExceptionHandler {
                 "USER_ALREADY_EXISTS");
         return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
     }
+
+    @ExceptionHandler(MerchantDeletionNotAllowedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleMerchantDeletionNotAllowedException(
+            MerchantDeletionNotAllowedException ex) {
+        ApiResponse<Void> response = new ApiResponse<>(
+                HttpStatus.BAD_REQUEST,
+                ex.getMessage(),
+                null,
+                "MERCHANT_DELETION_NOT_ALLOWED");
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
 }

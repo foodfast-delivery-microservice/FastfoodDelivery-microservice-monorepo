@@ -19,9 +19,8 @@ public class UserUseCaseConfig {
     private final EventPublisher eventPublisher;
     private final PasswordEncoder passwordEncoder;
 
-
     @Bean
-    public GetUserByIdUseCase getUserByIdUseCase (){
+    public GetUserByIdUseCase getUserByIdUseCase() {
 
         return new GetUserByIdUseCase(userRepository);
     }
@@ -32,7 +31,8 @@ public class UserUseCaseConfig {
     }
 
     @Bean
-    public CreateUserUseCase createUserUseCase(UserRepository userRepository, RestaurantRepository restaurantRepository, PasswordEncoder passwordEncoder, GeocodingService geocodingService) {
+    public CreateUserUseCase createUserUseCase(UserRepository userRepository, RestaurantRepository restaurantRepository,
+            PasswordEncoder passwordEncoder, GeocodingService geocodingService) {
         return new CreateUserUseCase(userRepository, restaurantRepository, passwordEncoder, geocodingService);
     }
 
@@ -47,8 +47,9 @@ public class UserUseCaseConfig {
     }
 
     @Bean
-    public DeleteUserByIdUseCase deleteUserByIdUseCase() {
-        return new DeleteUserByIdUseCase(userRepository, restaurantRepository, eventPublisher);
+    public DeleteUserByIdUseCase deleteUserByIdUseCase(
+            com.example.demo.infrastructure.client.OrderServiceClient orderServiceClient) {
+        return new DeleteUserByIdUseCase(userRepository, restaurantRepository, eventPublisher, orderServiceClient);
     }
 
     @Bean
