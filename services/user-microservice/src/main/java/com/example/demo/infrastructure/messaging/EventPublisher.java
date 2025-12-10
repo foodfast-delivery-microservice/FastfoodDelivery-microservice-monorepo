@@ -3,6 +3,7 @@ package com.example.demo.infrastructure.messaging;
 import com.example.demo.infrastructure.messaging.event.MerchantActivatedEvent;
 import com.example.demo.infrastructure.messaging.event.MerchantDeactivatedEvent;
 import com.example.demo.infrastructure.messaging.event.MerchantDeletedEvent;
+import com.example.demo.infrastructure.messaging.event.RestaurantDeleteInitiatedEvent;
 import com.example.demo.interfaces.rest.dto.event.UserUpdatedEventDTO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,7 +20,7 @@ public class EventPublisher {
     private static final String USER_EVENTS_EXCHANGE = "user.events";
 
     public void publishUserUpdated(UserUpdatedEventDTO userUpdatedEventDTO) {
-        try{
+        try {
             log.info("Publishing UserUpdateEvent for userId: {}", userUpdatedEventDTO.getUserId());
 
             // Gửi event đến exchange với routing key là "user.updated"
@@ -31,14 +32,15 @@ public class EventPublisher {
 
     public void publishMerchantDeactivated(MerchantDeactivatedEvent merchantDeactivatedEvent) {
         try {
-            log.info("Publishing MerchantDeactivatedEvent for merchantId: {}", merchantDeactivatedEvent.getMerchantId());
+            log.info("Publishing MerchantDeactivatedEvent for merchantId: {}",
+                    merchantDeactivatedEvent.getMerchantId());
             rabbitTemplate.convertAndSend(
                     USER_EVENTS_EXCHANGE,
                     "merchant.deactivated",
-                    merchantDeactivatedEvent
-            );
+                    merchantDeactivatedEvent);
         } catch (Exception e) {
-            log.error("Failed to publish MerchantDeactivatedEvent for merchantId: {}", merchantDeactivatedEvent.getMerchantId(), e);
+            log.error("Failed to publish MerchantDeactivatedEvent for merchantId: {}",
+                    merchantDeactivatedEvent.getMerchantId(), e);
         }
     }
 
@@ -48,10 +50,10 @@ public class EventPublisher {
             rabbitTemplate.convertAndSend(
                     USER_EVENTS_EXCHANGE,
                     "merchant.activated",
-                    merchantActivatedEvent
-            );
+                    merchantActivatedEvent);
         } catch (Exception e) {
-            log.error("Failed to publish MerchantActivatedEvent for merchantId: {}", merchantActivatedEvent.getMerchantId(), e);
+            log.error("Failed to publish MerchantActivatedEvent for merchantId: {}",
+                    merchantActivatedEvent.getMerchantId(), e);
         }
     }
 
@@ -61,10 +63,23 @@ public class EventPublisher {
             rabbitTemplate.convertAndSend(
                     USER_EVENTS_EXCHANGE,
                     "merchant.deleted",
-                    merchantDeletedEvent
-            );
+                    merchantDeletedEvent);
         } catch (Exception e) {
-            log.error("Failed to publish MerchantDeletedEvent for merchantId: {}", merchantDeletedEvent.getMerchantId(), e);
+            log.error("Failed to publish MerchantDeletedEvent for merchantId: {}", merchantDeletedEvent.getMerchantId(),
+                    e);
+        }
+    }
+
+    public void publishRestaurantDeleteInitiated(RestaurantDeleteInitiatedEvent event) {
+        try {
+            log.info("Publishing RestaurantDeleteInitiatedEvent for restaurantId: {}", event.getRestaurantId());
+            rabbitTemplate.convertAndSend(
+                    USER_EVENTS_EXCHANGE,
+                    "restaurant.delete.initiated",
+                    event);
+        } catch (Exception e) {
+            log.error("Failed to publish RestaurantDeleteInitiatedEvent for restaurantId: {}", event.getRestaurantId(),
+                    e);
         }
     }
 }

@@ -41,7 +41,8 @@ public class Restaurant {
     private String district;
 
     /**
-     * Restaurant GPS coordinates for location-based services (drone pickup, distance calculation)
+     * Restaurant GPS coordinates for location-based services (drone pickup,
+     * distance calculation)
      */
     @Column(precision = 10, scale = 7)
     private BigDecimal latitude;
@@ -69,6 +70,17 @@ public class Restaurant {
     private Boolean approved = Boolean.FALSE;
 
     /**
+     * Restaurant status for deletion lifecycle management.
+     * ACTIVE - Restaurant is operational
+     * DELETE_PENDING - Deletion initiated, awaiting validation
+     * DELETED - Restaurant has been deleted (soft delete)
+     */
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private RestaurantStatus status = RestaurantStatus.ACTIVE;
+
+    /**
      * Restaurant category: FOOD/DRINK/BOTH/OTHER
      */
     private String category;
@@ -88,4 +100,3 @@ public class Restaurant {
     @UpdateTimestamp
     private LocalDateTime updatedAt;
 }
-

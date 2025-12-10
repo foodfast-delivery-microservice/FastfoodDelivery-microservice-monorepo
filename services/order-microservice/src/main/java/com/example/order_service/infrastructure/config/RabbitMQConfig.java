@@ -33,6 +33,10 @@ public class RabbitMQConfig {
     public static final String ORDER_MERCHANT_DEACTIVATED_QUEUE = "order.merchant.deactivated.queue";
     public static final String MERCHANT_DEACTIVATED_ROUTING_KEY = "merchant.deactivated";
 
+    // Restaurant deletion validation queue
+    public static final String RESTAURANT_DELETE_INITIATED_QUEUE = "order.restaurant.delete.initiated.queue";
+    public static final String RESTAURANT_DELETE_INITIATED_ROUTING_KEY = "restaurant.delete.initiated";
+
     // Drone Service Exchange
     public static final String DRONE_EXCHANGE = "drone_exchange";
     public static final String DRONE_ASSIGNED_QUEUE = "order.drone.assigned.queue";
@@ -40,11 +44,11 @@ public class RabbitMQConfig {
     public static final String DELIVERY_COMPLETED_QUEUE = "order.delivery.completed.queue";
     public static final String DELIVERY_COMPLETED_ROUTING_KEY = "drone.delivery.completed";
 
-
     @Bean
     public TopicExchange orderExchange() {
         return new TopicExchange(ORDER_EXCHANGE);
     }
+
     @Bean
     public TopicExchange paymentExchange() {
         return new TopicExchange(PAYMENT_EXCHANGE);
@@ -88,6 +92,11 @@ public class RabbitMQConfig {
     @Bean
     public Queue orderMerchantDeactivatedQueue() {
         return new Queue(ORDER_MERCHANT_DEACTIVATED_QUEUE, true);
+    }
+
+    @Bean
+    public Queue restaurantDeleteInitiatedQueue() {
+        return new Queue(RESTAURANT_DELETE_INITIATED_QUEUE, true);
     }
 
     @Bean
@@ -140,6 +149,13 @@ public class RabbitMQConfig {
         return BindingBuilder.bind(orderMerchantDeactivatedQueue())
                 .to(userEventsExchange())
                 .with(MERCHANT_DEACTIVATED_ROUTING_KEY);
+    }
+
+    @Bean
+    public Binding restaurantDeleteInitiatedBinding() {
+        return BindingBuilder.bind(restaurantDeleteInitiatedQueue())
+                .to(userEventsExchange())
+                .with(RESTAURANT_DELETE_INITIATED_ROUTING_KEY);
     }
 
     @Bean

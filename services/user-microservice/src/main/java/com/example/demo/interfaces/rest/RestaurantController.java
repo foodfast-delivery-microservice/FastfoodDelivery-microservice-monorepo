@@ -1,6 +1,7 @@
 package com.example.demo.interfaces.rest;
 
 import com.example.demo.application.usecase.*;
+import com.example.demo.application.usecase.InitiateRestaurantDeleteUseCase;
 import com.example.demo.domain.exception.ResourceNotFoundException;
 import com.example.demo.domain.model.Restaurant;
 import com.example.demo.domain.model.User;
@@ -19,6 +20,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.lang.NonNull;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -28,8 +30,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @RestController
@@ -37,211 +41,266 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class RestaurantController {
 
-    private final GetRestaurantsUseCase getRestaurantsUseCase;
-    private final GetRestaurantByIdUseCase getRestaurantByIdUseCase;
-    private final GetRestaurantByMerchantIdUseCase getRestaurantByMerchantIdUseCase;
-    private final UpdateRestaurantUseCase updateRestaurantUseCase;
-    private final RestaurantRepository restaurantRepository;
-    private final UserRepository userRepository;
-    private final GetRestaurantsForAdminUseCase getRestaurantsForAdminUseCase;
+        private final GetRestaurantsUseCase getRestaurantsUseCase;
+        private final GetRestaurantByIdUseCase getRestaurantByIdUseCase;
+        private final GetRestaurantByMerchantIdUseCase getRestaurantByMerchantIdUseCase;
+        private final UpdateRestaurantUseCase updateRestaurantUseCase;
+        private final RestaurantRepository restaurantRepository;
+        private final UserRepository userRepository;
+        private final GetRestaurantsForAdminUseCase getRestaurantsForAdminUseCase;
+        private final InitiateRestaurantDeleteUseCase initiateRestaurantDeleteUseCase;
 
-    // Endpoint public cho user thường (Guest/Customer)
-    @GetMapping
-    public ResponseEntity<ApiResponse<Page<RestaurantResponse>>> listRestaurants(
-            @RequestParam(required = false) String name,
-            @RequestParam(required = false) String category,
-            @RequestParam(required = false) String city,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size,
-            @RequestParam(required = false) Boolean includeInactive,
-            Authentication authentication) {
+        // Endpoint public cho user thường (Guest/Customer)
+        @GetMapping
+        public ResponseEntity<ApiResponse<Page<RestaurantResponse>>> listRestaurants(
+                        @RequestParam(required = false) String name,
+                        @RequestParam(required = false) String category,
+                        @RequestParam(required = false) String city,
+                        @RequestParam(defaultValue = "0") int page,
+                        @RequestParam(defaultValue = "20") int size,
+                        @RequestParam(required = false) Boolean includeInactive,
+                        Authentication authentication) {
 
-        // Logic 1: Admin muốn xem tất cả (bao gồm inactive)
-        // Cần check quyền Admin ở đây hoặc tin tưởng vào param (tốt nhất là check quyền)
-        if (Boolean.TRUE.equals(includeInactive)) {
-            // Kiem tra quyen Admin cho chac chan
-            if (authentication != null && hasRole(authentication, "USER")) {
-                List<Restaurant> allRestaurants = restaurantRepository.findAll();
-                List<RestaurantResponse> filtered = allRestaurants.stream()
-                        .filter(r -> name == null || (r.getName() != null && r.getName().toLowerCase(Locale.ROOT).contains(name.toLowerCase(Locale.ROOT))))
-                        .filter(r -> category == null || (r.getCategory() != null && r.getCategory().equalsIgnoreCase(category)))
-                        .filter(r -> city == null || (r.getCity() != null && r.getCity().equalsIgnoreCase(city)))
-                        .map(RestaurantResponse::fromEntity)
-                        .collect(Collectors.toList());
+                // Logic 1: Admin muốn xem tất cả (bao gồm inactive)
+                // Cần check quyền Admin ở đây hoặc tin tưởng vào param (tốt nhất là check
+                // quyền)
+                if (Boolean.TRUE.equals(includeInactive)) {
+                        // Kiem tra quyen Admin cho chac chan
+                        if (authentication != null && hasRole(authentication, "USER")) {
+                                List<Restaurant> allRestaurants = restaurantRepository.findAll();
+                                List<RestaurantResponse> filtered = allRestaurants.stream()
+                                                .filter(r -> name == null || (r.getName() != null
+                                                                && r.getName().toLowerCase(Locale.ROOT).contains(
+                                                                                name.toLowerCase(Locale.ROOT))))
+                                                .filter(r -> category == null || (r.getCategory() != null
+                                                                && r.getCategory().equalsIgnoreCase(category)))
+                                                .filter(r -> city == null || (r.getCity() != null
+                                                                && r.getCity().equalsIgnoreCase(city)))
+                                                .map(RestaurantResponse::fromEntity)
+                                                .collect(Collectors.toList());
 
-                int start = (int) PageRequest.of(Math.max(page, 0), Math.min(size, 100)).getOffset();
-                int end = Math.min(start + Math.min(size, 100), filtered.size());
-                List<RestaurantResponse> pageContent = start > end ? List.of() : filtered.subList(start, end);
+                                int start = (int) PageRequest.of(Math.max(page, 0), Math.min(size, 100)).getOffset();
+                                int end = Math.min(start + Math.min(size, 100), filtered.size());
+                                List<RestaurantResponse> pageContent = start > end ? List.of()
+                                                : filtered.subList(start, end);
 
-                Page<RestaurantResponse> result = new PageImpl<>(pageContent, PageRequest.of(Math.max(page, 0), Math.min(size, 100)), filtered.size());
-                return ResponseEntity.ok(new ApiResponse<>(HttpStatus.OK, "All restaurants (admin view)", result, null));
-            }
+                                Page<RestaurantResponse> result = new PageImpl<>(pageContent,
+                                                PageRequest.of(Math.max(page, 0), Math.min(size, 100)),
+                                                filtered.size());
+                                return ResponseEntity.ok(new ApiResponse<>(HttpStatus.OK,
+                                                "All restaurants (admin view)", result, null));
+                        }
+                }
+
+                // Logic 2: User thường/Guest chỉ xem được quán Active & Approved
+                // Sử dụng UseCase: GetRestaurantsUseCase
+                Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(size, 100));
+                Page<RestaurantResponse> result = getRestaurantsUseCase.execute(name, category, city, pageable);
+
+                return ResponseEntity.ok(new ApiResponse<>(HttpStatus.OK, "restaurants", result, null));
         }
 
-        // Logic 2: User thường/Guest chỉ xem được quán Active & Approved
-        // Sử dụng UseCase: GetRestaurantsUseCase
-        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(size, 100));
-        Page<RestaurantResponse> result = getRestaurantsUseCase.execute(name, category, city, pageable);
+        @GetMapping("/admin/all")
+        public ResponseEntity<Page<Restaurant>> getRestaurants(
+                        @RequestParam(required = false) String keyword,
+                        @RequestParam(required = false) String city,
+                        @RequestParam(required = false) String category,
+                        @RequestParam(required = false) Boolean active,
+                        // Phân trang
+                        @RequestParam(defaultValue = "0") int page,
+                        @RequestParam(defaultValue = "10") int size,
+                        @RequestParam(defaultValue = "id") String sortBy,
+                        @RequestParam(defaultValue = "asc") String sortDir) {
 
-        return ResponseEntity.ok(new ApiResponse<>(HttpStatus.OK, "restaurants", result, null));
-    }
+                Sort sort = sortDir.equalsIgnoreCase("desc")
+                                ? Sort.by(sortBy).descending()
+                                : Sort.by(sortBy).ascending();
 
-    @GetMapping("/admin/all")
-    public ResponseEntity<Page<Restaurant>> getRestaurants(
-            @RequestParam(required = false) String keyword,
-            @RequestParam(required = false) String city,
-            @RequestParam(required = false) String category,
-            @RequestParam(required = false) Boolean active,
-            // Phân trang
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
-            @RequestParam(defaultValue = "id") String sortBy,
-            @RequestParam(defaultValue = "asc") String sortDir
-    ) {
+                Pageable pageable = PageRequest.of(page, size, sort);
 
-        Sort sort = sortDir.equalsIgnoreCase("desc")
-                ? Sort.by(sortBy).descending()
-                : Sort.by(sortBy).ascending();
+                Page<Restaurant> result = getRestaurantsForAdminUseCase.excute(keyword, city, category, active,
+                                pageable);
 
-        Pageable pageable = PageRequest.of(page, size, sort);
-
-        Page<Restaurant> result = getRestaurantsForAdminUseCase.excute(keyword, city, category, active, pageable);
-
-        return ResponseEntity.ok(result);
-    }
-
-    @GetMapping("/{restaurantId}")
-    public ResponseEntity<ApiResponse<RestaurantDetailResponse>> getRestaurantById(
-            @PathVariable @NonNull Long restaurantId) {
-        RestaurantDetailResponse restaurant = getRestaurantByIdUseCase.execute(restaurantId);
-        ApiResponse<RestaurantDetailResponse> response =
-                new ApiResponse<>(HttpStatus.OK, "restaurant", restaurant, null);
-        return ResponseEntity.ok(response);
-    }
-
-    @GetMapping("/merchants/{merchantId}")
-    public ResponseEntity<ApiResponse<RestaurantDetailResponse>> getRestaurantByMerchantId(
-            @PathVariable @NonNull Long merchantId) {
-        RestaurantDetailResponse restaurant = getRestaurantByMerchantIdUseCase.execute(merchantId);
-        ApiResponse<RestaurantDetailResponse> response =
-                new ApiResponse<>(HttpStatus.OK, "restaurant", restaurant, null);
-        return ResponseEntity.ok(response);
-    }
-
-    @GetMapping("/me")
-    public ResponseEntity<ApiResponse<RestaurantDetailResponse>> getMyRestaurant(Authentication authentication) {
-        Long merchantId = resolveMerchantId(authentication);
-        RestaurantDetailResponse restaurant = getRestaurantByMerchantIdUseCase.execute(merchantId);
-        ApiResponse<RestaurantDetailResponse> response =
-                new ApiResponse<>(HttpStatus.OK, "restaurant", restaurant, null);
-        return ResponseEntity.ok(response);
-    }
-
-    @PutMapping("/me")
-    public ResponseEntity<ApiResponse<RestaurantDetailResponse>> updateMyRestaurant(
-            Authentication authentication,
-            @Valid @RequestBody UpdateRestaurantRequest request) {
-        Long merchantId = resolveMerchantId(authentication);
-        RestaurantDetailResponse restaurant = updateRestaurantUseCase.execute(merchantId, request);
-        ApiResponse<RestaurantDetailResponse> response =
-                new ApiResponse<>(HttpStatus.OK, "restaurant updated", restaurant, null);
-        return ResponseEntity.ok(response);
-    }
-
-    @PatchMapping("/me/status")
-    public ResponseEntity<ApiResponse<RestaurantDetailResponse>> updateRestaurantStatus(
-            Authentication authentication,
-            @Valid @RequestBody RestaurantStatusRequest request) {
-        Long merchantId = resolveMerchantId(authentication);
-        Restaurant restaurant = restaurantRepository.findByMerchantId(merchantId)
-                .orElseThrow(() -> new ResourceNotFoundException("Restaurant for merchant not found"));
-        restaurant.setActive(request.getActive());
-        Restaurant saved = restaurantRepository.save(restaurant);
-        ApiResponse<RestaurantDetailResponse> response =
-                new ApiResponse<>(HttpStatus.OK, "restaurant status updated",
-                        RestaurantDetailResponse.fromEntity(saved), null);
-        return ResponseEntity.ok(response);
-    }
-
-    @PatchMapping("/{restaurantId}/status")
-    public ResponseEntity<ApiResponse<RestaurantDetailResponse>> updateRestaurantStatusByAdmin(
-            @PathVariable @NonNull Long restaurantId,
-            @Valid @RequestBody RestaurantStatusRequest request,
-            Authentication authentication) {
-        // Check if user is admin
-        if (!hasRole(authentication, "ROLE_ADMIN")) {
-            throw new AccessDeniedException("Admin access required");
-        }
-        
-        Restaurant restaurant = restaurantRepository.findById(restaurantId)
-                .orElseThrow(() -> new ResourceNotFoundException("Restaurant not found"));
-        restaurant.setActive(request.getActive());
-        Restaurant saved = restaurantRepository.save(restaurant);
-        ApiResponse<RestaurantDetailResponse> response =
-                new ApiResponse<>(HttpStatus.OK, "restaurant status updated",
-                        RestaurantDetailResponse.fromEntity(saved), null);
-        return ResponseEntity.ok(response);
-    }
-
-    @PutMapping("/{restaurantId}")
-    public ResponseEntity<ApiResponse<RestaurantDetailResponse>> updateRestaurantByAdmin(
-            @PathVariable @NonNull Long restaurantId,
-            @Valid @RequestBody UpdateRestaurantRequest request,
-            Authentication authentication) {
-        // Check if user is admin
-        if (!hasRole(authentication, "ROLE_ADMIN")) {
-            throw new AccessDeniedException("Admin access required");
-        }
-        
-        Restaurant restaurant = restaurantRepository.findById(restaurantId)
-                .orElseThrow(() -> new ResourceNotFoundException("Restaurant not found"));
-        
-        // Update restaurant fields
-        if (request.getName() != null) restaurant.setName(request.getName());
-        if (request.getDescription() != null) restaurant.setDescription(request.getDescription());
-        if (request.getAddress() != null) restaurant.setAddress(request.getAddress());
-        if (request.getCity() != null) restaurant.setCity(request.getCity());
-        if (request.getDistrict() != null) restaurant.setDistrict(request.getDistrict());
-        if (request.getCategory() != null) restaurant.setCategory(request.getCategory());
-        if (request.getPhone() != null) restaurant.setPhone(request.getPhone());
-        if (request.getEmail() != null) restaurant.setEmail(request.getEmail());
-        if (request.getOpeningHours() != null) restaurant.setOpeningHours(request.getOpeningHours());
-        if (request.getDeliveryFee() != null) restaurant.setDeliveryFee(request.getDeliveryFee());
-        if (request.getEstimatedDeliveryTime() != null) restaurant.setEstimatedDeliveryTime(request.getEstimatedDeliveryTime());
-        if (request.getImage() != null) restaurant.setImage(request.getImage());
-        
-        Restaurant saved = restaurantRepository.save(restaurant);
-        ApiResponse<RestaurantDetailResponse> response =
-                new ApiResponse<>(HttpStatus.OK, "restaurant updated by admin",
-                        RestaurantDetailResponse.fromEntity(saved), null);
-        return ResponseEntity.ok(response);
-    }
-
-    private Long resolveMerchantId(Authentication authentication) {
-        if (authentication == null || !authentication.isAuthenticated()) {
-            throw new AccessDeniedException("Authentication required");
-        }
-        boolean isMerchant = hasRole(authentication, "ROLE_MERCHANT");
-        boolean isAdmin = hasRole(authentication, "ROLE_ADMIN");
-        if (!isMerchant && !isAdmin) {
-            throw new AccessDeniedException("Merchant role required");
+                return ResponseEntity.ok(result);
         }
 
-        String username = authentication.getName();
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-        return user.getId();
-    }
+        @GetMapping("/{restaurantId}")
+        public ResponseEntity<ApiResponse<RestaurantDetailResponse>> getRestaurantById(
+                        @PathVariable @NonNull Long restaurantId) {
+                RestaurantDetailResponse restaurant = getRestaurantByIdUseCase.execute(restaurantId);
+                ApiResponse<RestaurantDetailResponse> response = new ApiResponse<>(HttpStatus.OK, "restaurant",
+                                restaurant, null);
+                return ResponseEntity.ok(response);
+        }
 
-    private boolean hasRole(Authentication authentication, String role) {
-        return authentication.getAuthorities().stream()
-                .anyMatch(grantedAuthority -> {
-                    String authority = grantedAuthority.getAuthority();
-                    // Chấp nhận cả "ROLE_ADMIN" và "ADMIN"
-                    return authority.equalsIgnoreCase(role) ||
-                            authority.equalsIgnoreCase("ROLE_" + role) ||
-                            authority.equalsIgnoreCase(role.replace("ROLE_", ""));
-                });
-    }
+        @GetMapping("/merchants/{merchantId}")
+        public ResponseEntity<ApiResponse<RestaurantDetailResponse>> getRestaurantByMerchantId(
+                        @PathVariable @NonNull Long merchantId) {
+                RestaurantDetailResponse restaurant = getRestaurantByMerchantIdUseCase.execute(merchantId);
+                ApiResponse<RestaurantDetailResponse> response = new ApiResponse<>(HttpStatus.OK, "restaurant",
+                                restaurant, null);
+                return ResponseEntity.ok(response);
+        }
+
+        @GetMapping("/me")
+        public ResponseEntity<ApiResponse<RestaurantDetailResponse>> getMyRestaurant(Authentication authentication) {
+                Long merchantId = resolveMerchantId(authentication);
+                RestaurantDetailResponse restaurant = getRestaurantByMerchantIdUseCase.execute(merchantId);
+                ApiResponse<RestaurantDetailResponse> response = new ApiResponse<>(HttpStatus.OK, "restaurant",
+                                restaurant, null);
+                return ResponseEntity.ok(response);
+        }
+
+        @PutMapping("/me")
+        public ResponseEntity<ApiResponse<RestaurantDetailResponse>> updateMyRestaurant(
+                        Authentication authentication,
+                        @Valid @RequestBody UpdateRestaurantRequest request) {
+                Long merchantId = resolveMerchantId(authentication);
+                RestaurantDetailResponse restaurant = updateRestaurantUseCase.execute(merchantId, request);
+                ApiResponse<RestaurantDetailResponse> response = new ApiResponse<>(HttpStatus.OK, "restaurant updated",
+                                restaurant, null);
+                return ResponseEntity.ok(response);
+        }
+
+        @PatchMapping("/me/status")
+        public ResponseEntity<ApiResponse<RestaurantDetailResponse>> updateRestaurantStatus(
+                        Authentication authentication,
+                        @Valid @RequestBody RestaurantStatusRequest request) {
+                Long merchantId = resolveMerchantId(authentication);
+                Restaurant restaurant = restaurantRepository.findByMerchantId(merchantId)
+                                .orElseThrow(() -> new ResourceNotFoundException("Restaurant for merchant not found"));
+                restaurant.setActive(request.getActive());
+                Restaurant saved = restaurantRepository.save(restaurant);
+                ApiResponse<RestaurantDetailResponse> response = new ApiResponse<>(HttpStatus.OK,
+                                "restaurant status updated",
+                                RestaurantDetailResponse.fromEntity(saved), null);
+                return ResponseEntity.ok(response);
+        }
+
+        @PatchMapping("/{restaurantId}/status")
+        public ResponseEntity<ApiResponse<RestaurantDetailResponse>> updateRestaurantStatusByAdmin(
+                        @PathVariable @NonNull Long restaurantId,
+                        @Valid @RequestBody RestaurantStatusRequest request,
+                        Authentication authentication) {
+                // Check if user is admin
+                if (!hasRole(authentication, "ROLE_ADMIN")) {
+                        throw new AccessDeniedException("Admin access required");
+                }
+
+                Restaurant restaurant = restaurantRepository.findById(restaurantId)
+                                .orElseThrow(() -> new ResourceNotFoundException("Restaurant not found"));
+                restaurant.setActive(request.getActive());
+                Restaurant saved = restaurantRepository.save(restaurant);
+                ApiResponse<RestaurantDetailResponse> response = new ApiResponse<>(HttpStatus.OK,
+                                "restaurant status updated",
+                                RestaurantDetailResponse.fromEntity(saved), null);
+                return ResponseEntity.ok(response);
+        }
+
+        @PutMapping("/{restaurantId}")
+        public ResponseEntity<ApiResponse<RestaurantDetailResponse>> updateRestaurantByAdmin(
+                        @PathVariable @NonNull Long restaurantId,
+                        @Valid @RequestBody UpdateRestaurantRequest request,
+                        Authentication authentication) {
+                // Check if user is admin
+                if (!hasRole(authentication, "ROLE_ADMIN")) {
+                        throw new AccessDeniedException("Admin access required");
+                }
+
+                Restaurant restaurant = restaurantRepository.findById(restaurantId)
+                                .orElseThrow(() -> new ResourceNotFoundException("Restaurant not found"));
+
+                // Update restaurant fields
+                if (request.getName() != null)
+                        restaurant.setName(request.getName());
+                if (request.getDescription() != null)
+                        restaurant.setDescription(request.getDescription());
+                if (request.getAddress() != null)
+                        restaurant.setAddress(request.getAddress());
+                if (request.getCity() != null)
+                        restaurant.setCity(request.getCity());
+                if (request.getDistrict() != null)
+                        restaurant.setDistrict(request.getDistrict());
+                if (request.getCategory() != null)
+                        restaurant.setCategory(request.getCategory());
+                if (request.getPhone() != null)
+                        restaurant.setPhone(request.getPhone());
+                if (request.getEmail() != null)
+                        restaurant.setEmail(request.getEmail());
+                if (request.getOpeningHours() != null)
+                        restaurant.setOpeningHours(request.getOpeningHours());
+                if (request.getDeliveryFee() != null)
+                        restaurant.setDeliveryFee(request.getDeliveryFee());
+                if (request.getEstimatedDeliveryTime() != null)
+                        restaurant.setEstimatedDeliveryTime(request.getEstimatedDeliveryTime());
+                if (request.getImage() != null)
+                        restaurant.setImage(request.getImage());
+
+                Restaurant saved = restaurantRepository.save(restaurant);
+                ApiResponse<RestaurantDetailResponse> response = new ApiResponse<>(HttpStatus.OK,
+                                "restaurant updated by admin",
+                                RestaurantDetailResponse.fromEntity(saved), null);
+                return ResponseEntity.ok(response);
+        }
+
+        /**
+         * DELETE endpoint to initiate restaurant deletion using Saga pattern.
+         * Only ADMIN can delete restaurants.
+         * Deletion is asynchronous - restaurant status is set to DELETE_PENDING
+         * and validation is performed by Order Service.
+         */
+        @DeleteMapping("/admin/{restaurantId}")
+        public ResponseEntity<Map<String, Object>> deleteRestaurant(
+                        @PathVariable @NonNull Long restaurantId,
+                        Authentication authentication) {
+                if (!hasRole(authentication, "ADMIN")) {
+                        return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+                }
+
+                try {
+                        initiateRestaurantDeleteUseCase.execute(restaurantId);
+
+                        Map<String, Object> response = new HashMap<>();
+                        response.put("message", "Restaurant deletion initiated. Validation in progress.");
+                        response.put("restaurantId", restaurantId);
+                        response.put("status", "DELETE_PENDING");
+
+                        return ResponseEntity.accepted().body(response);
+                } catch (IllegalArgumentException e) {
+                        Map<String, Object> errorResponse = new HashMap<>();
+                        errorResponse.put("error", e.getMessage());
+                        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+                } catch (IllegalStateException e) {
+                        Map<String, Object> errorResponse = new HashMap<>();
+                        errorResponse.put("error", e.getMessage());
+                        return ResponseEntity.status(HttpStatus.CONFLICT).body(errorResponse);
+                }
+        }
+
+        private Long resolveMerchantId(Authentication authentication) {
+                if (authentication == null || !authentication.isAuthenticated()) {
+                        throw new AccessDeniedException("Authentication required");
+                }
+                boolean isMerchant = hasRole(authentication, "ROLE_MERCHANT");
+                boolean isAdmin = hasRole(authentication, "ROLE_ADMIN");
+                if (!isMerchant && !isAdmin) {
+                        throw new AccessDeniedException("Merchant role required");
+                }
+
+                String username = authentication.getName();
+                User user = userRepository.findByUsername(username)
+                                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+                return user.getId();
+        }
+
+        private boolean hasRole(Authentication authentication, String role) {
+                return authentication.getAuthorities().stream()
+                                .anyMatch(grantedAuthority -> {
+                                        String authority = grantedAuthority.getAuthority();
+                                        // Chấp nhận cả "ROLE_ADMIN" và "ADMIN"
+                                        return authority.equalsIgnoreCase(role) ||
+                                                        authority.equalsIgnoreCase("ROLE_" + role) ||
+                                                        authority.equalsIgnoreCase(role.replace("ROLE_", ""));
+                                });
+        }
 }
-
