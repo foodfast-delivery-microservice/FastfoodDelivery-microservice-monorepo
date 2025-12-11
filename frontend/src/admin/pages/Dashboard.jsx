@@ -5,8 +5,6 @@ import { message } from "antd";
 import { getSystemKPIs } from "../../services/statisticsApi";
 
 import {
-  LineChart,
-  Line,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -15,6 +13,9 @@ import {
   BarChart,
   Bar,
   Legend,
+  PieChart,
+  Pie,
+  Cell,
 } from "recharts";
 
 export default function RestaurantDashboard() {
@@ -35,7 +36,6 @@ export default function RestaurantDashboard() {
   const [timeFilter, setTimeFilter] = useState("all");
 
   // === CHART STATE ===
-  const [chartData, setChartData] = useState([]);     // revenue
   const [orderChart, setOrderChart] = useState([]);    // order count
 
   // === DASHBOARD COUNTER ===
@@ -200,7 +200,6 @@ export default function RestaurantDashboard() {
   // ================================
   useEffect(() => {
     if (orders.length === 0) {
-      setChartData([]);
       setOrderChart([]);
       return;
     }
@@ -281,7 +280,6 @@ export default function RestaurantDashboard() {
       (a, b) => a.timestamp - b.timestamp
     );
 
-    setChartData(sorted);
     setOrderChart(sorted);
   }, [orders, timeFilter, restaurantFilter]);
 
@@ -303,6 +301,61 @@ export default function RestaurantDashboard() {
       totalRevenue: stats.totalRevenue,
     };
   }, [kpis, stats, restaurantFilter]);
+
+  // Tính toán doanh thu theo nhà hàng cho biểu đồ tròn
+  const revenueByRestaurant = useMemo(() => {
+    if (orders.length === 0 || restaurants.length === 0) return [];
+
+    // Lọc chỉ các đơn đã giao
+    const deliveredOrders = orders.filter((o) => {
+      const status = (o.status || "").toLowerCase();
+      return status.includes("delivered") || status.includes("đã giao");
+    });
+
+    // Tạo map merchantId -> tên nhà hàng
+    const restaurantMap = new Map();
+    restaurants.forEach((r) => {
+      if (r.merchantId) {
+        restaurantMap.set(String(r.merchantId), r.name || `Nhà hàng ${r.merchantId}`);
+      }
+    });
+
+    // Tính doanh thu theo merchantId
+    const revenueMap = new Map();
+    deliveredOrders.forEach((o) => {
+      const merchantId = String(o.merchantId || "");
+      if (merchantId) {
+        const current = revenueMap.get(merchantId) || 0;
+        revenueMap.set(merchantId, current + Number(o.grandTotal || 0));
+      }
+    });
+
+    // Chuyển sang mảng và sắp xếp theo doanh thu giảm dần
+    const result = Array.from(revenueMap.entries())
+      .map(([merchantId, revenue]) => ({
+        name: restaurantMap.get(merchantId) || `Nhà hàng ${merchantId}`,
+        value: revenue,
+        merchantId,
+      }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 10); // Chỉ lấy top 10 nhà hàng
+
+    return result;
+  }, [orders, restaurants]);
+
+  // Màu sắc cho biểu đồ tròn
+  const COLORS = [
+    "#0088FE",
+    "#00C49F",
+    "#FFBB28",
+    "#FF8042",
+    "#8884D8",
+    "#82CA9D",
+    "#FFC658",
+    "#FF7C7C",
+    "#8DD1E1",
+    "#D084D0",
+  ];
 
   const errorEntries = useMemo(
     () => Object.entries(errors).filter(([, value]) => !!value),
@@ -404,29 +457,6 @@ export default function RestaurantDashboard() {
       </div>
 
       {/* =======================
-          CHART REVENUE
-      ========================= */}
-      <div className="chart-container">
-        <h3> Doanh thu theo ngày</h3>
-        <ResponsiveContainer width="100%" height={300}>
-          <LineChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="date" />
-            <YAxis />
-            <Tooltip formatter={(v) => `${v.toLocaleString()}₫`} />
-            <Legend />
-            <Line
-              type="monotone"
-              dataKey="revenue"
-              stroke="#4f46e5"
-              strokeWidth={3}
-              name="Doanh thu"
-            />
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
-
-      {/* =======================
           CHART ORDER COUNT
       ========================= */}
       <div className="chart-container">
@@ -447,6 +477,55 @@ export default function RestaurantDashboard() {
           </BarChart>
         </ResponsiveContainer>
       </div>
+
+      {/* =======================
+          CHART REVENUE BY RESTAURANT (PIE CHART)
+      ========================= */}
+      {revenueByRestaurant.length > 0 && (
+        <div className="chart-container">
+          <h3>📊 Doanh thu theo nhà hàng</h3>
+          <ResponsiveContainer width="100%" height={400}>
+            <PieChart>
+              <Pie
+                data={revenueByRestaurant}
+                cx="50%"
+                cy="50%"
+                labelLine={true}
+                label={({ name, percent }) => {
+                  // Chỉ hiển thị label nếu phần trăm > 5% để tránh quá nhiều text
+                  if (percent > 0.05) {
+                    return `${name}: ${(percent * 100).toFixed(1)}%`;
+                  }
+                  return "";
+                }}
+                outerRadius={120}
+                fill="#8884d8"
+                dataKey="value"
+              >
+                {revenueByRestaurant.map((entry, index) => (
+                  <Cell
+                    key={`cell-${index}`}
+                    fill={COLORS[index % COLORS.length]}
+                  />
+                ))}
+              </Pie>
+              <Tooltip
+                formatter={(value) => `${Number(value).toLocaleString()}₫`}
+              />
+              <Legend
+                formatter={(value, entry) => {
+                  const data = revenueByRestaurant.find(
+                    (item) => item.name === value
+                  );
+                  return data
+                    ? `${value}: ${data.value.toLocaleString()}₫`
+                    : value;
+                }}
+              />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+      )}
     </div>
   );
 }
