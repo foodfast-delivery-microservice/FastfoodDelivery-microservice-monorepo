@@ -60,6 +60,28 @@ public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecific
 
         long countByCreatedAtAfter(LocalDateTime dateTime);
 
+        // Revenue by merchant for delivered orders
+        @Query(value = "SELECT merchant_id, SUM(grand_total) as revenue " +
+               "FROM orders " +
+               "WHERE status = :status " +
+               "AND merchant_id IS NOT NULL " +
+               "GROUP BY merchant_id " +
+               "ORDER BY revenue DESC", nativeQuery = true)
+        List<Object[]> sumRevenueByMerchantIdAndStatus(@Param("status") String status);
+
+        // Revenue by merchant for delivered orders with date range
+        @Query(value = "SELECT merchant_id, SUM(grand_total) as revenue " +
+               "FROM orders " +
+               "WHERE status = :status " +
+               "AND merchant_id IS NOT NULL " +
+               "AND created_at BETWEEN :fromDate AND :toDate " +
+               "GROUP BY merchant_id " +
+               "ORDER BY revenue DESC", nativeQuery = true)
+        List<Object[]> sumRevenueByMerchantIdAndStatusAndDateRange(
+                @Param("status") String status,
+                @Param("fromDate") LocalDateTime fromDate,
+                @Param("toDate") LocalDateTime toDate);
+
         /**
          * Override mặc định của JpaSpecificationExecutor để luôn fetch join collection orderItems
          * nhằm tránh N+1 query khi load danh sách đơn hàng (đặc biệt khi dùng DB từ xa như Railway).

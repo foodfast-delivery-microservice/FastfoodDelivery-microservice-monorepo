@@ -2,16 +2,11 @@ import React, { useEffect, useState, useCallback, useMemo } from "react";
 import "./Dashboard.css";
 import http from "../../services/http";
 import { message } from "antd";
-import { getSystemKPIs } from "../../services/statisticsApi";
+import { getSystemKPIs, getRevenueByRestaurant } from "../../services/statisticsApi";
 
 import {
-  XAxis,
-  YAxis,
-  CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  BarChart,
-  Bar,
   Legend,
   PieChart,
   Pie,
@@ -25,10 +20,12 @@ export default function RestaurantDashboard() {
 
   const [loading, setLoading] = useState(true);
   const [kpis, setKpis] = useState(null);
+  const [revenueByRestaurantData, setRevenueByRestaurantData] = useState([]);
   const [errors, setErrors] = useState({
     restaurants: null,
     orders: null,
     kpis: null,
+    revenueByRestaurant: null,
   });
 
   // === FILTER STATE (new) ===
@@ -36,7 +33,7 @@ export default function RestaurantDashboard() {
   const [timeFilter, setTimeFilter] = useState("all");
 
   // === CHART STATE ===
-  const [orderChart, setOrderChart] = useState([]);    // order count
+  // Removed orderChart - only using PieChart now
 
   // === DASHBOARD COUNTER ===
   const [stats, setStats] = useState({
@@ -70,7 +67,7 @@ export default function RestaurantDashboard() {
 
     try {
       setLoading(true);
-      setErrors({ restaurants: null, orders: null, kpis: null });
+      setErrors({ restaurants: null, orders: null, kpis: null, revenueByRestaurant: null });
 
       const fetchRestaurants = async () => {
         const params = { size: 100, page: 0 };
@@ -111,13 +108,53 @@ export default function RestaurantDashboard() {
         return response;
       };
 
+      const fetchRevenueByRestaurant = async () => {
+        // Tính toán date range từ timeFilter
+        let fromDate = null;
+        let toDate = null;
+        
+        // Chỉ set date range nếu timeFilter không phải "all"
+        if (timeFilter !== "all") {
+          const now = new Date();
+          
+          if (timeFilter === "24h") {
+            fromDate = new Date(now.getTime() - 24 * 3600 * 1000);
+            toDate = now;
+          } else if (timeFilter === "3d") {
+            fromDate = new Date(now.getTime() - 3 * 24 * 3600 * 1000);
+            toDate = now;
+          } else if (timeFilter === "7d") {
+            fromDate = new Date(now.getTime() - 7 * 24 * 3600 * 1000);
+            toDate = now;
+          } else if (timeFilter === "30d") {
+            fromDate = new Date(now.getTime() - 30 * 24 * 3600 * 1000);
+            toDate = now;
+          }
+        }
+        
+        const params = {};
+        if (fromDate) {
+          // Format theo ISO 8601 với timezone
+          params.fromDate = fromDate.toISOString();
+        }
+        if (toDate) {
+          params.toDate = toDate.toISOString();
+        }
+        
+        logApi("GET /admin/dashboard/revenue-by-restaurant params", params);
+        const response = await getRevenueByRestaurant(params);
+        logApi("GET /admin/dashboard/revenue-by-restaurant response", response);
+        return response;
+      };
+
       const results = await Promise.allSettled([
         fetchRestaurants(),
         fetchOrders(),
         fetchKpis(),
+        fetchRevenueByRestaurant(),
       ]);
 
-      const [restaurantsResult, ordersResult, kpisResult] = results;
+      const [restaurantsResult, ordersResult, kpisResult, revenueResult] = results;
 
       if (restaurantsResult.status === "fulfilled") {
         setRestaurants(restaurantsResult.value);
@@ -154,6 +191,32 @@ export default function RestaurantDashboard() {
         message.warning("Không thể tải KPI hệ thống, sử dụng dữ liệu tạm thời");
       }
 
+      if (revenueResult.status === "fulfilled") {
+        const revenueData = revenueResult.value;
+        logApi("Revenue data received", revenueData);
+        
+        // Handle different response structures
+        let restaurants = [];
+        if (revenueData) {
+          if (Array.isArray(revenueData)) {
+            restaurants = revenueData;
+          } else if (revenueData.restaurants && Array.isArray(revenueData.restaurants)) {
+            restaurants = revenueData.restaurants;
+          } else if (revenueData.data && revenueData.data.restaurants) {
+            restaurants = revenueData.data.restaurants;
+          }
+        }
+        
+        logApi("Parsed restaurants data", restaurants);
+        setRevenueByRestaurantData(restaurants);
+      } else {
+        const errPayload = serializeError(revenueResult.reason);
+        setErrors((prev) => ({ ...prev, revenueByRestaurant: errPayload }));
+        setRevenueByRestaurantData([]);
+        message.warning("Không thể tải doanh thu theo nhà hàng");
+        logApi("Revenue API error", errPayload);
+      }
+
       // === STATS ===
       const delivered = filteredOrders.filter((o) =>
         (o.status || "")
@@ -188,7 +251,7 @@ export default function RestaurantDashboard() {
     } finally {
       setLoading(false);
     }
-  }, [restaurantFilter]);
+  }, [restaurantFilter, timeFilter]);
 
   useEffect(() => {
     fetchAll();
@@ -198,90 +261,7 @@ export default function RestaurantDashboard() {
   // ================================
   // 🔥 CHART PROCESSING
   // ================================
-  useEffect(() => {
-    if (orders.length === 0) {
-      setOrderChart([]);
-      return;
-    }
-
-    const daily = {};
-    const now = Date.now();
-
-    const toMillis = (createdAt) => {
-      if (!createdAt) return 0;
-      // Handle array format [yyyy, MM, dd, HH, mm, ss] or string
-      if (Array.isArray(createdAt)) {
-        const date = new Date(createdAt[0], createdAt[1] - 1, createdAt[2], createdAt[3], createdAt[4], createdAt[5]);
-        return date.getTime();
-      }
-      if (
-        typeof createdAt === "object" &&
-        createdAt !== null &&
-        (createdAt.year || createdAt.monthValue)
-      ) {
-        const {
-          year,
-          monthValue,
-          month,
-          dayOfMonth,
-          day,
-          hour,
-          minute,
-          second,
-        } = createdAt;
-        const jsDate = new Date(
-          year || createdAt.year || new Date().getFullYear(),
-          (monthValue || month || 1) - 1,
-          dayOfMonth || day || 1,
-          hour || 0,
-          minute || 0,
-          second || 0
-        );
-        return jsDate.getTime();
-      }
-      if (typeof createdAt === "number") {
-        return createdAt;
-      }
-      const ms = new Date(createdAt).getTime();
-      return Number.isFinite(ms) ? ms : 0;
-    };
-
-    orders.forEach((o) => {
-      const ms = toMillis(o.createdAt);
-      if (!ms) return;
-
-      // Time filter
-      if (timeFilter === "24h" && ms < now - 24 * 3600 * 1000) return;
-      if (timeFilter === "3d" && ms < now - 3 * 24 * 3600 * 1000) return;
-      if (timeFilter === "7d" && ms < now - 7 * 24 * 3600 * 1000) return;
-      if (timeFilter === "30d" && ms < now - 30 * 24 * 3600 * 1000) return;
-
-      const date = new Date(ms).toLocaleDateString("vi-VN");
-
-      if (!daily[date]) {
-        daily[date] = {
-          date,
-          timestamp: ms,
-          revenue: 0,
-          count: 0,
-        };
-      }
-
-      // Revenue only for delivered orders
-      const status = (o.status || "").toLowerCase();
-      if (status.includes("delivered") || status.includes("đã giao")) {
-        daily[date].revenue += Number(o.grandTotal || 0);
-      }
-
-      daily[date].count += 1;
-    });
-
-    const sorted = Object.values(daily).sort(
-      (a, b) => a.timestamp - b.timestamp
-    );
-
-    setOrderChart(sorted);
-  }, [orders, timeFilter, restaurantFilter]);
+  // Removed orderChart processing - only using PieChart for revenue from API
 
   const displayStats = useMemo(() => {
     const shouldUseKpis = restaurantFilter === "all" && kpis;
@@ -302,15 +282,20 @@ export default function RestaurantDashboard() {
     };
   }, [kpis, stats, restaurantFilter]);
 
-  // Tính toán doanh thu theo nhà hàng cho biểu đồ tròn
+  // Tính toán doanh thu theo nhà hàng cho biểu đồ tròn từ API
   const revenueByRestaurant = useMemo(() => {
-    if (orders.length === 0 || restaurants.length === 0) return [];
-
-    // Lọc chỉ các đơn đã giao
-    const deliveredOrders = orders.filter((o) => {
-      const status = (o.status || "").toLowerCase();
-      return status.includes("delivered") || status.includes("đã giao");
-    });
+    console.log("[PieChart] revenueByRestaurantData:", revenueByRestaurantData);
+    console.log("[PieChart] restaurants:", restaurants);
+    
+    if (revenueByRestaurantData.length === 0) {
+      console.log("[PieChart] No revenue data available");
+      return [];
+    }
+    
+    if (restaurants.length === 0) {
+      console.log("[PieChart] No restaurants data available");
+      return [];
+    }
 
     // Tạo map merchantId -> tên nhà hàng
     const restaurantMap = new Map();
@@ -320,28 +305,26 @@ export default function RestaurantDashboard() {
       }
     });
 
-    // Tính doanh thu theo merchantId
-    const revenueMap = new Map();
-    deliveredOrders.forEach((o) => {
-      const merchantId = String(o.merchantId || "");
-      if (merchantId) {
-        const current = revenueMap.get(merchantId) || 0;
-        revenueMap.set(merchantId, current + Number(o.grandTotal || 0));
-      }
-    });
-
-    // Chuyển sang mảng và sắp xếp theo doanh thu giảm dần
-    const result = Array.from(revenueMap.entries())
-      .map(([merchantId, revenue]) => ({
-        name: restaurantMap.get(merchantId) || `Nhà hàng ${merchantId}`,
-        value: revenue,
-        merchantId,
-      }))
+    // Map dữ liệu từ API với tên nhà hàng
+    const result = revenueByRestaurantData
+      .map((item) => {
+        const merchantId = item.merchantId || item.merchant_id;
+        const revenue = item.revenue || item.value || 0;
+        const revenueValue = typeof revenue === 'string' ? parseFloat(revenue) : Number(revenue);
+        
+        return {
+          name: restaurantMap.get(String(merchantId)) || `Nhà hàng ${merchantId}`,
+          value: revenueValue,
+          merchantId: merchantId,
+        };
+      })
+      .filter((item) => item.value > 0 && item.merchantId) // Chỉ lấy nhà hàng có doanh thu > 0 và có merchantId
       .sort((a, b) => b.value - a.value)
       .slice(0, 10); // Chỉ lấy top 10 nhà hàng
 
+    console.log("[PieChart] Final mapped data:", result);
     return result;
-  }, [orders, restaurants]);
+  }, [revenueByRestaurantData, restaurants]);
 
   // Màu sắc cho biểu đồ tròn
   const COLORS = [
@@ -457,33 +440,11 @@ export default function RestaurantDashboard() {
       </div>
 
       {/* =======================
-          CHART ORDER COUNT
-      ========================= */}
-      <div className="chart-container">
-        <h3> Số đơn theo ngày</h3>
-        <ResponsiveContainer width="100%" height={300}>
-          <BarChart data={orderChart}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="date" />
-            <YAxis />
-            <Tooltip />
-            <Legend />
-            <Bar
-              dataKey="count"
-              fill="#10b981"
-              barSize={40}
-              name="Số đơn"
-            />
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
-
-      {/* =======================
           CHART REVENUE BY RESTAURANT (PIE CHART)
       ========================= */}
-      {revenueByRestaurant.length > 0 && (
-        <div className="chart-container">
-          <h3>📊 Doanh thu theo nhà hàng</h3>
+      <div className="chart-container">
+        <h3>📊 Doanh thu theo nhà hàng</h3>
+        {revenueByRestaurant.length > 0 ? (
           <ResponsiveContainer width="100%" height={400}>
             <PieChart>
               <Pie
@@ -524,8 +485,17 @@ export default function RestaurantDashboard() {
               />
             </PieChart>
           </ResponsiveContainer>
-        </div>
-      )}
+        ) : (
+          <div style={{ textAlign: "center", padding: "40px", color: "#999" }}>
+            {revenueByRestaurantData.length === 0 
+              ? "⏳ Đang tải dữ liệu doanh thu từ API..." 
+              : "📊 Chưa có dữ liệu doanh thu để hiển thị"}
+            <p style={{ fontSize: "12px", marginTop: "10px" }}>
+              Dữ liệu: {revenueByRestaurantData.length} nhà hàng
+            </p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

@@ -49,4 +49,12 @@ export const getMerchantStatistics = async (merchantId, params = {}) => {
   return data;
 };
 
+export const getRevenueByRestaurant = async (params = {}) => {
+  log("GET /admin/dashboard/revenue-by-restaurant params", params);
+  const response = await http.get("/admin/dashboard/revenue-by-restaurant", { params });
+  const data = unwrap(response.data);
+  log("GET /admin/dashboard/revenue-by-restaurant response", data);
+  return data;
+};
+
 
