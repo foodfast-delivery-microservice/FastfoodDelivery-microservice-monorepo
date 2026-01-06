@@ -1,7 +1,7 @@
-package com.example.droneservice.application.usecase;
+package com.example.droneservice.application.usecases.drone;
 
-import com.example.droneservice.application.dto.AssignDroneRequest;
-import com.example.droneservice.application.dto.MissionResponse;
+import com.example.droneservice.application.DTOs.drone.AssignDroneRequest;
+import com.example.droneservice.application.DTOs.mission.MissionResponse;
 
 import com.example.droneservice.domain.entities.Drone;
 import com.example.droneservice.domain.entities.DroneMission;
@@ -130,7 +130,7 @@ public class AssignDroneToOrderUseCase {
                 return MissionResponse.builder()
                                 .id(mission.getId())
                                 .droneId(drone.getId())
-                                .droneSerialNumber(drone.getSerialNumber().getValue())
+                                .droneSerialNumber(drone.getSerialNumber())
                                 .orderId(mission.getOrderId())
                                 .pickupLatitude(mission.getPickupLocation() != null
                                                 ? mission.getPickupLocation().getLatitude()

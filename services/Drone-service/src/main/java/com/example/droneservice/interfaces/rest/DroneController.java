@@ -1,14 +1,11 @@
 package com.example.droneservice.interfaces.rest;
 
-import com.example.droneservice.application.dto.CreateDroneRequest;
-import com.example.droneservice.application.dto.DroneResponse;
-import com.example.droneservice.application.usecase.CreateDroneUseCase;
-import com.example.droneservice.application.usecase.GetAllDroneUseCase;
-import com.example.droneservice.application.usecase.GetDroneByIdUseCase;
-import com.example.droneservice.application.usecase.GetDroneByStateUseCase;
-import com.example.droneservice.domain.model.Drone;
-import com.example.droneservice.domain.model.State;
-import com.example.droneservice.domain.repository.DroneRepository;
+import com.example.droneservice.application.DTOs.drone.CreateDroneRequest;
+import com.example.droneservice.application.DTOs.drone.DroneResponse;
+import com.example.droneservice.application.DTOs.drone.UpdateBatteryRequest;
+import com.example.droneservice.application.DTOs.drone.UpdateStateRequest;
+import com.example.droneservice.application.usecases.drone.*;
+import com.example.droneservice.domain.valueobjects.State;
 import com.example.droneservice.interfaces.common.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -17,7 +14,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * REST Controller for Drone management
@@ -31,7 +27,9 @@ public class DroneController {
     private final GetAllDroneUseCase getAllDroneUseCase;
     private final GetDroneByStateUseCase getDroneByStateUseCase;
     private final GetDroneByIdUseCase getDroneByIdUseCase;
-    private final DroneRepository droneRepository;
+
+    private final UpdateDroneBatteryUseCase updateDroneBatteryUseCase;
+    private final UpdateDroneStateUseCase updateDroneStateUseCase;
 
     /**
      * Create a new drone
@@ -43,8 +41,7 @@ public class DroneController {
                 HttpStatus.CREATED,
                 "created drone",
                 response,
-                null
-        );
+                null);
         return ResponseEntity.status(HttpStatus.CREATED).body(result);
     }
 
@@ -57,8 +54,7 @@ public class DroneController {
                 HttpStatus.OK,
                 "got all drones",
                 getAllDroneUseCase.execute(),
-                null
-        );
+                null);
         return ResponseEntity.status(HttpStatus.OK).body(result);
     }
 
@@ -71,8 +67,7 @@ public class DroneController {
                 HttpStatus.OK,
                 "got drone by id",
                 getDroneByIdUseCase.execute(id),
-                null
-        );
+                null);
         return ResponseEntity.status(HttpStatus.OK).body(result);
     }
 
@@ -86,71 +81,40 @@ public class DroneController {
                 HttpStatus.OK,
                 "got drone by state",
                 getDroneByStateUseCase.execute(state.toString()),
-                null
-        );
+                null);
         return ResponseEntity.status(HttpStatus.OK).body(result);
     }
-
-
-
-
-
-
-
-    /*
-     * Ukhuc duoi nay chua lm lai
-     */
 
     /**
      * Update drone battery level (for testing/maintenance)
      */
-    // todo check lại endpoint này
     @PutMapping("/{id}/battery")
-    public ResponseEntity<Void> updateBattery(
+    public ResponseEntity<ApiResponse<DroneResponse>> updateDroneBattery(
             @PathVariable Long id,
-            @RequestParam Integer level) {
+            @Valid @RequestBody UpdateBatteryRequest request) {
 
-        return droneRepository.findById(id)
-                .map(drone -> {
-                    if (level < 0 || level > 100) {
-                        return ResponseEntity.badRequest().<Void>build();
-                    }
-                    drone.setBatteryLevel(level);
-                    droneRepository.save(drone);
-                    return ResponseEntity.ok().<Void>build();
-                })
-                .orElse(ResponseEntity.notFound().build());
+        DroneResponse response = updateDroneBatteryUseCase.execute(id, request);
+        return ResponseEntity.ok(new ApiResponse<>(
+                HttpStatus.OK,
+                "Battery level updated successfully",
+                response,
+                null));
     }
 
     /**
      * Update drone state (for maintenance)
      */
     @PutMapping("/{id}/state")
-    public ResponseEntity<Void> updateState(
+    public ResponseEntity<ApiResponse<DroneResponse>> updateDroneState(
             @PathVariable Long id,
-            @RequestParam State state) {
+            @Valid @RequestBody UpdateStateRequest request) {
 
-        return droneRepository.findById(id)
-                .map(drone -> {
-                    drone.setState(state);
-                    droneRepository.save(drone);
-                    return ResponseEntity.ok().<Void>build();
-                })
-                .orElse(ResponseEntity.notFound().build());
+        DroneResponse response = updateDroneStateUseCase.execute(id, request);
+        return ResponseEntity.ok(new ApiResponse<>(
+                HttpStatus.OK,
+                "Drone state updated successfully",
+                response,
+                null));
     }
 
-    private DroneResponse mapToResponse(Drone drone) {
-        return DroneResponse.builder()
-                .id(drone.getId())
-                .serialNumber(drone.getSerialNumber())
-                .model(drone.getModel())
-                .batteryLevel(drone.getBatteryLevel())
-                .state(drone.getState())
-                .currentLatitude(drone.getCurrentLatitude())
-                .currentLongitude(drone.getCurrentLongitude())
-                .baseLatitude(drone.getBaseLatitude())
-                .baseLongitude(drone.getBaseLongitude())
-                .weightCapacity(drone.getWeightCapacity())
-                .build();
-    }
 }

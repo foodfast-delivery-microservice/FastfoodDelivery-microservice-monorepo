@@ -1,4 +1,4 @@
-package com.example.droneservice.application.dto;
+package com.example.droneservice.application.DTOs.drone;
 
 import com.example.droneservice.domain.entities.Drone;
 import com.example.droneservice.domain.valueobjects.State;

@@ -1,9 +1,9 @@
 package com.example.droneservice.infrastructure.scheduler;
 
-import com.example.droneservice.application.usecase.SimulateDroneMovementUseCase;
-import com.example.droneservice.domain.model.DroneMission;
-import com.example.droneservice.domain.model.Status;
+import com.example.droneservice.application.usecases.drone.SimulateDroneMovementUseCase;
+import com.example.droneservice.domain.entities.DroneMission;
 import com.example.droneservice.domain.repository.DroneMissionRepository;
+import com.example.droneservice.domain.valueobjects.Status;
 import com.example.droneservice.infrastructure.config.RabbitMQConfig;
 import com.example.droneservice.infrastructure.event.DeliveryCompletedEvent;
 import com.example.droneservice.infrastructure.event.DroneStatusUpdateEvent;
@@ -50,18 +50,20 @@ public class DroneSimulationScheduler {
         // Note: IN_PROGRESS includes missions where drone is RETURNING to base
         List<DroneMission> activeMissions = missionRepository.findByStatusIn(
                 List.of(Status.ASSIGNED, Status.IN_PROGRESS));
-        
-        // Also include missions where drone is RETURNING but status might not be updated yet
+
+        // Also include missions where drone is RETURNING but status might not be
+        // updated yet
         // This ensures drones returning to base continue to be simulated
         // Note: When drone state = RETURNING, mission status is still IN_PROGRESS
         // So we need to explicitly check for RETURNING drones
         List<DroneMission> returningMissions = missionRepository.findAll().stream()
                 .filter(m -> {
-                    if (m.getDrone() == null) return false;
+                    if (m.getDrone() == null)
+                        return false;
                     var state = m.getDrone().getState();
                     var status = m.getStatus();
                     // Include missions where drone is RETURNING and not completed
-                    return state == com.example.droneservice.domain.model.State.RETURNING
+                    return state == com.example.droneservice.domain.valueobjects.State.RETURNING
                             && status != Status.COMPLETED
                             && status != Status.CANCELLED;
                 })
@@ -70,7 +72,7 @@ public class DroneSimulationScheduler {
                     return activeMissions.stream().noneMatch(am -> am.getId().equals(m.getId()));
                 })
                 .toList();
-        
+
         // Combine both lists
         List<DroneMission> allActiveMissions = new java.util.ArrayList<>(activeMissions);
         allActiveMissions.addAll(returningMissions);
@@ -81,7 +83,7 @@ public class DroneSimulationScheduler {
         }
 
         if (!returningMissions.isEmpty()) {
-            log.info("🔄 Simulating {} active drone missions ({} regular + {} returning)", 
+            log.info("🔄 Simulating {} active drone missions ({} regular + {} returning)",
                     allActiveMissions.size(), activeMissions.size(), returningMissions.size());
         } else {
             log.info("🔄 Simulating {} active drone missions", allActiveMissions.size());
@@ -112,22 +114,24 @@ public class DroneSimulationScheduler {
                 // Publish status update event
                 publishStatusUpdate(mission);
 
-                // Check if drone just arrived at delivery location (state changed to RETURNING from DELIVERING)
+                // Check if drone just arrived at delivery location (state changed to RETURNING
+                // from DELIVERING)
                 // Hoặc đang ở DELIVERING và mission status = IN_PROGRESS (đang giao hàng)
-                if (droneStateBefore == com.example.droneservice.domain.model.State.DELIVERING 
-                        && droneStateAfter == com.example.droneservice.domain.model.State.RETURNING) {
+                if (droneStateBefore == com.example.droneservice.domain.valueobjects.State.DELIVERING
+                        && droneStateAfter == com.example.droneservice.domain.valueobjects.State.RETURNING) {
                     // Drone vừa giao hàng xong, chuyển sang RETURNING
                     log.info("📦 Drone {} đã giao hàng xong cho order {} - Gửi event để order status = 'delivered'",
-                            drone.getSerialNumber(), mission.getOrderId());
+                            drone.getSerialNumber().getValue(), mission.getOrderId());
                     publishOrderDelivered(mission);
-                } else if (droneStateAfter == com.example.droneservice.domain.model.State.DELIVERING 
+                } else if (droneStateAfter == com.example.droneservice.domain.valueobjects.State.DELIVERING
                         && mission.getStatus() == Status.IN_PROGRESS) {
                     // Drone đang giao hàng (state = DELIVERING, status = IN_PROGRESS)
                     // Check xem có gần delivery location không (trong vòng 100m)
                     double distanceToDelivery = calculateDistanceToDelivery(mission, drone);
                     if (distanceToDelivery <= 0.1) { // 100 meters
-                        log.info("📦 Drone {} đang giao hàng cho order {} (cách {:.2f}km) - Gửi event để order status = 'delivered'",
-                                drone.getSerialNumber(), mission.getOrderId(), distanceToDelivery);
+                        log.info(
+                                "📦 Drone {} đang giao hàng cho order {} (cách {:.2f}km) - Gửi event để order status = 'delivered'",
+                                drone.getSerialNumber().getValue(), mission.getOrderId(), distanceToDelivery);
                         publishOrderDelivered(mission);
                     }
                 }
@@ -148,14 +152,15 @@ public class DroneSimulationScheduler {
      * Publish drone status update event for real-time tracking
      */
     private void publishStatusUpdate(DroneMission mission) {
+        var drone = mission.getDrone();
         DroneStatusUpdateEvent event = DroneStatusUpdateEvent.builder()
                 .missionId(mission.getId())
                 .orderId(mission.getOrderId())
-                .droneId(mission.getDrone().getId())
-                .droneSerialNumber(mission.getDrone().getSerialNumber())
-                .currentLatitude(mission.getDrone().getCurrentLatitude())
-                .currentLongitude(mission.getDrone().getCurrentLongitude())
-                .batteryLevel(mission.getDrone().getBatteryLevel())
+                .droneId(drone.getId())
+                .droneSerialNumber(drone.getSerialNumber().getValue())
+                .currentLatitude(drone.getCurrentLocation().getLatitude())
+                .currentLongitude(drone.getCurrentLocation().getLongitude())
+                .batteryLevel(drone.getBatteryLevel().getValue())
                 .status(mission.getStatus())
                 .estimatedArrivalMinutes(calculateETA(mission))
                 .build();
@@ -170,7 +175,8 @@ public class DroneSimulationScheduler {
     }
 
     /**
-     * Publish order delivered event (khi drone state = DELIVERING và đang giao hàng)
+     * Publish order delivered event (khi drone state = DELIVERING và đang giao
+     * hàng)
      * Event này sẽ được order service nhận để đổi order status = "delivered"
      */
     private void publishOrderDelivered(DroneMission mission) {
@@ -212,14 +218,18 @@ public class DroneSimulationScheduler {
     /**
      * Calculate distance from drone current position to delivery location
      */
-    private double calculateDistanceToDelivery(DroneMission mission, com.example.droneservice.domain.model.Drone drone) {
-        if (drone.getCurrentLatitude() == null || drone.getCurrentLongitude() == null
-                || mission.getDeliveryLatitude() == null || mission.getDeliveryLongitude() == null) {
+    private double calculateDistanceToDelivery(DroneMission mission,
+            com.example.droneservice.domain.entities.Drone drone) {
+        var currentLocation = drone.getCurrentLocation();
+        var deliveryLocation = mission.getDeliveryLocation();
+
+        if (currentLocation == null || deliveryLocation == null) {
             return Double.MAX_VALUE;
         }
+
         return HaversineDistanceCalculator.calculate(
-                drone.getCurrentLatitude(), drone.getCurrentLongitude(),
-                mission.getDeliveryLatitude(), mission.getDeliveryLongitude());
+                currentLocation.getLatitude(), currentLocation.getLongitude(),
+                deliveryLocation.getLatitude(), deliveryLocation.getLongitude());
     }
 
     /**

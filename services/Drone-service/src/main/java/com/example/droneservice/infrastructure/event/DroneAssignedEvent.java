@@ -1,5 +1,6 @@
 package com.example.droneservice.infrastructure.event;
 
+import com.example.droneservice.domain.valueobjects.SerialNumber;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -20,7 +21,7 @@ public class DroneAssignedEvent {
 
     private Long droneId;
 
-    private String droneSerialNumber;
+    private SerialNumber droneSerialNumber;
 
     private Long missionId;
 

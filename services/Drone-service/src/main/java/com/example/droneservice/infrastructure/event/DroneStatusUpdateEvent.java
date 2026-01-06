@@ -1,6 +1,6 @@
 package com.example.droneservice.infrastructure.event;
 
-import com.example.droneservice.domain.model.Status;
+import com.example.droneservice.domain.valueobjects.Status;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

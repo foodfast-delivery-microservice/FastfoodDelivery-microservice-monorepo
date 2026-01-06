@@ -1,9 +1,9 @@
 package com.example.droneservice.infrastructure.config;
 
-import com.example.droneservice.application.usecase.CreateDroneUseCase;
-import com.example.droneservice.application.usecase.GetAllDroneUseCase;
-import com.example.droneservice.application.usecase.GetDroneByIdUseCase;
-import com.example.droneservice.application.usecase.GetDroneByStateUseCase;
+import com.example.droneservice.application.usecases.drone.CreateDroneUseCase;
+import com.example.droneservice.application.usecases.drone.GetAllDroneUseCase;
+import com.example.droneservice.application.usecases.drone.GetDroneByIdUseCase;
+import com.example.droneservice.application.usecases.drone.GetDroneByStateUseCase;
 import com.example.droneservice.domain.repository.DroneRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;

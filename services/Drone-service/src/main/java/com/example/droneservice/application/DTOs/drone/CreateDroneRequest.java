@@ -1,4 +1,4 @@
-package com.example.droneservice.application.dto;
+package com.example.droneservice.application.DTOs.drone;
 
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;

@@ -1,8 +1,8 @@
 package com.example.droneservice.interfaces.rest;
 
-import com.example.droneservice.application.dto.AssignDroneRequest;
-import com.example.droneservice.application.dto.MissionResponse;
-import com.example.droneservice.application.usecase.AssignDroneToOrderUseCase;
+import com.example.droneservice.application.DTOs.drone.AssignDroneRequest;
+import com.example.droneservice.application.DTOs.mission.MissionResponse;
+import com.example.droneservice.application.usecases.drone.AssignDroneToOrderUseCase;
 import com.example.droneservice.interfaces.common.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

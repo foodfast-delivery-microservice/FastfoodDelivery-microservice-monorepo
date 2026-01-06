@@ -1,4 +1,4 @@
-package com.example.droneservice.application.usecase;
+package com.example.droneservice.application.usecases.drone;
 
 import com.example.droneservice.domain.entities.Drone;
 import com.example.droneservice.domain.repository.DroneRepository;

@@ -1,4 +1,4 @@
-package com.example.droneservice.domain.model;
+package com.example.droneservice.infrastructure.persistence.entity;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -8,33 +8,34 @@ import lombok.Setter;
 
 import java.time.LocalDateTime;
 
+/**
+ * JPA Entity for DroneMission persistence.
+ * This is the infrastructure layer representation with JPA annotations.
+ */
 @Entity
 @Getter
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
 @Table(name = "drone_missions")
-public class DroneMission {
-
+public class DroneMissionJpaEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "drone_id", nullable = false)
-    private Drone drone;
+    private DroneJpaEntity drone;
 
     @Column(nullable = false)
     private Long orderId;
 
-    // Pickup location coordinates
     @Column(nullable = false)
     private Double pickupLatitude;
 
     @Column(nullable = false)
     private Double pickupLongitude;
 
-    // Delivery location coordinates
     @Column(nullable = false)
     private Double deliveryLatitude;
 
@@ -43,14 +44,10 @@ public class DroneMission {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private Status status;
+    private String status;
 
-    // Mission metrics
     private Double distanceKm;
-
     private Integer estimatedDurationMinutes;
-
     private LocalDateTime startedAt;
-
     private LocalDateTime completedAt;
 }

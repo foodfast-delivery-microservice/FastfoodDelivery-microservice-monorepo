@@ -1,6 +1,6 @@
-package com.example.droneservice.application.usecase;
+package com.example.droneservice.application.usecases.drone;
 
-import com.example.droneservice.application.dto.DroneResponse;
+import com.example.droneservice.application.DTOs.drone.DroneResponse;
 import com.example.droneservice.domain.repository.DroneRepository;
 import lombok.RequiredArgsConstructor;
 
