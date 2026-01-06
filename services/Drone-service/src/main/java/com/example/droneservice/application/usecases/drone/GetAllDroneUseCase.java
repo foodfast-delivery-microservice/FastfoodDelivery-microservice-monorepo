@@ -7,7 +7,6 @@ import lombok.RequiredArgsConstructor;
 import java.util.List;
 import java.util.stream.Collectors;
 
-
 @RequiredArgsConstructor
 public class GetAllDroneUseCase {
     private final DroneRepository droneRepository;
@@ -15,19 +14,7 @@ public class GetAllDroneUseCase {
     public List<DroneResponse> execute() {
         return droneRepository.findAll()
                 .stream()
-                .map(drone -> new DroneResponse(
-                        drone.getId(),
-                        drone.getSerialNumber(),
-                        drone.getModel(),
-                        drone.getBatteryLevel(),
-                        drone.getState(),
-                        drone.getCurrentLatitude(),
-                        drone.getCurrentLongitude(),
-                        drone.getBaseLatitude(),
-                        drone.getBaseLongitude(),
-                        drone.getWeightCapacity()
-                ))
+                .map(DroneResponse::fromEntity)
                 .collect(Collectors.toList());
-
     }
 }

@@ -2,10 +2,9 @@ package com.example.droneservice.application.usecase;
 
 import com.example.droneservice.application.dto.DroneResponse;
 import com.example.droneservice.domain.exception.InvalidId;
-import com.example.droneservice.domain.model.Drone;
+import com.example.droneservice.domain.entities.Drone;
 import com.example.droneservice.domain.repository.DroneRepository;
 import lombok.RequiredArgsConstructor;
-
 
 @RequiredArgsConstructor
 public class GetDroneByIdUseCase {
@@ -16,6 +15,5 @@ public class GetDroneByIdUseCase {
                 .orElseThrow(() -> new InvalidId(id));
         return DroneResponse.fromEntity(drone);
     }
-
 
 }
