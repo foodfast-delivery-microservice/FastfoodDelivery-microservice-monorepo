@@ -1,5 +1,6 @@
 package com.example.droneservice.infrastructure.persistence.entity;
 
+import com.example.droneservice.domain.valueobjects.State;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -35,7 +36,7 @@ public class DroneJpaEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private String state;
+    private State state;
 
     private Double currentLatitude;
     private Double currentLongitude;

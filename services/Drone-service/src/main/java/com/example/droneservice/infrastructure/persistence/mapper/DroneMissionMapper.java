@@ -36,7 +36,7 @@ public class DroneMissionMapper {
                 entity.getDeliveryLatitude(),
                 entity.getDeliveryLongitude()));
 
-        mission.setStatus(Status.valueOf(entity.getStatus()));
+        mission.setStatus(entity.getStatus());
         mission.setDistanceKm(entity.getDistanceKm());
         mission.setEstimatedDurationMinutes(entity.getEstimatedDurationMinutes());
         mission.setStartedAt(entity.getStartedAt());
@@ -68,7 +68,7 @@ public class DroneMissionMapper {
             entity.setDeliveryLongitude(domain.getDeliveryLocation().getLongitude());
         }
 
-        entity.setStatus(domain.getStatus().name());
+        entity.setStatus(domain.getStatus());
         entity.setDistanceKm(domain.getDistanceKm());
         entity.setEstimatedDurationMinutes(domain.getEstimatedDurationMinutes());
         entity.setStartedAt(domain.getStartedAt());

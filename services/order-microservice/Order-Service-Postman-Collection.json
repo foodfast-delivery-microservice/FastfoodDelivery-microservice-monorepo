@@ -1,0 +1,756 @@
+{
+    "info": {
+        "_postman_id": "order-service-api-collection",
+        "name": "Order Service API",
+        "description": "Collection for testing Order Service REST APIs including Order Management, User Addresses, Admin Dashboard, and Internal APIs",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "item": [
+        {
+            "name": "Order Management",
+            "item": [
+                {
+                    "name": "Create Order",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{jwt_token}}"
+                            },
+                            {
+                                "key": "Idempotency-Key",
+                                "value": "{{$guid}}",
+                                "description": "Optional - prevents duplicate orders"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"restaurantId\": 1,\n  \"deliveryAddressId\": 1,\n  \"items\": [\n    {\n      \"productId\": 1,\n      \"quantity\": 2,\n      \"specialInstructions\": \"Extra spicy\"\n    }\n  ],\n  \"specialInstructions\": \"Call when arrived\",\n  \"paymentMethod\": \"CASH\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/orders",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "orders"
+                            ]
+                        },
+                        "description": "Create a new order with delivery information and items"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get My Orders",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{jwt_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/orders/my-orders?status=&startDate=&endDate=&page=0&size=20&sortBy=createdAt&sortDirection=DESC",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "orders",
+                                "my-orders"
+                            ],
+                            "query": [
+                                {
+                                    "key": "status",
+                                    "value": "",
+                                    "description": "Order status filter"
+                                },
+                                {
+                                    "key": "startDate",
+                                    "value": "",
+                                    "description": "Start date filter (ISO format)"
+                                },
+                                {
+                                    "key": "endDate",
+                                    "value": "",
+                                    "description": "End date filter (ISO format)"
+                                },
+                                {
+                                    "key": "page",
+                                    "value": "0"
+                                },
+                                {
+                                    "key": "size",
+                                    "value": "20"
+                                },
+                                {
+                                    "key": "sortBy",
+                                    "value": "createdAt"
+                                },
+                                {
+                                    "key": "sortDirection",
+                                    "value": "DESC"
+                                }
+                            ]
+                        },
+                        "description": "Get current user's orders with filters and pagination"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Order Detail",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{jwt_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/orders/{{order_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "orders",
+                                "{{order_id}}"
+                            ]
+                        },
+                        "description": "Get detailed information about a specific order"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Order List (Admin)",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{jwt_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/orders?userId=&merchantId=&status=&startDate=&endDate=&page=0&size=20&sortBy=createdAt&sortDirection=DESC",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "orders"
+                            ],
+                            "query": [
+                                {
+                                    "key": "userId",
+                                    "value": ""
+                                },
+                                {
+                                    "key": "merchantId",
+                                    "value": ""
+                                },
+                                {
+                                    "key": "status",
+                                    "value": ""
+                                },
+                                {
+                                    "key": "startDate",
+                                    "value": ""
+                                },
+                                {
+                                    "key": "endDate",
+                                    "value": ""
+                                },
+                                {
+                                    "key": "page",
+                                    "value": "0"
+                                },
+                                {
+                                    "key": "size",
+                                    "value": "20"
+                                },
+                                {
+                                    "key": "sortBy",
+                                    "value": "createdAt"
+                                },
+                                {
+                                    "key": "sortDirection",
+                                    "value": "DESC"
+                                }
+                            ]
+                        },
+                        "description": "Get all orders with filters (Admin only)"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Update Order Status",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{jwt_token}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"status\": \"CONFIRMED\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/orders/{{order_id}}/status",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "orders",
+                                "{{order_id}}",
+                                "status"
+                            ]
+                        },
+                        "description": "Update order status (PENDING, CONFIRMED, PREPARING, DELIVERING, DELIVERED, CANCELLED)"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Search Orders",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{jwt_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/orders/search?keyword=&userId=&merchantId=&status=&page=0&size=20&sortBy=createdAt&sortDirection=DESC",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "orders",
+                                "search"
+                            ],
+                            "query": [
+                                {
+                                    "key": "keyword",
+                                    "value": ""
+                                },
+                                {
+                                    "key": "userId",
+                                    "value": ""
+                                },
+                                {
+                                    "key": "merchantId",
+                                    "value": ""
+                                },
+                                {
+                                    "key": "status",
+                                    "value": ""
+                                },
+                                {
+                                    "key": "page",
+                                    "value": "0"
+                                },
+                                {
+                                    "key": "size",
+                                    "value": "20"
+                                },
+                                {
+                                    "key": "sortBy",
+                                    "value": "createdAt"
+                                },
+                                {
+                                    "key": "sortDirection",
+                                    "value": "DESC"
+                                }
+                            ]
+                        },
+                        "description": "Search orders by keyword and filters"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get User Statistics",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{jwt_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/orders/users/{{user_id}}/statistics",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "orders",
+                                "users",
+                                "{{user_id}}",
+                                "statistics"
+                            ]
+                        },
+                        "description": "Get order statistics for a specific user"
+                    },
+                    "response": []
+                }
+            ],
+            "description": "Endpoints for managing customer orders"
+        },
+        {
+            "name": "Merchant Orders",
+            "item": [
+                {
+                    "name": "Get My Merchant Orders",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{jwt_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/orders/merchants/me?status=&startDate=&endDate=&page=0&size=20&sortBy=createdAt&sortDirection=DESC",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "orders",
+                                "merchants",
+                                "me"
+                            ],
+                            "query": [
+                                {
+                                    "key": "status",
+                                    "value": ""
+                                },
+                                {
+                                    "key": "startDate",
+                                    "value": ""
+                                },
+                                {
+                                    "key": "endDate",
+                                    "value": ""
+                                },
+                                {
+                                    "key": "page",
+                                    "value": "0"
+                                },
+                                {
+                                    "key": "size",
+                                    "value": "20"
+                                },
+                                {
+                                    "key": "sortBy",
+                                    "value": "createdAt"
+                                },
+                                {
+                                    "key": "sortDirection",
+                                    "value": "DESC"
+                                }
+                            ]
+                        },
+                        "description": "Get orders for current merchant's restaurant (Merchant role required)"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get My Merchant Order Detail",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{jwt_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/orders/merchants/me/{{order_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "orders",
+                                "merchants",
+                                "me",
+                                "{{order_id}}"
+                            ]
+                        },
+                        "description": "Get order detail for merchant's order"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Update My Merchant Order Status",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{jwt_token}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"status\": \"PREPARING\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/orders/merchants/me/{{order_id}}/status",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "orders",
+                                "merchants",
+                                "me",
+                                "{{order_id}}",
+                                "status"
+                            ]
+                        },
+                        "description": "Update status for merchant's order"
+                    },
+                    "response": []
+                }
+            ],
+            "description": "Endpoints for merchants to manage their restaurant orders"
+        },
+        {
+            "name": "User Addresses",
+            "item": [
+                {
+                    "name": "Create Address",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{jwt_token}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"description\": \"Home\",\n  \"fullAddress\": \"123 Main Street, District 1\",\n  \"provinceCode\": \"01\",\n  \"communeCode\": \"0101\",\n  \"latitude\": 21.028511,\n  \"longitude\": 105.804817,\n  \"isDefault\": true\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/addresses",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "addresses"
+                            ]
+                        },
+                        "description": "Create a new delivery address for the current user"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get My Addresses",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{jwt_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/addresses",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "addresses"
+                            ]
+                        },
+                        "description": "Get all addresses for the current user"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Update Address Location",
+                    "request": {
+                        "method": "PATCH",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{jwt_token}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"latitude\": 21.029511,\n  \"longitude\": 105.805817\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/addresses/{{address_id}}/location",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "addresses",
+                                "{{address_id}}",
+                                "location"
+                            ]
+                        },
+                        "description": "Update GPS coordinates for an address"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Driver Adjust Location",
+                    "request": {
+                        "method": "PATCH",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{jwt_token}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"latitude\": 21.029511,\n  \"longitude\": 105.805817\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/addresses/{{address_id}}/driver-adjust",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "addresses",
+                                "{{address_id}}",
+                                "driver-adjust"
+                            ]
+                        },
+                        "description": "Allow Driver/Admin/Merchant to adjust address location"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Provinces",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/addresses/provinces",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "addresses",
+                                "provinces"
+                            ]
+                        },
+                        "description": "Get list of provinces in Vietnam"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Communes by Province",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/addresses/provinces/{{province_code}}/communes",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "addresses",
+                                "provinces",
+                                "{{province_code}}",
+                                "communes"
+                            ]
+                        },
+                        "description": "Get list of communes (districts) in a province"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Address Metrics",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{jwt_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/addresses/metrics",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "addresses",
+                                "metrics"
+                            ]
+                        },
+                        "description": "Get address statistics (Admin only)"
+                    },
+                    "response": []
+                }
+            ],
+            "description": "Endpoints for managing user delivery addresses"
+        },
+        {
+            "name": "Admin Dashboard",
+            "item": [
+                {
+                    "name": "Get System KPIs",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{jwt_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/admin/dashboard/kpis?date=",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "admin",
+                                "dashboard",
+                                "kpis"
+                            ],
+                            "query": [
+                                {
+                                    "key": "date",
+                                    "value": "",
+                                    "description": "Optional date filter (ISO format YYYY-MM-DD)"
+                                }
+                            ]
+                        },
+                        "description": "Get system-wide KPIs for admin dashboard (Admin only)"
+                    },
+                    "response": []
+                }
+            ],
+            "description": "Admin dashboard endpoints for system metrics and KPIs"
+        },
+        {
+            "name": "Internal APIs",
+            "item": [
+                {
+                    "name": "Get Order Detail (Internal)",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/internal/orders/{{order_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "internal",
+                                "orders",
+                                "{{order_id}}"
+                            ]
+                        },
+                        "description": "Internal API for service-to-service order retrieval (no authentication required)"
+                    },
+                    "response": []
+                }
+            ],
+            "description": "Internal endpoints for microservice-to-microservice communication"
+        }
+    ],
+    "variable": [
+        {
+            "key": "base_url",
+            "value": "http://localhost:8082",
+            "type": "string"
+        },
+        {
+            "key": "jwt_token",
+            "value": "",
+            "type": "string"
+        },
+        {
+            "key": "order_id",
+            "value": "1",
+            "type": "string"
+        },
+        {
+            "key": "user_id",
+            "value": "1",
+            "type": "string"
+        },
+        {
+            "key": "address_id",
+            "value": "1",
+            "type": "string"
+        },
+        {
+            "key": "province_code",
+            "value": "01",
+            "type": "string"
+        }
+    ]
+}

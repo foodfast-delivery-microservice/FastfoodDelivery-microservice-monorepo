@@ -1,0 +1,369 @@
+{
+	"info": {
+		"_postman_id": "drone-service-api-collection",
+		"name": "Drone Service API",
+		"description": "Collection for testing Drone Service REST APIs including Drone Management, Mission Tracking, and Drone Assignment",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Drone Management",
+			"item": [
+				{
+					"name": "Create Drone",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"serialNumber\": \"DRONE-001\",\n  \"model\": \"DJI Mavic 3\",\n  \"baseLatitude\": 21.028511,\n  \"baseLongitude\": 105.804817,\n  \"weightCapacity\": 3.5\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/drones",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"drones"
+							]
+						},
+						"description": "Create a new drone with serial number, model, base location, and weight capacity"
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Drones",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/drones",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"drones"
+							]
+						},
+						"description": "Retrieve all drones in the system"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Drone by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/drones/{{drone_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"drones",
+								"{{drone_id}}"
+							]
+						},
+						"description": "Get a specific drone by its ID"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Drones by State",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/drones/state/{{drone_state}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"drones",
+								"state",
+								"{{drone_state}}"
+							]
+						},
+						"description": "Get all drones with a specific state (IDLE, DELIVERING, RETURNING, CHARGING, MAINTENANCE)"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Drone Battery",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"batteryLevel\": 85\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/drones/{{drone_id}}/battery",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"drones",
+								"{{drone_id}}",
+								"battery"
+							]
+						},
+						"description": "Update the battery level of a drone (for testing/maintenance)"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Drone State",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"state\": \"MAINTENANCE\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/drones/{{drone_id}}/state",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"drones",
+								"{{drone_id}}",
+								"state"
+							]
+						},
+						"description": "Update the state of a drone (IDLE, DELIVERING, RETURNING, CHARGING, MAINTENANCE)"
+					},
+					"response": []
+				}
+			],
+			"description": "Endpoints for managing drones including CRUD operations and state management"
+		},
+		{
+			"name": "Mission Tracking",
+			"item": [
+				{
+					"name": "Get All Missions",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/missions",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"missions"
+							]
+						},
+						"description": "Retrieve all drone missions"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Mission by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/missions/{{mission_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"missions",
+								"{{mission_id}}"
+							]
+						},
+						"description": "Get a specific mission by its ID"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Mission by Order ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/missions/order/{{order_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"missions",
+								"order",
+								"{{order_id}}"
+							]
+						},
+						"description": "Get the mission associated with a specific order"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Missions by Drone ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/missions/drone/{{drone_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"missions",
+								"drone",
+								"{{drone_id}}"
+							]
+						},
+						"description": "Get all missions assigned to a specific drone"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Mission Tracking",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/missions/{{mission_id}}/tracking",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"missions",
+								"{{mission_id}}",
+								"tracking"
+							]
+						},
+						"description": "Get real-time tracking information for a mission"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Tracking by Order ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/missions/order/{{order_id}}/tracking",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"missions",
+								"order",
+								"{{order_id}}",
+								"tracking"
+							]
+						},
+						"description": "Get real-time tracking information by order ID (convenience endpoint)"
+					},
+					"response": []
+				}
+			],
+			"description": "Endpoints for tracking drone missions and delivery progress"
+		},
+		{
+			"name": "Drone Assignment",
+			"item": [
+				{
+					"name": "Assign Drone to Order",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"orderId\": 123,\n  \"pickupLatitude\": 21.028511,\n  \"pickupLongitude\": 105.804817,\n  \"deliveryLatitude\": 21.038511,\n  \"deliveryLongitude\": 105.814817\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/drones/assignments",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"drones",
+								"assignments"
+							]
+						},
+						"description": "Manually assign an available drone to an order with pickup and delivery coordinates"
+					},
+					"response": []
+				}
+			],
+			"description": "Endpoints for manually assigning drones to orders"
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8084",
+			"type": "string"
+		},
+		{
+			"key": "drone_id",
+			"value": "1",
+			"type": "string"
+		},
+		{
+			"key": "mission_id",
+			"value": "1",
+			"type": "string"
+		},
+		{
+			"key": "order_id",
+			"value": "123",
+			"type": "string"
+		},
+		{
+			"key": "drone_state",
+			"value": "IDLE",
+			"type": "string"
+		}
+	]
+}

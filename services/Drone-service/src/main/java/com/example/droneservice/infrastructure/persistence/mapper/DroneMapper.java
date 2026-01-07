@@ -34,7 +34,7 @@ public class DroneMapper {
         drone.setSerialNumber(new SerialNumber(entity.getSerialNumber()));
         drone.setModel(entity.getModel());
         drone.setBatteryLevel(new BatteryLevel(entity.getBatteryLevel()));
-        drone.setState(State.valueOf(entity.getState()));
+        drone.setState(entity.getState());
 
         if (entity.getCurrentLatitude() != null && entity.getCurrentLongitude() != null) {
             drone.setCurrentLocation(new Coordinates(
@@ -78,7 +78,7 @@ public class DroneMapper {
         entity.setSerialNumber(domain.getSerialNumber().getValue());
         entity.setModel(domain.getModel());
         entity.setBatteryLevel(domain.getBatteryLevel().getValue());
-        entity.setState(domain.getState().name());
+        entity.setState(domain.getState());
 
         if (domain.getCurrentLocation() != null) {
             entity.setCurrentLatitude(domain.getCurrentLocation().getLatitude());
@@ -122,7 +122,7 @@ public class DroneMapper {
         drone.setSerialNumber(new SerialNumber(entity.getSerialNumber()));
         drone.setModel(entity.getModel());
         drone.setBatteryLevel(new BatteryLevel(entity.getBatteryLevel()));
-        drone.setState(State.valueOf(entity.getState()));
+        drone.setState(entity.getState());
 
         if (entity.getCurrentLatitude() != null && entity.getCurrentLongitude() != null) {
             drone.setCurrentLocation(new Coordinates(
