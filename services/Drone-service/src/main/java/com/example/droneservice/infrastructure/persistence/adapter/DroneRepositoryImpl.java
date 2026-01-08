@@ -58,7 +58,7 @@ public class DroneRepositoryImpl implements DroneRepository {
 
     @Override
     public List<Drone> findByState(State state) {
-        return jpaRepository.findByState(state.name())
+        return jpaRepository.findByState(state)
                 .stream()
                 .map(mapper::toDomain)
                 .collect(Collectors.toList());

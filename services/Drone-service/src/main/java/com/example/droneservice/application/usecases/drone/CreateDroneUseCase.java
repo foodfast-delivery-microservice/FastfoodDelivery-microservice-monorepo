@@ -3,6 +3,7 @@ package com.example.droneservice.application.usecases.drone;
 import com.example.droneservice.application.DTOs.drone.CreateDroneRequest;
 import com.example.droneservice.application.DTOs.drone.DroneResponse;
 import com.example.droneservice.domain.entities.Drone;
+import com.example.droneservice.domain.exception.DroneIdAlreadyExisted;
 import com.example.droneservice.domain.valueobjects.*;
 import com.example.droneservice.domain.repository.DroneRepository;
 import lombok.RequiredArgsConstructor;
@@ -21,8 +22,7 @@ public class CreateDroneUseCase {
 
         // Validate serial number uniqueness
         if (droneRepository.findBySerialNumber(request.getSerialNumber()).isPresent()) {
-            throw new IllegalArgumentException(
-                    "Drone with serial number " + request.getSerialNumber() + " already exists");
+            throw new DroneIdAlreadyExisted();
         }
 
         // Create new drone using value objects

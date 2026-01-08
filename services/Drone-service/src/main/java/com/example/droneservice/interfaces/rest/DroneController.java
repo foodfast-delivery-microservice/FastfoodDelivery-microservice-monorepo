@@ -75,12 +75,12 @@ public class DroneController {
      * Get drones by state
      */
     @GetMapping("/state/{state}")
-    public ResponseEntity<ApiResponse<List<DroneResponse>>> getDronesByState(@PathVariable State state) {
+    public ResponseEntity<ApiResponse<List<DroneResponse>>> getDronesByState(@PathVariable String state) {
 
         ApiResponse<List<DroneResponse>> result = new ApiResponse<>(
                 HttpStatus.OK,
                 "got drone by state",
-                getDroneByStateUseCase.execute(state.toString()),
+                getDroneByStateUseCase.execute(state),
                 null);
         return ResponseEntity.status(HttpStatus.OK).body(result);
     }

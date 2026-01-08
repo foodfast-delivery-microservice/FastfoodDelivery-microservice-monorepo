@@ -13,18 +13,24 @@ import java.util.stream.Collectors;
 public class GetDroneByStateUseCase {
     private final DroneRepository droneRepository;
 
-    public List<DroneResponse> execute(String state) {
-
-        State states;
+    public List<DroneResponse> execute(String stateName) {
+        // 1. Convert từ String sang Enum
+        State stateEnum;
         try {
-            states = State.valueOf(state.toUpperCase());
-        } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("Invalid drone state: " + state);
+            // BƯỚC QUAN TRỌNG: Convert String "IDLE" -> Enum State.IDLE
+            // Nếu không có dòng này, bạn ném String vào Repo sẽ bị lỗi như trên
+            stateEnum = State.valueOf(stateName.toUpperCase());
+
+        } catch (IllegalArgumentException | NullPointerException e) {
+            // Xử lý trường hợp gửi lên state tào lao (vd: "BAY_LUNG_TUNG")
+            throw new IllegalArgumentException("Invalid drone state: " + stateName);
         }
-        List<Drone> droneByState = droneRepository.findByState(states);
-        return droneByState
-                .stream()
-                .map(DroneResponse::fromEntity)
-                .collect(Collectors.toList());
+
+        // Lúc này stateEnum đã là kiểu State, ném vào Repo là đúng khớp
+        List<Drone> droneByState = droneRepository.findByState(stateEnum);
+
+        return droneByState.stream()
+                .map(DroneResponse::fromEntity) // Áp dụng hàm fromEntity cho từng con drone
+                .collect(Collectors.toList());  // Gom lại thành List
     }
 }

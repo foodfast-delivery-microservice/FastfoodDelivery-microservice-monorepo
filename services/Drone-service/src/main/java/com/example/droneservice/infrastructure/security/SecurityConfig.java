@@ -38,12 +38,12 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/**").permitAll()
 
                         // Admin-only endpoints (Drone management)
-                        .requestMatchers(HttpMethod.POST, "/api/drones").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.PUT, "/api/drones/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.DELETE, "/api/drones/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/v1/drones").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/drones/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/drones/**").hasRole("ADMIN")
 
                         // Admin can view all drones and missions
-                        .requestMatchers(HttpMethod.GET, "/api/drones/**").hasAnyRole("ADMIN", "SERVICE")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/drones/**").hasAnyRole("ADMIN", "SERVICE")
                         .requestMatchers(HttpMethod.GET, "/api/missions").hasAnyRole("ADMIN", "SERVICE")
 
                         // Users can track their own orders

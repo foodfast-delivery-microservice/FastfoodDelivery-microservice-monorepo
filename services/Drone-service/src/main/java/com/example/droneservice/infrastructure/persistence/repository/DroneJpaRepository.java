@@ -1,5 +1,6 @@
 package com.example.droneservice.infrastructure.persistence.repository;
 
+import com.example.droneservice.domain.valueobjects.State;
 import com.example.droneservice.infrastructure.persistence.entity.DroneJpaEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -14,7 +15,7 @@ public interface DroneJpaRepository extends JpaRepository<DroneJpaEntity, Long> 
 
     Optional<DroneJpaEntity> findBySerialNumber(String serialNumber);
 
-    List<DroneJpaEntity> findByState(String state);
+    List<DroneJpaEntity> findByState(State state);
 
     List<DroneJpaEntity> findByStateIn(List<String> states);
 }
