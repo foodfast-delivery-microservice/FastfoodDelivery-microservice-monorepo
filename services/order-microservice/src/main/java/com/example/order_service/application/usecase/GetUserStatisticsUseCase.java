@@ -1,7 +1,7 @@
 package com.example.order_service.application.usecase;
 
 import com.example.order_service.application.dto.UserStatisticsResponse;
-import com.example.order_service.domain.model.OrderStatus;
+import com.example.order_service.domain.valueobjects.OrderStatus;
 import com.example.order_service.domain.repository.OrderRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

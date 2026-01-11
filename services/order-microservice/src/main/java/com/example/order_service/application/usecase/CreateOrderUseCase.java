@@ -1,17 +1,22 @@
 package com.example.order_service.application.usecase;
 
-import com.example.order_service.application.dto.CreateOrderRequest;
-import com.example.order_service.application.dto.OrderResponse;
-import com.example.order_service.application.dto.ProductValidationRequest;
-import com.example.order_service.application.dto.ProductValidationResponse;
-import com.example.order_service.application.dto.UserValidationResponse;
+import com.example.order_service.application.dto.*;
 import com.example.order_service.application.service.AdministrativeAddressNormalizer;
 import com.example.order_service.domain.repository.ProductServicePort;
 import com.example.order_service.domain.repository.UserServicePort;
 import com.example.order_service.domain.repository.UserAddressRepository;
 import com.example.order_service.infrastructure.event.OrderCreatedEventPayload;
 import com.example.order_service.domain.exception.OrderValidationException;
-import com.example.order_service.domain.model.*;
+import com.example.order_service.domain.entities.Order;
+import com.example.order_service.domain.entities.OrderItem;
+import com.example.order_service.domain.entities.OutboxEvent;
+import com.example.order_service.domain.entities.UserAddress;
+import com.example.order_service.domain.valueobjects.OrderStatus;
+import com.example.order_service.domain.valueobjects.OrderCode;
+import com.example.order_service.domain.valueobjects.Money;
+import com.example.order_service.domain.valueobjects.DeliveryAddress;
+import com.example.order_service.domain.valueobjects.EventStatus;
+import com.example.order_service.domain.entities.IdempotencyKey;
 import com.example.order_service.domain.repository.IdempotencyKeyRepository;
 import com.example.order_service.domain.repository.OrderRepository;
 import com.example.order_service.domain.repository.OutboxEventRepository;
@@ -36,7 +41,7 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-@Transactional //Đảm bảo tất cả chạy trong 1 transaction
+@Transactional // Đảm bảo tất cả chạy trong 1 transaction
 public class CreateOrderUseCase {
 
     private final OrderRepository orderRepository;
@@ -55,7 +60,8 @@ public class CreateOrderUseCase {
 
     /**
      * MAIN METHOD - TẠO ORDER
-     * Flow: Validate -> Check duplicate -> Call Product Service -> Create Order -> Save -> Event
+     * Flow: Validate -> Check duplicate -> Call Product Service -> Create Order ->
+     * Save -> Event
      */
 
     @Transactional
@@ -75,9 +81,12 @@ public class CreateOrderUseCase {
 
         // ===== BƯỚC 2: CHECK IDEMPOTENCY (CHỐNG DUPLICATE REQUEST) =====
         if (isDuplicateRequest(request.getUserId(), idempotencyKey)) {
-            log.warn("⚠️ Duplicate request detected! Idempotency-Key: '{}' for userId: {}", idempotencyKey, request.getUserId());
-            log.warn("⚠️ Returning existing order instead of creating new one. To create a new order, use a different Idempotency-Key or don't send the header.");
-            log.warn("⚠️ If you changed the key in Postman but still see this error, the header may not be forwarded correctly by the gateway.");
+            log.warn("⚠️ Duplicate request detected! Idempotency-Key: '{}' for userId: {}", idempotencyKey,
+                    request.getUserId());
+            log.warn(
+                    "⚠️ Returning existing order instead of creating new one. To create a new order, use a different Idempotency-Key or don't send the header.");
+            log.warn(
+                    "⚠️ If you changed the key in Postman but still see this error, the header may not be forwarded correctly by the gateway.");
             return getExistingOrderResponse(request.getUserId(), idempotencyKey);
         }
         // ===== BƯỚC 3: GỌI PRODUCT SERVICE ĐỂ LẤY THÔNG TIN SẢN PHẨM =====
@@ -98,11 +107,12 @@ public class CreateOrderUseCase {
         // ===== BƯỚC 6: TẠO OUTBOX EVENT CHO RABBITMQ =====
         createOutboxEventForRabbitMQ(order);
 
-        log.info("🎉 Order created successfully: {} for user: {}", order.getOrderCode(), request.getUserId());
+        log.info("🎉 Order created successfully: {} for user: {}", order.getOrderCode().getValue(),
+                request.getUserId());
         if (idempotencyKey != null && !idempotencyKey.trim().isEmpty()) {
             log.info("✅ Idempotency-Key saved: {} - This key can be reused to retrieve this order", idempotencyKey);
         }
-        return mapToResponse(order);
+        return OrderResponse.fromEntity(order);
 
     }
 
@@ -126,7 +136,8 @@ public class CreateOrderUseCase {
             validateReceiverInfo(request.getDeliveryAddress());
         }
 
-        // ===== PHASE 2: USER SERVICE VALIDATION (sau khi validate dữ liệu đầu vào) =====
+        // ===== PHASE 2: USER SERVICE VALIDATION (sau khi validate dữ liệu đầu vào)
+        // =====
         if (userValidationEnabled) {
             validateUser(request.getUserId());
         }
@@ -138,21 +149,21 @@ public class CreateOrderUseCase {
      */
     private void validateUser(Long userId) {
         log.debug("Validating user: {}", userId);
-        
+
         try {
             UserValidationResponse user = userServicePort.validateUser(userId);
-            
+
             if (!user.exists()) {
                 log.error("User {} does not exist", userId);
                 throw new OrderValidationException("User không tồn tại: " + userId);
             }
-            
+
             if (!user.active()) {
                 log.error("User {} is not active", userId);
                 throw new OrderValidationException("User không active: " + userId);
             }
-            
-            log.debug("✓ User {} validated successfully (exists: {}, active: {})", 
+
+            log.debug("✓ User {} validated successfully (exists: {}, active: {})",
                     userId, user.exists(), user.active());
         } catch (OrderValidationException e) {
             // Re-throw OrderValidationException
@@ -165,8 +176,10 @@ public class CreateOrderUseCase {
 
     /**
      * Validate delivery address business rules
-     * Note: Basic validation (not null, not blank, size, pattern) is handled by Bean Validation annotations.
-     * This method only validates business rules that cannot be expressed via annotations:
+     * Note: Basic validation (not null, not blank, size, pattern) is handled by
+     * Bean Validation annotations.
+     * This method only validates business rules that cannot be expressed via
+     * annotations:
      * - Receiver name must contain at least one letter (business rule)
      * - Lat/Lng validation (both must be provided together, valid ranges)
      */
@@ -208,13 +221,13 @@ public class CreateOrderUseCase {
             if (address.getLat() == null || address.getLng() == null) {
                 throw new OrderValidationException("Tọa độ không hợp lệ: phải cung cấp cả lat và lng");
             }
-            
+
             // Validate lat range: -90 to 90
             BigDecimal lat = address.getLat();
             if (lat.compareTo(new BigDecimal("-90")) < 0 || lat.compareTo(new BigDecimal("90")) > 0) {
                 throw new OrderValidationException("Tọa độ không hợp lệ: lat phải trong khoảng -90 đến 90");
             }
-            
+
             // Validate lng range: -180 to 180
             BigDecimal lng = address.getLng();
             if (lng.compareTo(new BigDecimal("-180")) < 0 || lng.compareTo(new BigDecimal("180")) > 0) {
@@ -268,8 +281,9 @@ public class CreateOrderUseCase {
         Order existingOrder = orderRepository.findById(existingKey.getOrderId())
                 .orElseThrow(() -> new OrderValidationException("Order không tìm thấy"));
 
-        return mapToResponse(existingOrder);
+        return OrderResponse.fromEntity(existingOrder);
     }
+
     /**
      * GỌI PRODUCT SERVICE ĐỂ VALIDATE VÀ LẤY THÔNG TIN SẢN PHẨM
      * Đây là bước mày đang muốn làm!
@@ -289,22 +303,19 @@ public class CreateOrderUseCase {
                 .map(item -> new ProductValidationRequest(item.getProductId(), item.getQuantity()))
                 .toList();
 
-
         // Gọi Product Service qua Port (FeignClient hoặc RestTemplate)
         List<ProductValidationResponse> validatedProducts;
         try {
             log.info("Sending validation request to Product Service...");
             validatedProducts = productServicePort.validateProducts(validationRequests);
 
-            //  CRITICAL: Log response
+            // CRITICAL: Log response
             log.info("Received {} responses from Product Service",
                     validatedProducts != null ? validatedProducts.size() : 0);
 
             if (validatedProducts != null) {
-                validatedProducts.forEach(vp ->
-                        log.info("Response: productId={}, success={}, name={}, price={}",
-                                vp.productId(), vp.success(), vp.productName(), vp.unitPrice())
-                );
+                validatedProducts.forEach(vp -> log.info("Response: productId={}, success={}, name={}, price={}",
+                        vp.productId(), vp.success(), vp.productName(), vp.unitPrice()));
             }
         } catch (OrderValidationException e) {
             // Re-throw OrderValidationException từ Circuit Breaker fallback
@@ -330,6 +341,7 @@ public class CreateOrderUseCase {
         log.debug("✓ All products validated successfully");
         return validatedProducts;
     }
+
     /**
      * XÂY DỰNG ORDER TỪ DATA ĐÃ VALIDATE
      * Lưu ý: Dùng giá và tên từ Product Service, KHÔNG DÙNG GIÁ TỪ REQUEST
@@ -337,8 +349,7 @@ public class CreateOrderUseCase {
     private Order buildOrderFromValidatedData(
             CreateOrderRequest request,
             List<ProductValidationResponse> validatedProducts,
-            DeliveryAddress resolvedDeliveryAddress
-    ) {
+            DeliveryAddress resolvedDeliveryAddress) {
         // Tạo Map để tra cứu nhanh thông tin sản phẩm đã validate
         Map<Long, ProductValidationResponse> productMap = validatedProducts.stream()
                 .collect(Collectors.toMap(ProductValidationResponse::productId, p -> p));
@@ -349,15 +360,16 @@ public class CreateOrderUseCase {
             ensureMerchantIsActive(merchantId);
         }
 
-        // Tạo Order
+        // Tạo Order với value objects
+        String currency = "VND";
         Order order = Order.builder()
-                .orderCode(generateOrderCode())
+                .orderCode(new OrderCode(generateOrderCode()))
                 .userId(request.getUserId())
                 .merchantId(merchantId)
                 .status(OrderStatus.PENDING)
-                .currency("VND")
-                .discount(request.getDiscount() != null ? request.getDiscount() : BigDecimal.ZERO)
-                .shippingFee(request.getShippingFee() != null ? request.getShippingFee() : BigDecimal.ZERO)
+                .discount(new Money(request.getDiscount() != null ? request.getDiscount() : BigDecimal.ZERO, currency))
+                .shippingFee(new Money(request.getShippingFee() != null ? request.getShippingFee() : BigDecimal.ZERO,
+                        currency))
                 .note(request.getNote())
                 .deliveryAddress(resolvedDeliveryAddress)
                 .createdAt(LocalDateTime.now())
@@ -368,28 +380,29 @@ public class CreateOrderUseCase {
             ProductValidationResponse validatedProduct = productMap.get(itemRequest.getProductId());
 
             if (validatedProduct == null) {
-                throw new OrderValidationException("Sản phẩm " + itemRequest.getProductId() + " không tìm thấy trong Product Service");
+                throw new OrderValidationException(
+                        "Sản phẩm " + itemRequest.getProductId() + " không tìm thấy trong Product Service");
             }
-            
+
             if (!validatedProduct.success()) {
-                throw new OrderValidationException("Sản phẩm " + itemRequest.getProductId() + " không hợp lệ hoặc hết hàng");
+                throw new OrderValidationException(
+                        "Sản phẩm " + itemRequest.getProductId() + " không hợp lệ hoặc hết hàng");
             }
-            
-            // Lấy tất cả thông tin từ Product Service
+
+            // Lấy tất cả thông tin từ Product Service và tạo với Money value object
             OrderItem orderItem = OrderItem.builder()
                     .productId(itemRequest.getProductId())
                     .merchantId(validatedProduct.merchantId()) // Set merchantId from product
                     .productName(validatedProduct.productName()) // Lấy từ Product Service
-                    .unitPrice(validatedProduct.unitPrice())     // Lấy từ Product Service
+                    .unitPrice(new Money(validatedProduct.unitPrice(), currency)) // Money value object
                     .quantity(itemRequest.getQuantity())
                     .build();
 
-            // Tính lineTotal ngay sau khi build
-            orderItem.setLineTotal(
-                    validatedProduct.unitPrice().multiply(BigDecimal.valueOf(itemRequest.getQuantity()))
-            );
+            // Tính lineTotal sử dụng domain entity method
+            orderItem.calculateLineTotal();
 
-            log.debug("Created order item: productId={}, merchantId={}, productName={}, unitPrice={}, quantity={}, lineTotal={}",
+            log.debug(
+                    "Created order item: productId={}, merchantId={}, productName={}, unitPrice={}, quantity={}, lineTotal={}",
                     orderItem.getProductId(),
                     orderItem.getMerchantId(),
                     orderItem.getProductName(),
@@ -408,6 +421,7 @@ public class CreateOrderUseCase {
 
     /**
      * Validate that all products belong to the same merchant
+     * 
      * @param validatedProducts List of validated products
      * @return The merchantId that all products belong to
      * @throws OrderValidationException if products belong to different merchants
@@ -426,9 +440,8 @@ public class CreateOrderUseCase {
         for (ProductValidationResponse product : validatedProducts) {
             if (product.merchantId() == null || !product.merchantId().equals(firstMerchantId)) {
                 throw new OrderValidationException(
-                    "All products in an order must belong to the same merchant. " +
-                    "Found products from different merchants."
-                );
+                        "All products in an order must belong to the same merchant. " +
+                                "Found products from different merchants.");
             }
         }
 
@@ -454,6 +467,7 @@ public class CreateOrderUseCase {
             throw new OrderValidationException("Không thể xác thực merchant: " + merchantId);
         }
     }
+
     /**
      * Lưu idempotency key để chống duplicate request
      */
@@ -483,8 +497,8 @@ public class CreateOrderUseCase {
                 .orderId(order.getId())
                 .userId(order.getUserId())
                 .merchantId(order.getMerchantId()) // Include merchantId in event payload
-                .grandTotal(order.getGrandTotal())
-                .currency(order.getCurrency())
+                .grandTotal(order.getGrandTotal() != null ? order.getGrandTotal().getAmount() : null)
+                .currency(order.getGrandTotal() != null ? order.getGrandTotal().getCurrency() : "VND")
                 .build();
 
         try {
@@ -507,7 +521,7 @@ public class CreateOrderUseCase {
             throw new RuntimeException("Failed to create outbox event", e);
         }
     }
-// =====================================================================
+    // =====================================================================
     // UTILITY METHODS
     // =====================================================================
 
@@ -531,11 +545,16 @@ public class CreateOrderUseCase {
 
         if (normalized != null) {
             // Ưu tiên sử dụng dữ liệu chuẩn hóa nếu có
-            if (provinceCode == null) provinceCode = normalized.getProvinceCode();
-            if (provinceName == null) provinceName = normalized.getProvinceName();
-            if (communeCode == null) communeCode = normalized.getCommuneCode();
-            if (communeName == null) communeName = normalized.getCommuneName();
-            if (normalizedDistrictName == null) normalizedDistrictName = normalized.getNormalizedDistrictName();
+            if (provinceCode == null)
+                provinceCode = normalized.getProvinceCode();
+            if (provinceName == null)
+                provinceName = normalized.getProvinceName();
+            if (communeCode == null)
+                communeCode = normalized.getCommuneCode();
+            if (communeName == null)
+                communeName = normalized.getCommuneName();
+            if (normalizedDistrictName == null)
+                normalizedDistrictName = normalized.getNormalizedDistrictName();
         }
 
         return DeliveryAddress.builder()
@@ -586,7 +605,6 @@ public class CreateOrderUseCase {
                 .build();
     }
 
-
     private String generateOrderCode() {
         return "ORD-" + System.currentTimeMillis() + "-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
     }
@@ -611,57 +629,4 @@ public class CreateOrderUseCase {
         }
     }
 
-    private OrderResponse mapToResponse(Order order) {
-        // Map Order to OrderResponse
-        return OrderResponse.builder()
-                .id(order.getId())
-                .orderCode(order.getOrderCode())
-                .userId(order.getUserId())
-                .merchantId(order.getMerchantId())
-                .status(order.getStatus().name())
-                .currency(order.getCurrency())
-                .subtotal(order.getSubtotal())
-                .discount(order.getDiscount())
-                .shippingFee(order.getShippingFee())
-                .grandTotal(order.getGrandTotal())
-                .note(order.getNote())
-                .createdAt(order.getCreatedAt())
-                .processingStartedAt(order.getProcessingStartedAt())
-                .deliveryAddress(mapToDeliveryAddressResponse(order.getDeliveryAddress()))
-                .orderItems(order.getOrderItems().stream()
-                        .map(this::mapToOrderItemResponse)
-                        .collect(Collectors.toList()))
-                .build();
-    }
-
-    private OrderResponse.DeliveryAddressResponse mapToDeliveryAddressResponse(DeliveryAddress deliveryAddress) {
-        return OrderResponse.DeliveryAddressResponse.builder()
-                .receiverName(deliveryAddress.getReceiverName())
-                .receiverPhone(deliveryAddress.getReceiverPhone())
-                .addressLine1(deliveryAddress.getAddressLine1())
-                .ward(deliveryAddress.getWard())
-                .district(deliveryAddress.getDistrict())
-                .city(deliveryAddress.getCity())
-                .lat(deliveryAddress.getLat())
-                .lng(deliveryAddress.getLng())
-                .provinceCode(deliveryAddress.getProvinceCode())
-                .provinceName(deliveryAddress.getProvinceName())
-                .communeCode(deliveryAddress.getCommuneCode())
-                .communeName(deliveryAddress.getCommuneName())
-                .normalizedDistrictName(deliveryAddress.getNormalizedDistrictName())
-                .fullAddress(deliveryAddress.getFullAddress())
-                .build();
-    }
-
-    private OrderResponse.OrderItemResponse mapToOrderItemResponse(OrderItem orderItem) {
-        return OrderResponse.OrderItemResponse.builder()
-                .id(orderItem.getId())
-                .productId(orderItem.getProductId())
-                .merchantId(orderItem.getMerchantId())
-                .productName(orderItem.getProductName())
-                .unitPrice(orderItem.getUnitPrice())
-                .quantity(orderItem.getQuantity())
-                .lineTotal(orderItem.getLineTotal())
-                .build();
-    }
 }

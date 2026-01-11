@@ -4,8 +4,8 @@ import com.example.order_service.application.dto.OrderItemResponse;
 import com.example.order_service.application.dto.OrderListRequest;
 import com.example.order_service.application.dto.OrderListResponse;
 import com.example.order_service.application.dto.PageResponse;
-import com.example.order_service.domain.model.Order;
-import com.example.order_service.domain.model.OrderStatus;
+import com.example.order_service.domain.entities.Order;
+import com.example.order_service.domain.valueobjects.OrderStatus;
 import com.example.order_service.domain.repository.OrderRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -42,7 +42,7 @@ public class GetOrderListUseCase {
 
         // Convert to response
         List<OrderListResponse> orderResponses = orderPage.getContent().stream()
-                .map(this::mapToOrderListResponse)
+                .map(OrderListResponse::fromEntity)
                 .collect(Collectors.toList());
 
         return PageResponse.<OrderListResponse>builder()
@@ -112,38 +112,4 @@ public class GetOrderListUseCase {
         return PageRequest.of(request.getPage(), request.getSize(), sort);
     }
 
-    private OrderListResponse mapToOrderListResponse(Order order) {
-        // Map order items to OrderItemResponse
-        List<OrderItemResponse> orderItems = order.getOrderItems().stream()
-                .map(item -> OrderItemResponse.builder()
-                        .id(item.getId())
-                        .productId(item.getProductId())
-                        .merchantId(item.getMerchantId())
-                        .productName(item.getProductName())
-                        .unitPrice(item.getUnitPrice())
-                        .quantity(item.getQuantity())
-                        .lineTotal(item.getLineTotal())
-                        .build())
-                .collect(Collectors.toList());
-
-        return OrderListResponse.builder()
-                .id(order.getId())
-                .orderCode(order.getOrderCode())
-                .userId(order.getUserId())
-                .merchantId(order.getMerchantId())
-                .status(order.getStatus().name())
-                .currency(order.getCurrency())
-                .subtotal(order.getSubtotal())
-                .discount(order.getDiscount())
-                .shippingFee(order.getShippingFee())
-                .grandTotal(order.getGrandTotal())
-                .note(order.getNote())
-                .createdAt(order.getCreatedAt())
-                .receiverName(order.getDeliveryAddress().getReceiverName())
-                .receiverPhone(order.getDeliveryAddress().getReceiverPhone())
-                .fullAddress(order.getDeliveryAddress().getFullAddress())
-                .itemCount(order.getOrderItems().size())
-                .orderItems(orderItems) // Thêm items list
-                .build();
-    }
 }

@@ -1,17 +1,32 @@
 package com.example.order_service.domain.repository;
 
-import com.example.order_service.domain.model.UserAddress;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
+import com.example.order_service.domain.entities.UserAddress;
+import com.example.order_service.domain.valueobjects.AddressSource;
 
 import java.util.List;
+import java.util.Optional;
 
-@Repository
-public interface UserAddressRepository extends JpaRepository<UserAddress, Long> {
+/**
+ * Pure domain repository interface for UserAddress aggregate.
+ * No framework dependencies - follows clean architecture principles.
+ */
+public interface UserAddressRepository {
 
+    // Basic CRUD
+    UserAddress save(UserAddress userAddress);
+
+    Optional<UserAddress> findById(Long id);
+
+    List<UserAddress> findAll();
+
+    void deleteById(Long id);
+
+    boolean existsById(Long id);
+
+    long count();
+
+    // Business queries
     List<UserAddress> findByUserId(Long userId);
 
-    long countBySource(com.example.order_service.domain.model.AddressSource source);
+    long countBySource(AddressSource source);
 }
-
-

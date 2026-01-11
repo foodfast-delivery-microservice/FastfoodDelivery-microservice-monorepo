@@ -1,17 +1,15 @@
 package com.example.order_service.application.usecase;
 
-import com.example.order_service.application.dto.DeliveryAddressResponse;
 import com.example.order_service.application.dto.OrderDetailResponse;
-import com.example.order_service.application.dto.OrderItemResponse;
 import com.example.order_service.application.dto.UpdateOrderStatusRequest;
 import com.example.order_service.domain.exception.MerchantOrderAccessDeniedException;
 import com.example.order_service.domain.exception.OrderNotFoundException;
 import com.example.order_service.domain.exception.OrderValidationException;
 import com.example.order_service.application.dto.PaymentInfo;
-import com.example.order_service.domain.model.EventStatus;
-import com.example.order_service.domain.model.Order;
-import com.example.order_service.domain.model.OrderStatus;
-import com.example.order_service.domain.model.OutboxEvent;
+import com.example.order_service.domain.entities.Order;
+import com.example.order_service.domain.entities.OutboxEvent;
+import com.example.order_service.domain.valueobjects.OrderStatus;
+import com.example.order_service.domain.valueobjects.EventStatus;
 import com.example.order_service.domain.repository.OrderRepository;
 import com.example.order_service.domain.repository.OutboxEventRepository;
 import com.example.order_service.domain.repository.PaymentServicePort;
@@ -55,14 +53,15 @@ public class UpdateOrderStatusUseCase {
         // Create outbox event
         createStatusChangeEvent(order, newStatus, request.getNote());
 
-        return mapToOrderDetailResponse(order);
+        return OrderDetailResponse.fromEntity(order);
     }
 
     /**
      * Update order status with merchant ownership validation
-     * @param orderId Order ID
+     * 
+     * @param orderId    Order ID
      * @param merchantId Merchant ID from JWT token
-     * @param request Update status request
+     * @param request    Update status request
      * @return Updated order detail
      * @throws OrderValidationException if order does not belong to merchant
      */
@@ -75,11 +74,10 @@ public class UpdateOrderStatusUseCase {
 
         // Validate merchant ownership
         if (!order.getMerchantId().equals(merchantId)) {
-            log.warn("Merchant {} attempted to update order {} which belongs to merchant {}", 
+            log.warn("Merchant {} attempted to update order {} which belongs to merchant {}",
                     merchantId, orderId, order.getMerchantId());
             throw new MerchantOrderAccessDeniedException(
-                    String.format("Order %d does not belong to merchant %d", orderId, merchantId)
-            );
+                    String.format("Order %d does not belong to merchant %d", orderId, merchantId));
         }
 
         // Validate status transition
@@ -93,7 +91,7 @@ public class UpdateOrderStatusUseCase {
         // Create outbox event
         createStatusChangeEvent(order, newStatus, request.getNote());
 
-        return mapToOrderDetailResponse(order);
+        return OrderDetailResponse.fromEntity(order);
     }
 
     private OrderStatus validateAndParseStatus(String status) {
@@ -122,41 +120,43 @@ public class UpdateOrderStatusUseCase {
      */
     private void validateStatusTransition(OrderStatus currentStatus, OrderStatus newStatus) {
         Map<OrderStatus, OrderStatus[]> validTransitions = new HashMap<>();
-        
+
         // 1. PENDING: Order mới tạo, chờ merchant xác nhận
-        validTransitions.put(OrderStatus.PENDING, new OrderStatus[]{OrderStatus.CONFIRMED, OrderStatus.CANCELLED});
-        
+        validTransitions.put(OrderStatus.PENDING, new OrderStatus[] { OrderStatus.CONFIRMED, OrderStatus.CANCELLED });
+
         // 2. CONFIRMED: Merchant đã xác nhận, chờ thanh toán
-        validTransitions.put(OrderStatus.CONFIRMED, new OrderStatus[]{OrderStatus.PAID, OrderStatus.CANCELLED});
-        
+        validTransitions.put(OrderStatus.CONFIRMED, new OrderStatus[] { OrderStatus.PAID, OrderStatus.CANCELLED });
+
         // 3. PAID: Đã thanh toán, BẮT BUỘC phải qua PROCESSING để chuẩn bị hàng
-        validTransitions.put(OrderStatus.PAID, new OrderStatus[]{OrderStatus.PROCESSING, OrderStatus.CANCELLED});
-        
+        validTransitions.put(OrderStatus.PAID, new OrderStatus[] { OrderStatus.PROCESSING, OrderStatus.CANCELLED });
+
         // 4. PROCESSING: Đang chuẩn bị hàng, sau đó gán drone để giao hàng
-        //    - DELIVERING: Gán drone để giao hàng (duy nhất phương thức giao hàng)
-        validTransitions.put(OrderStatus.PROCESSING, new OrderStatus[]{OrderStatus.DELIVERING, OrderStatus.CANCELLED});
-        
+        // - DELIVERING: Gán drone để giao hàng (duy nhất phương thức giao hàng)
+        validTransitions.put(OrderStatus.PROCESSING,
+                new OrderStatus[] { OrderStatus.DELIVERING, OrderStatus.CANCELLED });
+
         // 5. DELIVERING: Drone đang giao hàng (chỉ dùng cho drone delivery)
-        validTransitions.put(OrderStatus.DELIVERING, new OrderStatus[]{OrderStatus.DELIVERED, OrderStatus.CANCELLED});
-        
+        validTransitions.put(OrderStatus.DELIVERING,
+                new OrderStatus[] { OrderStatus.DELIVERED, OrderStatus.CANCELLED });
+
         // 6. SHIPPED: Không được dùng trong flow chính (chỉ giữ lại để tương thích)
-        //    Hệ thống chỉ dùng drone delivery, không có traditional shipping
-        // validTransitions.put(OrderStatus.SHIPPED, new OrderStatus[]{OrderStatus.DELIVERED, OrderStatus.CANCELLED});
-        
+        // Hệ thống chỉ dùng drone delivery, không có traditional shipping
+        // validTransitions.put(OrderStatus.SHIPPED, new
+        // OrderStatus[]{OrderStatus.DELIVERED, OrderStatus.CANCELLED});
+
         // 7. DELIVERED: Đã giao hàng thành công
-        validTransitions.put(OrderStatus.DELIVERED, new OrderStatus[]{OrderStatus.REFUNDED});
-        
+        validTransitions.put(OrderStatus.DELIVERED, new OrderStatus[] { OrderStatus.REFUNDED });
+
         // 8. CANCELLED: Đã hủy (không thể thay đổi)
-        validTransitions.put(OrderStatus.CANCELLED, new OrderStatus[]{});
-        
+        validTransitions.put(OrderStatus.CANCELLED, new OrderStatus[] {});
+
         // 9. REFUNDED: Đã hoàn tiền (không thể thay đổi)
-        validTransitions.put(OrderStatus.REFUNDED, new OrderStatus[]{});
+        validTransitions.put(OrderStatus.REFUNDED, new OrderStatus[] {});
 
         OrderStatus[] allowedTransitions = validTransitions.get(currentStatus);
         if (allowedTransitions == null || !java.util.Arrays.asList(allowedTransitions).contains(newStatus)) {
             throw new OrderValidationException(
-                    String.format("Cannot change order status from %s to %s", currentStatus, newStatus)
-            );
+                    String.format("Cannot change order status from %s to %s", currentStatus, newStatus));
         }
     }
 
@@ -191,7 +191,8 @@ public class UpdateOrderStatusUseCase {
                 // Publish OrderRefundRequestEvent to payment service
                 try {
                     PaymentInfo paymentInfo = paymentServicePort.getPaymentByOrderId(order.getId());
-                    createRefundRequestEvent(order, paymentInfo.getPaymentId(), order.getGrandTotal(), null);
+                    createRefundRequestEvent(order, paymentInfo.getPaymentId(), order.getGrandTotal().getAmount(),
+                            null);
                 } catch (Exception e) {
                     log.error("Failed to create refund request event for order {}: {}", order.getId(), e.getMessage());
                     // Don't throw exception to avoid rolling back the order status update
@@ -206,7 +207,7 @@ public class UpdateOrderStatusUseCase {
         try {
             Map<String, Object> eventData = new HashMap<>();
             eventData.put("orderId", order.getId());
-            eventData.put("orderCode", order.getOrderCode());
+            eventData.put("orderCode", order.getOrderCode().getValue());
             eventData.put("userId", order.getUserId());
             eventData.put("oldStatus", order.getStatus().name());
             eventData.put("newStatus", newStatus.name());
@@ -230,53 +231,6 @@ public class UpdateOrderStatusUseCase {
         }
     }
 
-    private OrderDetailResponse mapToOrderDetailResponse(Order order) {
-        return OrderDetailResponse.builder()
-                .id(order.getId())
-                .orderCode(order.getOrderCode())
-                .userId(order.getUserId())
-                .merchantId(order.getMerchantId())
-                .status(order.getStatus().name())
-                .currency(order.getCurrency())
-                .subtotal(order.getSubtotal())
-                .discount(order.getDiscount())
-                .shippingFee(order.getShippingFee())
-                .grandTotal(order.getGrandTotal())
-                .note(order.getNote())
-                .createdAt(order.getCreatedAt())
-                .processingStartedAt(order.getProcessingStartedAt())
-                .deliveryAddress(mapToDeliveryAddressResponse(order.getDeliveryAddress()))
-                .orderItems(order.getOrderItems().stream()
-                        .map(this::mapToOrderItemResponse)
-                        .collect(Collectors.toList()))
-                .build();
-    }
-
-    private DeliveryAddressResponse mapToDeliveryAddressResponse(
-            com.example.order_service.domain.model.DeliveryAddress deliveryAddress) {
-        return DeliveryAddressResponse.builder()
-                .receiverName(deliveryAddress.getReceiverName())
-                .receiverPhone(deliveryAddress.getReceiverPhone())
-                .addressLine1(deliveryAddress.getAddressLine1())
-                .ward(deliveryAddress.getWard())
-                .district(deliveryAddress.getDistrict())
-                .city(deliveryAddress.getCity())
-                .fullAddress(deliveryAddress.getFullAddress())
-                .build();
-    }
-
-    private OrderItemResponse mapToOrderItemResponse(
-            com.example.order_service.domain.model.OrderItem orderItem) {
-        return OrderItemResponse.builder()
-                .id(orderItem.getId())
-                .productId(orderItem.getProductId())
-                .merchantId(orderItem.getMerchantId())
-                .productName(orderItem.getProductName())
-                .unitPrice(orderItem.getUnitPrice())
-                .quantity(orderItem.getQuantity())
-                .lineTotal(orderItem.getLineTotal())
-                .build();
-    }
     @Transactional
     public void markAsPaid(Long orderId) {
         log.info("Marking order {} as PAID", orderId);
@@ -287,16 +241,15 @@ public class UpdateOrderStatusUseCase {
         // chỉ cho phép từ PENDING hoặc CONFIRMED sang PAID
         if (order.getStatus() != OrderStatus.PENDING && order.getStatus() != OrderStatus.CONFIRMED) {
             throw new OrderValidationException(
-                    String.format("Cannot mark order %s as PAID from status %s", orderId, order.getStatus())
-            );
+                    String.format("Cannot mark order %s as PAID from status %s", orderId, order.getStatus()));
         }
 
         order.setStatus(OrderStatus.PAID);
         orderRepository.save(order);
-        
+
         // tạo outbox event nếu muốn sync sang service khác (inventory, delivery,…)
         createStatusChangeEvent(order, OrderStatus.PAID, "Payment successful");
-        
+
         // Sau khi thanh toán, tự động chuyển sang PROCESSING để chuẩn bị hàng
         // (Theo flow chuẩn: PAID → PROCESSING)
         // Note: Theo PRD section 10.3, hiện tại dùng Option 2 (Auto)
@@ -305,14 +258,15 @@ public class UpdateOrderStatusUseCase {
             order.setStatus(OrderStatus.PROCESSING);
             order.setProcessingStartedAt(LocalDateTime.now());
             orderRepository.save(order);
-            log.info("✅ Order {} automatically moved to PROCESSING after payment. Processing started at: {}", 
+            log.info("✅ Order {} automatically moved to PROCESSING after payment. Processing started at: {}",
                     orderId, order.getProcessingStartedAt());
-            createStatusChangeEvent(order, OrderStatus.PROCESSING, "Tự động chuyển sang chuẩn bị hàng sau khi thanh toán");
+            createStatusChangeEvent(order, OrderStatus.PROCESSING,
+                    "Tự động chuyển sang chuẩn bị hàng sau khi thanh toán");
         } catch (Exception e) {
             log.warn("⚠️ Could not auto-move order {} to PROCESSING: {}", orderId, e.getMessage());
             // Không throw exception để không rollback việc mark as PAID
         }
-        
+
         // Create OrderPaidEvent for stock deduction
         createOrderPaidEvent(order);
     }
@@ -327,8 +281,7 @@ public class UpdateOrderStatusUseCase {
         // chỉ cho phép từ PENDING sang PAYMENT_FAILED
         if (order.getStatus() != OrderStatus.PENDING && order.getStatus() != OrderStatus.CONFIRMED) {
             throw new OrderValidationException(
-                    String.format("Cannot mark order %s as PAYMENT_FAILED from status %s", orderId, order.getStatus())
-            );
+                    String.format("Cannot mark order %s as PAYMENT_FAILED from status %s", orderId, order.getStatus()));
         }
 
         order.setStatus(OrderStatus.CANCELLED);
@@ -338,14 +291,14 @@ public class UpdateOrderStatusUseCase {
         createStatusChangeEvent(order, OrderStatus.CANCELLED, reason);
     }
 
-    private void createRefundRequestEvent(Order order, Long paymentId, java.math.BigDecimal refundAmount, String reason) {
+    private void createRefundRequestEvent(Order order, Long paymentId, java.math.BigDecimal refundAmount,
+            String reason) {
         try {
             OrderRefundRequestEvent eventPayload = new OrderRefundRequestEvent(
                     order.getId(),
                     paymentId,
                     refundAmount,
-                    reason
-            );
+                    reason);
 
             String payloadJson = new ObjectMapper().writeValueAsString(eventPayload);
 
@@ -397,7 +350,7 @@ public class UpdateOrderStatusUseCase {
                     .build();
 
             outboxEventRepository.save(event);
-            log.info("[STOCK_DEDUCTION] Created OrderPaid event for orderId: {}, items count: {}", 
+            log.info("[STOCK_DEDUCTION] Created OrderPaid event for orderId: {}, items count: {}",
                     order.getId(), orderItemDeductions.size());
 
         } catch (Exception e) {

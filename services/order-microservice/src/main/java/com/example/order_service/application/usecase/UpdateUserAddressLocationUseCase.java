@@ -4,8 +4,8 @@ import com.example.order_service.application.dto.UpdateAddressLocationRequest;
 import com.example.order_service.application.dto.UserAddressResponse;
 import com.example.order_service.application.mapper.UserAddressMapper;
 import com.example.order_service.domain.exception.AddressValidationException;
-import com.example.order_service.domain.model.AddressSource;
-import com.example.order_service.domain.model.UserAddress;
+import com.example.order_service.domain.entities.UserAddress;
+import com.example.order_service.domain.valueobjects.AddressSource;
 import com.example.order_service.domain.repository.UserAddressRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -66,5 +66,3 @@ public class UpdateUserAddressLocationUseCase {
         }
     }
 }
-
-

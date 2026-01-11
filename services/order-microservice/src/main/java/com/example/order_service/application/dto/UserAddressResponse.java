@@ -1,6 +1,6 @@
 package com.example.order_service.application.dto;
 
-import com.example.order_service.domain.model.AddressSource;
+import com.example.order_service.domain.valueobjects.AddressSource;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -29,6 +29,3 @@ public class UserAddressResponse {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }
-
-
-

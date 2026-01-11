@@ -1,9 +1,9 @@
 package com.example.order_service.application.usecase;
 
-import com.example.order_service.domain.model.EventStatus;
-import com.example.order_service.domain.model.Order;
-import com.example.order_service.domain.model.OrderStatus;
-import com.example.order_service.domain.model.OutboxEvent;
+import com.example.order_service.domain.entities.Order;
+import com.example.order_service.domain.entities.OutboxEvent;
+import com.example.order_service.domain.valueobjects.OrderStatus;
+import com.example.order_service.domain.valueobjects.EventStatus;
 import com.example.order_service.domain.repository.OrderRepository;
 import com.example.order_service.domain.repository.OutboxEventRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -61,7 +61,7 @@ public class CancelOrdersDueToMerchantDeactivatedUseCase {
         try {
             ObjectNode eventData = objectMapper.createObjectNode();
             eventData.put("orderId", order.getId());
-            eventData.put("orderCode", order.getOrderCode());
+            eventData.put("orderCode", order.getOrderCode().getValue());
             eventData.put("userId", order.getUserId());
             eventData.put("oldStatus", oldStatus.name());
             eventData.put("newStatus", newStatus.name());
@@ -83,4 +83,3 @@ public class CancelOrdersDueToMerchantDeactivatedUseCase {
         }
     }
 }
-

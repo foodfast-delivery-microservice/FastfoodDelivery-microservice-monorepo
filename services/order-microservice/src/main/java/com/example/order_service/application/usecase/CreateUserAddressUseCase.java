@@ -4,7 +4,7 @@ import com.example.order_service.application.dto.CreateUserAddressRequest;
 import com.example.order_service.application.dto.UserAddressResponse;
 import com.example.order_service.application.mapper.UserAddressMapper;
 import com.example.order_service.domain.exception.AddressValidationException;
-import com.example.order_service.domain.model.UserAddress;
+import com.example.order_service.domain.entities.UserAddress;
 import com.example.order_service.domain.repository.UserAddressRepository;
 import com.example.order_service.infrastructure.service.AddressKitClient;
 import com.example.order_service.infrastructure.service.GeocodingService;

@@ -1,7 +1,7 @@
 package com.example.order_service.application.usecase;
 
 import com.example.order_service.application.dto.AddressMetricsResponse;
-import com.example.order_service.domain.model.AddressSource;
+import com.example.order_service.domain.valueobjects.AddressSource;
 import com.example.order_service.domain.repository.UserAddressRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -22,6 +22,3 @@ public class GetAddressMetricsUseCase {
                 .build();
     }
 }
-
-
-

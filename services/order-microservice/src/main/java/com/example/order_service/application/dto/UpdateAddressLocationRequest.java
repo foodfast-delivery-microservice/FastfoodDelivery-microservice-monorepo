@@ -1,6 +1,6 @@
 package com.example.order_service.application.dto;
 
-import com.example.order_service.domain.model.AddressSource;
+import com.example.order_service.domain.valueobjects.AddressSource;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -23,6 +23,3 @@ public class UpdateAddressLocationRequest {
 
     private AddressSource source;
 }
-
-
-

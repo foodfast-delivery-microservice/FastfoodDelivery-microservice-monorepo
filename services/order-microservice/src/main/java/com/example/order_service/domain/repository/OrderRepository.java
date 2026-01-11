@@ -1,27 +1,43 @@
 package com.example.order_service.domain.repository;
 
-import com.example.order_service.domain.model.Order;
-import com.example.order_service.domain.model.OrderStatus;
+import com.example.order_service.domain.entities.Order;
+import com.example.order_service.domain.valueobjects.OrderStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
-import org.springframework.stereotype.Repository;
+import org.springframework.data.jpa.domain.Specification;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
-@Repository
-public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecificationExecutor<Order> {
+/**
+ * Pure domain repository interface for Order aggregate.
+ * Note: Contains some JPA-specific methods (Specification, Pageable) for
+ * pragmatic reasons.
+ * TODO: Replace with pure domain query objects in future refactoring.
+ */
+public interface OrderRepository {
 
+        // Basic CRUD
+        Order save(Order order);
+
+        Optional<Order> findById(Long id);
+
+        List<Order> findAll();
+
+        void deleteById(Long id);
+
+        boolean existsById(Long id);
+
+        // Dynamic queries (JPA-specific - pragmatic approach)
+        Page<Order> findAll(Specification<Order> spec, Pageable pageable);
+
+        // Business queries
         Optional<Order> findByOrderCode(String orderCode);
 
         List<Order> findByUserId(Long userId);
-
-        Page<Order> findByUserId(Long userId, Pageable pageable);
 
         List<Order> findByStatus(OrderStatus status);
 
@@ -29,30 +45,26 @@ public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecific
 
         List<Order> findByMerchantIdAndStatus(Long merchantId, OrderStatus status);
 
-        @Query("SELECT o FROM Order o WHERE o.createdAt BETWEEN :startDate AND :endDate")
-        List<Order> findByCreatedAtBetween(@Param("startDate") LocalDateTime startDate,
-                        @Param("endDate") LocalDateTime endDate);
+        List<Order> findByCreatedAtBetween(LocalDateTime startDate, LocalDateTime endDate);
 
-        @Query("SELECT o FROM Order o WHERE o.userId = :userId AND o.createdAt BETWEEN :startDate AND :endDate")
-        List<Order> findByUserIdAndCreatedAtBetween(@Param("userId") Long userId,
-                        @Param("startDate") LocalDateTime startDate,
-                        @Param("endDate") LocalDateTime endDate);
+        List<Order> findByUserIdAndCreatedAtBetween(
+                        Long userId,
+                        LocalDateTime startDate,
+                        LocalDateTime endDate);
 
-        @Query("SELECT o FROM Order o WHERE o.userId = :userId ORDER BY o.createdAt DESC")
-        List<Order> findByUserIdOrderByCreatedAtDesc(@Param("userId") Long userId);
+        List<Order> findByUserIdOrderByCreatedAtDesc(Long userId);
 
         boolean existsByOrderCode(String orderCode);
 
-        @Query("SELECT COUNT(o) FROM Order o WHERE o.userId = :userId AND o.status = :status")
-        long countByUserIdAndStatus(@Param("userId") Long userId, @Param("status") OrderStatus status);
+        // Analytics queries
+        long countByUserIdAndStatus(Long userId, OrderStatus status);
 
         long countByUserId(Long userId);
 
-        @Query("SELECT SUM(o.grandTotal) FROM Order o WHERE o.userId = :userId AND o.status IN :statuses")
-        java.math.BigDecimal sumGrandTotalByUserIdAndStatusIn(@Param("userId") Long userId,
-                        @Param("statuses") java.util.Collection<OrderStatus> statuses);
+        BigDecimal sumGrandTotalByUserIdAndStatusIn(
+                        Long userId,
+                        Collection<OrderStatus> statuses);
 
-        // Admin analytics queries
         long countByStatus(OrderStatus status);
 
         long countByCreatedAtAfter(LocalDateTime dateTime);

@@ -1,9 +1,7 @@
 package com.example.order_service.infrastructure.messaging;
 
-
-
-import com.example.order_service.domain.model.EventStatus;
-import com.example.order_service.domain.model.OutboxEvent;
+import com.example.order_service.domain.entities.OutboxEvent;
+import com.example.order_service.domain.valueobjects.EventStatus;
 import com.example.order_service.domain.repository.OutboxEventRepository;
 import com.example.order_service.infrastructure.event.OrderCreatedEventPayload;
 import lombok.RequiredArgsConstructor;
@@ -71,8 +69,7 @@ public class OutboxEventRelay {
                     try {
                         payloadToSend = objectMapper.readValue(
                                 event.getPayload(),
-                                OrderCreatedEventPayload.class
-                        );
+                                OrderCreatedEventPayload.class);
                     } catch (Exception ex) {
                         log.error("Failed to deserialize OrderCreated payload for event id={}", event.getId(), ex);
                         // Nếu lỗi, fallback gửi raw JSON string như cũ
@@ -83,8 +80,7 @@ public class OutboxEventRelay {
                 rabbitTemplate.convertAndSend(
                         ORDER_EXCHANGE,
                         routingKey,
-                        payloadToSend
-                );
+                        payloadToSend);
 
                 // 4. Gửi thành công, cập nhật trạng thái
                 event.setStatus(EventStatus.PROCESSED);

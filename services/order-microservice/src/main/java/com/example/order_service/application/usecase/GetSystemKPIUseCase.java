@@ -1,8 +1,8 @@
 package com.example.order_service.application.usecase;
 
 import com.example.order_service.application.dto.SystemKPIResponse;
-import com.example.order_service.domain.model.Order;
-import com.example.order_service.domain.model.OrderStatus;
+import com.example.order_service.domain.entities.Order;
+import com.example.order_service.domain.valueobjects.OrderStatus;
 import com.example.order_service.domain.repository.OrderRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -58,7 +58,8 @@ public class GetSystemKPIUseCase {
         // Average order value today
         double avgValue = todayOrders.stream()
                 .filter(order -> order.getGrandTotal() != null)
-                .mapToDouble(order -> order.getGrandTotal().doubleValue())
+                .mapToDouble(
+                        order -> order.getGrandTotal() != null ? order.getGrandTotal().getAmount().doubleValue() : 0.0)
                 .average()
                 .orElse(0.0);
 

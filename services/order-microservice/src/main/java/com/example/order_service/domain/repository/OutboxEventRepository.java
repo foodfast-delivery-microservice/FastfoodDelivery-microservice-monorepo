@@ -1,23 +1,33 @@
 package com.example.order_service.domain.repository;
 
-import com.example.order_service.domain.model.EventStatus;
-import com.example.order_service.domain.model.OutboxEvent;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
-import org.springframework.stereotype.Repository;
+import com.example.order_service.domain.entities.OutboxEvent;
+import com.example.order_service.domain.valueobjects.EventStatus;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
-@Repository
-public interface OutboxEventRepository extends JpaRepository<OutboxEvent, Long> {
+/**
+ * Pure domain repository interface for OutboxEvent aggregate.
+ * No framework dependencies - follows clean architecture principles.
+ */
+public interface OutboxEventRepository {
 
+    // Basic CRUD
+    OutboxEvent save(OutboxEvent outboxEvent);
+
+    Optional<OutboxEvent> findById(Long id);
+
+    List<OutboxEvent> findAll();
+
+    void deleteById(Long id);
+
+    boolean existsById(Long id);
+
+    // Business queries
     List<OutboxEvent> findByStatus(EventStatus status);
 
-    @Query("SELECT o FROM OutboxEvent o WHERE o.status = :status AND o.createdAt < :cutoffTime")
-    List<OutboxEvent> findFailedEventsBefore(@Param("status") EventStatus status,
-                                             @Param("cutoffTime") LocalDateTime cutoffTime);
+    List<OutboxEvent> findFailedEventsBefore(EventStatus status, LocalDateTime cutoffTime);
 
     void deleteByStatusAndCreatedAtBefore(EventStatus status, LocalDateTime cutoffTime);
 }
