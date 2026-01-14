@@ -69,13 +69,14 @@
     opacity: 0;
     transform: translateY(-10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
   }
 }
 
-.orders-error-banner > div {
+.orders-error-banner>div {
   flex: 1;
 }
 
@@ -132,13 +133,14 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 20px;
-  align-items: end;
+  align-items: flex-start;
+  /* Back to 'end' for proper baseline alignment */
   position: relative;
 }
 
 /* Hide any duplicate text that might appear */
-.filter-container > *:first-child::before,
-.filter-container > *:first-child::after {
+.filter-container>*:first-child::before,
+.filter-container>*:first-child::after {
   display: none !important;
   content: none !important;
 }
@@ -151,26 +153,27 @@
 
 .filter-item label,
 .filter-item .filter-label {
-    font-weight: 600;
-    font-size: 13px;
-    color: var(--orders-text);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    display: block;
-    margin-bottom: 8px;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--orders-text);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: block;
+  margin-bottom: 0;
+  /* Remove margin since gap handles spacing */
 }
 
 /* Prevent duplicate text rendering from pseudo-elements */
 .filter-container::before,
 .filter-container::after {
-    display: none !important;
-    content: none !important;
+  display: none !important;
+  content: none !important;
 }
 
 .filter-item::before,
 .filter-item::after {
-    display: none !important;
-    content: none !important;
+  display: none !important;
+  content: none !important;
 }
 
 /* Input & Select Styling */
@@ -215,7 +218,7 @@
   background: transparent !important;
 }
 
-.orders-table .ant-table-thead > tr > th {
+.orders-table .ant-table-thead>tr>th {
   background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%) !important;
   color: var(--orders-text) !important;
   font-weight: 700 !important;
@@ -228,7 +231,7 @@
   white-space: nowrap;
 }
 
-.orders-table .ant-table-tbody > tr > td {
+.orders-table .ant-table-tbody>tr>td {
   background: var(--orders-card) !important;
   color: var(--orders-text) !important;
   text-align: center !important;
@@ -238,23 +241,23 @@
   transition: all 0.2s ease !important;
 }
 
-.orders-table .ant-table-tbody > tr:hover > td {
+.orders-table .ant-table-tbody>tr:hover>td {
   background: linear-gradient(90deg, #f0f9ff 0%, #e0f2fe 100%) !important;
   cursor: pointer;
   transform: scale(1.01);
 }
 
-.orders-table .ant-table-tbody > tr:last-child > td {
+.orders-table .ant-table-tbody>tr:last-child>td {
   border-bottom: none !important;
 }
 
 /* Clickable cells */
-.orders-table .ant-table-tbody > tr > td span {
+.orders-table .ant-table-tbody>tr>td span {
   display: inline-block;
   transition: color 0.2s ease;
 }
 
-.orders-table .ant-table-tbody > tr:hover > td span {
+.orders-table .ant-table-tbody>tr:hover>td span {
   color: var(--orders-primary);
   font-weight: 500;
 }
@@ -382,8 +385,8 @@
     margin-top: 12px;
   }
 
-  .orders-table .ant-table-thead > tr > th,
-  .orders-table .ant-table-tbody > tr > td {
+  .orders-table .ant-table-thead>tr>th,
+  .orders-table .ant-table-tbody>tr>td {
     padding: 12px 8px !important;
     font-size: 13px !important;
   }
@@ -421,7 +424,7 @@
 }
 
 /* ====== SMOOTH TRANSITIONS ====== */
-.orders-table .ant-table-tbody > tr,
+.orders-table .ant-table-tbody>tr,
 .filter-container,
 .orders-error-banner {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);

@@ -372,8 +372,8 @@ export default function Orders() {
             placeholder="Nhập tên hoặc mã đơn hàng..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            allowClear
-            aria-label="Tìm kiếm đơn hàng"
+            // allowClear
+            // aria-label="Tìm kiếm đơn hàng"
           />
         </div>
 
