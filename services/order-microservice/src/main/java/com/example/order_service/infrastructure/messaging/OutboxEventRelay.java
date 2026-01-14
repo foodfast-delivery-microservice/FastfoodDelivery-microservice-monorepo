@@ -29,6 +29,7 @@ public class OutboxEventRelay {
     public static final String ORDER_REFUND_REQUEST_ROUTING_KEY = "order.refund.request";
     public static final String ORDER_REFUNDED_ROUTING_KEY = "order.refunded";
     public static final String ORDER_PAID_ROUTING_KEY = "order.paid";
+    public static final String ORDER_STATUS_CHANGED_ROUTING_KEY = "order.status.changed";
 
     // Chạy định kỳ mỗi 5 giây
     @Scheduled(fixedRate = 5000)
@@ -55,6 +56,8 @@ public class OutboxEventRelay {
                     routingKey = ORDER_REFUNDED_ROUTING_KEY;
                 } else if ("OrderPaid".equals(event.getType())) {
                     routingKey = ORDER_PAID_ROUTING_KEY;
+                } else if ("OrderStatusChanged".equals(event.getType())) {
+                    routingKey = ORDER_STATUS_CHANGED_ROUTING_KEY;
                 } else {
                     log.warn("Unknown event type: {}, skipping...", event.getType());
                     continue;

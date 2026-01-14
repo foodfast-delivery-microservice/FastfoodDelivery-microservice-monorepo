@@ -2,7 +2,7 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { Input, Table, Tag, Select, message, Spin } from "antd";
 import { useNavigate } from "react-router-dom";
-import http from "../../services/http";
+import { orderHttp, userHttp } from "../../services/http";
 import "./Orders.css";
 
 export default function Orders() {
@@ -38,7 +38,7 @@ export default function Orders() {
 
   const parseDate = (createdAt) => {
     if (!createdAt) return null;
-    
+
     // Handle array format [yyyy, MM, dd, HH, mm, ss]
     if (Array.isArray(createdAt)) {
       return new Date(
@@ -50,7 +50,7 @@ export default function Orders() {
         createdAt[5] || 0
       );
     }
-    
+
     // Handle object format (Java LocalDateTime)
     if (
       typeof createdAt === "object" &&
@@ -67,12 +67,12 @@ export default function Orders() {
         second || 0
       );
     }
-    
+
     // Handle number (timestamp)
     if (typeof createdAt === "number") {
       return new Date(createdAt);
     }
-    
+
     // Handle string
     const date = new Date(createdAt);
     return Number.isFinite(date.getTime()) ? date : null;
@@ -82,7 +82,7 @@ export default function Orders() {
   const fetchOrders = useCallback(async () => {
     try {
       logApi("GET /orders params", { size: 100, page: 0 });
-      const res = await http.get("/orders", { params: { size: 100, page: 0 } });
+      const res = await orderHttp.get("/orders", { params: { size: 100, page: 0 } });
       logApi("GET /orders response", res?.data);
 
       // Try multiple response structures
@@ -124,7 +124,7 @@ export default function Orders() {
   const fetchRestaurants = useCallback(async () => {
     try {
       logApi("GET /restaurants params", { size: 100, page: 0 });
-      const res = await http.get("/restaurants", {
+      const res = await userHttp.get("/restaurants", {
         params: { size: 100, page: 0 },
       });
       logApi("GET /restaurants response", res?.data);
@@ -155,12 +155,12 @@ export default function Orders() {
     const loadAll = async () => {
       setLoading(true);
       setErrors({ orders: null, restaurants: null });
-      
+
       await Promise.allSettled([fetchOrders(), fetchRestaurants()]);
-      
+
       setLoading(false);
     };
-    
+
     loadAll();
   }, [fetchOrders, fetchRestaurants]);
 

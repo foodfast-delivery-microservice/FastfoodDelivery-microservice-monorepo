@@ -13,7 +13,7 @@ import java.util.regex.Pattern;
 @Getter
 @EqualsAndHashCode
 public class OrderCode {
-    private static final Pattern VALID_FORMAT = Pattern.compile("^ORD-[A-Z0-9]{8,32}$");
+    private static final Pattern VALID_FORMAT = Pattern.compile("^ORD-[A-Z0-9-]{8,32}$");
     private static final int MIN_LENGTH = 12; // "ORD-" + 8 chars
     private static final int MAX_LENGTH = 36; // "ORD-" + 32 chars
 

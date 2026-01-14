@@ -1,4 +1,4 @@
-import http from './http'
+import { userHttp as http } from './http'
 
 // Helper để unwrap ApiResponse
 const unwrapData = (responseData) => {
@@ -36,16 +36,16 @@ export const fetchRestaurantByMerchantId = async (merchantId) => {
 export const fetchRestaurantMenu = async (restaurantId, params = {}) => {
   // Lấy menu từ products service với merchantId
   // Dùng endpoint public /products/merchants/{merchantId} để guest có thể xem
-  
+
   // Lấy merchantId từ restaurant
   const restaurant = await fetchRestaurantById(restaurantId)
   const merchantId = restaurant?.merchantId
-  
+
   if (!merchantId) {
     console.warn(`Restaurant ${restaurantId} không có merchantId`)
     return []
   }
-  
+
   // Dùng endpoint public mới: /products/merchants/{merchantId}
   // Endpoint này chỉ trả về active products (phù hợp cho guest)
   const { data } = await http.get(`/products/merchants/${merchantId}`, { params })

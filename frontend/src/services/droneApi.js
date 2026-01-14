@@ -1,4 +1,4 @@
-import http from './http'
+import { droneHttp as http } from './http'
 
 const unwrap = (payload) => {
   if (payload && typeof payload === 'object') {

@@ -1,4 +1,4 @@
-import http from './http'
+import { productHttp as http } from './http'
 
 // Helper để unwrap ApiResponse
 const unwrapData = (responseData) => {

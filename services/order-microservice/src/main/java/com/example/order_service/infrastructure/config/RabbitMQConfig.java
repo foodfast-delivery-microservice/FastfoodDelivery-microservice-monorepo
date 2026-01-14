@@ -30,6 +30,8 @@ public class RabbitMQConfig {
     public static final String ORDER_REFUNDED_ROUTING_KEY = "order.refunded";
     public static final String ORDER_PAID_QUEUE = "order.paid.queue";
     public static final String ORDER_PAID_ROUTING_KEY = "order.paid";
+    public static final String ORDER_STATUS_CHANGED_QUEUE = "order.status.changed.queue";
+    public static final String ORDER_STATUS_CHANGED_ROUTING_KEY = "order.status.changed";
     public static final String ORDER_MERCHANT_DEACTIVATED_QUEUE = "order.merchant.deactivated.queue";
     public static final String MERCHANT_DEACTIVATED_ROUTING_KEY = "merchant.deactivated";
 
@@ -40,11 +42,11 @@ public class RabbitMQConfig {
     public static final String DELIVERY_COMPLETED_QUEUE = "order.delivery.completed.queue";
     public static final String DELIVERY_COMPLETED_ROUTING_KEY = "drone.delivery.completed";
 
-
     @Bean
     public TopicExchange orderExchange() {
         return new TopicExchange(ORDER_EXCHANGE);
     }
+
     @Bean
     public TopicExchange paymentExchange() {
         return new TopicExchange(PAYMENT_EXCHANGE);
@@ -83,6 +85,11 @@ public class RabbitMQConfig {
     @Bean
     public Queue orderPaidQueue() {
         return new Queue(ORDER_PAID_QUEUE, true);
+    }
+
+    @Bean
+    public Queue orderStatusChangedQueue() {
+        return new Queue(ORDER_STATUS_CHANGED_QUEUE, true);
     }
 
     @Bean
@@ -154,6 +161,13 @@ public class RabbitMQConfig {
         return BindingBuilder.bind(deliveryCompletedQueue())
                 .to(droneExchange())
                 .with(DELIVERY_COMPLETED_ROUTING_KEY);
+    }
+
+    @Bean
+    public Binding orderStatusChangedBinding() {
+        return BindingBuilder.bind(orderStatusChangedQueue())
+                .to(orderExchange())
+                .with(ORDER_STATUS_CHANGED_ROUTING_KEY);
     }
 
     @Bean

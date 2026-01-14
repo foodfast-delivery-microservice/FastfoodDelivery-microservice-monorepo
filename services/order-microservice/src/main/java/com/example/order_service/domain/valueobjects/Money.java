@@ -27,19 +27,18 @@ public class Money {
      */
     public Money(BigDecimal amount, String currency) {
         Objects.requireNonNull(amount, "Amount cannot be null");
-        Objects.requireNonNull(currency, "Currency cannot be null");
 
         if (amount.compareTo(BigDecimal.ZERO) < 0) {
             throw new IllegalArgumentException("Amount cannot be negative: " + amount);
         }
 
-        if (currency.isBlank()) {
-            throw new IllegalArgumentException("Currency cannot be blank");
-        }
+        // Default to VND if currency is null or blank (defensive handling for legacy
+        // data)
+        String effectiveCurrency = (currency == null || currency.isBlank()) ? "VND" : currency;
 
         // Standardize to 2 decimal places for consistency
         this.amount = amount.setScale(2, RoundingMode.HALF_UP);
-        this.currency = currency.toUpperCase();
+        this.currency = effectiveCurrency.toUpperCase();
     }
 
     /**

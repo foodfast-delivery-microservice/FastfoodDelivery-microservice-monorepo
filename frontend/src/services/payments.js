@@ -1,4 +1,4 @@
-import http from './http'
+import { paymentHttp as http } from './http'
 
 const unwrapData = (responseData) => {
   if (responseData?.data !== undefined && responseData?.status !== undefined) {

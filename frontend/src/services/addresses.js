@@ -1,4 +1,4 @@
-import http from './http'
+import { userHttp as http } from './http'
 
 export const getUserAddresses = async () => {
   const res = await http.get('/addresses')
