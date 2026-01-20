@@ -8,14 +8,13 @@ import com.example.paymentservice.domain.port.OrderServicePort;
 import com.example.paymentservice.domain.port.UserServicePort;
 import com.example.paymentservice.domain.repository.OutboxEventRepository;
 import com.example.paymentservice.domain.repository.PaymentRepository;
-import com.example.paymentservice.infrastructure.client.dto.OrderDetailResponse;
-import com.example.paymentservice.infrastructure.client.dto.UserValidationResponse;
-import com.example.paymentservice.infrastructure.event.PaymentFailedEventPayload;
-import com.example.paymentservice.infrastructure.event.PaymentSuccessEventPayload;
+import com.example.paymentservice.application.dto.OrderDetailResponse;
+import com.example.paymentservice.application.dto.PaymentFailedEventPayload;
+import com.example.paymentservice.application.dto.PaymentSuccessEventPayload;
+import com.example.paymentservice.application.dto.UserValidationResponse;
 
 import com.example.paymentservice.application.dto.PaymentRequest;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.example.paymentservice.application.service.EventPayloadSerializer;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,7 +29,7 @@ public class ProcessPaymentUseCase {
 
     private final PaymentRepository paymentRepository;
     private final OutboxEventRepository outboxEventRepository;
-    private final ObjectMapper objectMapper;
+    private final EventPayloadSerializer eventPayloadSerializer;
     private final OrderServicePort orderServicePort;
     private final UserServicePort userServicePort;
 
@@ -310,26 +309,20 @@ public class ProcessPaymentUseCase {
         log.info("Payment amount validation passed: amount={}", requestAmount);
     }
 
-    // Hàm tạo Outbox Event (y hệt bên order-service)
+    // Hàm tạo Outbox Event
     private void createOutboxEvent(Payment payment, String eventType, Object payloadObject) {
-        try {
-            String payloadJson = objectMapper.writeValueAsString(payloadObject);
+        String payloadJson = eventPayloadSerializer.serialize(payloadObject);
 
-            OutboxEvent event = OutboxEvent.builder()
-                    .aggregateType("Payment")
-                    .aggregateId(payment.getId().toString())
-                    .type(eventType)
-                    .payload(payloadJson)
-                    .status(EventStatus.NEW)
-                    .createdAt(LocalDateTime.now())
-                    .build();
+        OutboxEvent event = OutboxEvent.builder()
+                .aggregateType("Payment")
+                .aggregateId(payment.getId().toString())
+                .type(eventType)
+                .payload(payloadJson)
+                .status(EventStatus.NEW)
+                .createdAt(LocalDateTime.now())
+                .build();
 
-            outboxEventRepository.save(event);
-
-        } catch (JsonProcessingException e) {
-            log.error("CRITICAL: Failed to serialize event payload for paymentId: {}. Transaction will be rolled back.", payment.getId(), e);
-            throw new RuntimeException("Failed to create outbox event payload", e);
-        }
+        outboxEventRepository.save(event);
     }
 
 }

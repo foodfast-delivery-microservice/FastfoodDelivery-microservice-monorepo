@@ -1,6 +1,6 @@
 package com.example.paymentservice.domain.port;
 
-import com.example.paymentservice.infrastructure.client.dto.OrderDetailResponse;
+import com.example.paymentservice.application.dto.OrderDetailResponse;
 
 /**
  * Port interface for Order Service integration

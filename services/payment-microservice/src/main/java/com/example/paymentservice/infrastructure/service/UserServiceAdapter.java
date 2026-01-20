@@ -1,7 +1,7 @@
 package com.example.paymentservice.infrastructure.service;
 
+import com.example.paymentservice.application.dto.UserValidationResponse;
 import com.example.paymentservice.domain.port.UserServicePort;
-import com.example.paymentservice.infrastructure.client.dto.UserValidationResponse;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -127,11 +127,21 @@ public class UserServiceAdapter implements UserServicePort {
                 log.info("User validation result: userId={}, exists={}, active={}, username={}",
                         id, exists, active, username);
 
-                return new UserValidationResponse(id, exists, active, username);
+                return UserValidationResponse.builder()
+                        .userId(id)
+                        .exists(exists)
+                        .active(active)
+                        .username(username)
+                        .build();
 
             } catch (WebClientResponseException.NotFound ex) {
                 log.warn("User {} not found (404)", userId);
-                return new UserValidationResponse(userId, false, false, null);
+                return UserValidationResponse.builder()
+                        .userId(userId)
+                        .exists(false)
+                        .active(false)
+                        .username(null)
+                        .build();
             } catch (WebClientResponseException.Forbidden ex) {
                 // 403 Forbidden là lỗi authorization, không phải service unavailable
                 // Không nên trigger Circuit Breaker với lỗi này

@@ -119,7 +119,7 @@ class OrderServiceAdapterCircuitBreakerTest {
                 .thenReturn(validOrderResponse);
 
         // When: Payment Service gọi Order Service
-        OrderDetailResponse response = orderServiceAdapter.getOrderDetail(1L);
+        com.example.paymentservice.application.dto.OrderDetailResponse response = orderServiceAdapter.getOrderDetail(1L);
 
         // Then: Response thành công
         assertThat(response).isNotNull();

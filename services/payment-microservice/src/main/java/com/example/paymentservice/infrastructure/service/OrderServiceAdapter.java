@@ -1,7 +1,9 @@
 package com.example.paymentservice.infrastructure.service;
 
+import com.example.paymentservice.application.dto.DeliveryAddressResponse;
+import com.example.paymentservice.application.dto.OrderDetailResponse;
+import com.example.paymentservice.application.dto.OrderItemResponse;
 import com.example.paymentservice.domain.port.OrderServicePort;
-import com.example.paymentservice.infrastructure.client.dto.OrderDetailResponse;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
@@ -17,6 +19,7 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -107,8 +110,12 @@ public class OrderServiceAdapter implements OrderServicePort {
                 log.info("=== ORDER SERVICE RESPONSE ===");
                 log.info("Response received for orderId: {}", orderId);
 
-                // Parse response (OrderDetailResponse is returned directly, not wrapped in ApiResponse)
-                OrderDetailResponse orderDetail = objectMapper.readValue(responseJson, OrderDetailResponse.class);
+                // Parse response to infrastructure DTO first
+                com.example.paymentservice.infrastructure.client.dto.OrderDetailResponse infraResponse = 
+                        objectMapper.readValue(responseJson, com.example.paymentservice.infrastructure.client.dto.OrderDetailResponse.class);
+
+                // Map infrastructure DTO to application DTO
+                OrderDetailResponse orderDetail = mapToApplicationDto(infraResponse);
 
                 log.info("Order detail retrieved: orderId={}, userId={}, status={}", 
                         orderDetail.getId(), orderDetail.getUserId(), orderDetail.getStatus());
@@ -147,6 +154,60 @@ public class OrderServiceAdapter implements OrderServicePort {
                 throw new RuntimeException("Unexpected error calling Order Service: " + e.getMessage(), e);
             }
         }, executor);
+    }
+
+    /**
+     * Map infrastructure DTO to application DTO
+     */
+    private OrderDetailResponse mapToApplicationDto(com.example.paymentservice.infrastructure.client.dto.OrderDetailResponse infra) {
+        if (infra == null) {
+            return null;
+        }
+
+        DeliveryAddressResponse deliveryAddress = null;
+        if (infra.getDeliveryAddress() != null) {
+            com.example.paymentservice.infrastructure.client.dto.DeliveryAddressResponse infraAddr = infra.getDeliveryAddress();
+            deliveryAddress = DeliveryAddressResponse.builder()
+                    .receiverName(infraAddr.getReceiverName())
+                    .receiverPhone(infraAddr.getReceiverPhone())
+                    .addressLine1(infraAddr.getAddressLine1())
+                    .ward(infraAddr.getWard())
+                    .district(infraAddr.getDistrict())
+                    .city(infraAddr.getCity())
+                    .fullAddress(infraAddr.getFullAddress())
+                    .build();
+        }
+
+        java.util.List<OrderItemResponse> orderItems = null;
+        if (infra.getOrderItems() != null) {
+            orderItems = infra.getOrderItems().stream()
+                    .map(item -> OrderItemResponse.builder()
+                            .id(item.getId())
+                            .productId(item.getProductId())
+                            .productName(item.getProductName())
+                            .unitPrice(item.getUnitPrice())
+                            .quantity(item.getQuantity())
+                            .lineTotal(item.getLineTotal())
+                            .build())
+                    .collect(Collectors.toList());
+        }
+
+        return OrderDetailResponse.builder()
+                .id(infra.getId())
+                .orderCode(infra.getOrderCode())
+                .userId(infra.getUserId())
+                .merchantId(infra.getMerchantId())
+                .status(infra.getStatus())
+                .currency(infra.getCurrency())
+                .subtotal(infra.getSubtotal())
+                .discount(infra.getDiscount())
+                .shippingFee(infra.getShippingFee())
+                .grandTotal(infra.getGrandTotal())
+                .note(infra.getNote())
+                .createdAt(infra.getCreatedAt())
+                .deliveryAddress(deliveryAddress)
+                .orderItems(orderItems)
+                .build();
     }
 
     /**

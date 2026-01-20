@@ -1,6 +1,6 @@
 package com.example.paymentservice.domain.port;
 
-import com.example.paymentservice.infrastructure.client.dto.UserValidationResponse;
+import com.example.paymentservice.application.dto.UserValidationResponse;
 
 /**
  * Port interface for User Service integration

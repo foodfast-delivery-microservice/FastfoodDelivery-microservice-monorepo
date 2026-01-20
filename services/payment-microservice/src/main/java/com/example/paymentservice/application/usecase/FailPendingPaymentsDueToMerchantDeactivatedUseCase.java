@@ -6,8 +6,8 @@ import com.example.paymentservice.domain.entities.OutboxEvent;
 import com.example.paymentservice.domain.entities.Payment;
 import com.example.paymentservice.domain.repository.OutboxEventRepository;
 import com.example.paymentservice.domain.repository.PaymentRepository;
-import com.example.paymentservice.infrastructure.event.PaymentFailedEventPayload;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.example.paymentservice.application.dto.PaymentFailedEventPayload;
+import com.example.paymentservice.application.service.EventPayloadSerializer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -25,7 +25,7 @@ public class FailPendingPaymentsDueToMerchantDeactivatedUseCase {
 
     private final PaymentRepository paymentRepository;
     private final OutboxEventRepository outboxEventRepository;
-    private final ObjectMapper objectMapper;
+    private final EventPayloadSerializer eventPayloadSerializer;
 
     @Transactional
     public void execute(Long merchantId) {
@@ -58,7 +58,7 @@ public class FailPendingPaymentsDueToMerchantDeactivatedUseCase {
 
     private void createOutboxEvent(Payment payment, PaymentFailedEventPayload payloadObject) {
         try {
-            String payloadJson = objectMapper.writeValueAsString(payloadObject);
+            String payloadJson = eventPayloadSerializer.serialize(payloadObject);
 
             OutboxEvent event = OutboxEvent.builder()
                     .aggregateType("Payment")
@@ -72,6 +72,7 @@ public class FailPendingPaymentsDueToMerchantDeactivatedUseCase {
             outboxEventRepository.save(event);
         } catch (Exception e) {
             log.error("Failed to create outbox event for payment {}", payment.getId(), e);
+            throw e; // Re-throw to ensure transaction rollback
         }
     }
 }

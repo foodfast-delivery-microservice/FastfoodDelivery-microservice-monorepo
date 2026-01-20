@@ -6,10 +6,10 @@ import com.example.paymentservice.domain.entities.OutboxEvent;
 import com.example.paymentservice.domain.entities.Payment;
 import com.example.paymentservice.domain.repository.OutboxEventRepository;
 import com.example.paymentservice.domain.repository.PaymentRepository;
+import com.example.paymentservice.application.service.EventPayloadSerializer;
 
 import com.example.paymentservice.infrastructure.event.OrderRefundRequestEvent;
 import com.example.paymentservice.infrastructure.event.PaymentRefundedEvent;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,7 +20,7 @@ import lombok.extern.slf4j.Slf4j;
 public class ProcessRefundUseCase {
     private final PaymentRepository paymentRepository;
     private final OutboxEventRepository outboxEventRepository;
-    private final ObjectMapper objectMapper; // 7. INJECT OBJECTMAPPER
+    private final EventPayloadSerializer eventPayloadSerializer;
 
     // 8. USE CASE LUÔN PHẢI LÀ TRANSACTIONAL
     @Transactional
@@ -55,21 +55,17 @@ public class ProcessRefundUseCase {
         );
 
         // 13. LƯU VÀO OUTBOX (THAY VÌ GỌI RABBITMQ)
-        try {
-            String payloadJson = objectMapper.writeValueAsString(refundedEventPayload);
+        String payloadJson = eventPayloadSerializer.serialize(refundedEventPayload);
 
-            OutboxEvent outboxEvent = OutboxEvent.builder()
-                    .aggregateType("PAYMENT")
-                    .aggregateId(payment.getId().toString())
-                    .type("PAYMENT_REFUNDED") // 14. KEY QUAN TRỌNG
-                    .payload(payloadJson)
-                    .build();
+        OutboxEvent outboxEvent = OutboxEvent.builder()
+                .aggregateType("PAYMENT")
+                .aggregateId(payment.getId().toString())
+                .type("PAYMENT_REFUNDED")
+                .payload(payloadJson)
+                .status(com.example.paymentservice.domain.valueobjects.EventStatus.NEW)
+                .createdAt(java.time.LocalDateTime.now())
+                .build();
 
-            outboxEventRepository.save(outboxEvent);
-
-        } catch (Exception e) {
-            // Nếu lỗi serialize -> rollback toàn bộ transaction
-            throw new RuntimeException("Failed to serialize refund event payload", e);
-        }
+        outboxEventRepository.save(outboxEvent);
     }
 }
