@@ -2,16 +2,19 @@ package com.example.droneservice.infrastructure.scheduler;
 
 import com.example.droneservice.application.usecases.drone.SimulateDroneMovementUseCase;
 import com.example.droneservice.domain.entities.DroneMission;
+import com.example.droneservice.domain.entities.OutboxEvent;
 import com.example.droneservice.domain.repository.DroneMissionRepository;
+import com.example.droneservice.domain.repository.OutboxEventRepository;
+import com.example.droneservice.domain.valueobjects.EventStatus;
 import com.example.droneservice.domain.valueobjects.Status;
-import com.example.droneservice.infrastructure.config.RabbitMQConfig;
 import com.example.droneservice.infrastructure.event.DeliveryCompletedEvent;
 import com.example.droneservice.infrastructure.event.DroneStatusUpdateEvent;
 import com.example.droneservice.infrastructure.util.HaversineDistanceCalculator;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -29,7 +32,8 @@ public class DroneSimulationScheduler {
 
     private final DroneMissionRepository missionRepository;
     private final SimulateDroneMovementUseCase simulateMovementUseCase;
-    private final RabbitTemplate rabbitTemplate;
+    private final OutboxEventRepository outboxEventRepository;
+    private final ObjectMapper objectMapper;
 
     /**
      * Log when scheduler is initialized (runs once on startup)
@@ -111,8 +115,8 @@ public class DroneSimulationScheduler {
                 }
                 var droneStateAfter = drone.getState();
 
-                // Publish status update event
-                publishStatusUpdate(mission);
+                // Create OutboxEvent for status update
+                createStatusUpdateOutboxEvent(mission);
 
                 // Check if drone just arrived at delivery location (state changed to RETURNING
                 // from DELIVERING)
@@ -120,9 +124,9 @@ public class DroneSimulationScheduler {
                 if (droneStateBefore == com.example.droneservice.domain.valueobjects.State.DELIVERING
                         && droneStateAfter == com.example.droneservice.domain.valueobjects.State.RETURNING) {
                     // Drone vừa giao hàng xong, chuyển sang RETURNING
-                    log.info("📦 Drone {} đã giao hàng xong cho order {} - Gửi event để order status = 'delivered'",
+                    log.info("📦 Drone {} đã giao hàng xong cho order {} - Creating event để order status = 'delivered'",
                             drone.getSerialNumber().getValue(), mission.getOrderId());
-                    publishOrderDelivered(mission);
+                    createDeliveryCompletedOutboxEvent(mission);
                 } else if (droneStateAfter == com.example.droneservice.domain.valueobjects.State.DELIVERING
                         && mission.getStatus() == Status.IN_PROGRESS) {
                     // Drone đang giao hàng (state = DELIVERING, status = IN_PROGRESS)
@@ -130,15 +134,15 @@ public class DroneSimulationScheduler {
                     double distanceToDelivery = calculateDistanceToDelivery(mission, drone);
                     if (distanceToDelivery <= 0.1) { // 100 meters
                         log.info(
-                                "📦 Drone {} đang giao hàng cho order {} (cách {:.2f}km) - Gửi event để order status = 'delivered'",
+                                "📦 Drone {} đang giao hàng cho order {} (cách {:.2f}km) - Creating event để order status = 'delivered'",
                                 drone.getSerialNumber().getValue(), mission.getOrderId(), distanceToDelivery);
-                        publishOrderDelivered(mission);
+                        createDeliveryCompletedOutboxEvent(mission);
                     }
                 }
 
                 // Check if mission just completed
                 if (statusBefore != Status.COMPLETED && mission.getStatus() == Status.COMPLETED) {
-                    publishDeliveryCompleted(mission);
+                    createDeliveryCompletedOutboxEvent(mission);
                 }
 
             } catch (Exception e) {
@@ -149,70 +153,72 @@ public class DroneSimulationScheduler {
     }
 
     /**
-     * Publish drone status update event for real-time tracking
+     * Create OutboxEvent for drone status update event
      */
-    private void publishStatusUpdate(DroneMission mission) {
-        var drone = mission.getDrone();
-        DroneStatusUpdateEvent event = DroneStatusUpdateEvent.builder()
-                .missionId(mission.getId())
-                .orderId(mission.getOrderId())
-                .droneId(drone.getId())
-                .droneSerialNumber(drone.getSerialNumber().getValue())
-                .currentLatitude(drone.getCurrentLocation().getLatitude())
-                .currentLongitude(drone.getCurrentLocation().getLongitude())
-                .batteryLevel(drone.getBatteryLevel().getValue())
-                .status(mission.getStatus())
-                .estimatedArrivalMinutes(calculateETA(mission))
-                .build();
+    private void createStatusUpdateOutboxEvent(DroneMission mission) {
+        try {
+            var drone = mission.getDrone();
+            DroneStatusUpdateEvent eventDTO = DroneStatusUpdateEvent.builder()
+                    .missionId(mission.getId())
+                    .orderId(mission.getOrderId())
+                    .droneId(drone.getId())
+                    .droneSerialNumber(drone.getSerialNumber().getValue())
+                    .currentLatitude(drone.getCurrentLocation().getLatitude())
+                    .currentLongitude(drone.getCurrentLocation().getLongitude())
+                    .batteryLevel(drone.getBatteryLevel().getValue())
+                    .status(mission.getStatus())
+                    .estimatedArrivalMinutes(calculateETA(mission))
+                    .build();
 
-        rabbitTemplate.convertAndSend(
-                RabbitMQConfig.DRONE_EXCHANGE,
-                RabbitMQConfig.DRONE_STATUS_UPDATE_ROUTING_KEY,
-                event);
+            String payloadJson = objectMapper.writeValueAsString(eventDTO);
 
-        log.trace("📡 Published status update for mission {} (Order {})",
-                mission.getId(), mission.getOrderId());
+            OutboxEvent outboxEvent = OutboxEvent.builder()
+                    .aggregateType("Mission")
+                    .aggregateId(mission.getId().toString())
+                    .type("DroneStatusUpdate")
+                    .payload(payloadJson)
+                    .status(EventStatus.NEW)
+                    .createdAt(LocalDateTime.now())
+                    .build();
+
+            outboxEventRepository.save(outboxEvent);
+            log.trace("Created status update outbox event for mission {} (Order {})",
+                    mission.getId(), mission.getOrderId());
+        } catch (JsonProcessingException e) {
+            log.error("Failed to serialize DroneStatusUpdate event payload for missionId: {}", mission.getId(), e);
+            // Don't throw exception - status updates are not critical
+        }
     }
 
     /**
-     * Publish order delivered event (khi drone state = DELIVERING và đang giao
-     * hàng)
-     * Event này sẽ được order service nhận để đổi order status = "delivered"
+     * Create OutboxEvent for delivery completed event
      */
-    private void publishOrderDelivered(DroneMission mission) {
-        DeliveryCompletedEvent event = DeliveryCompletedEvent.builder()
-                .orderId(mission.getOrderId())
-                .missionId(mission.getId())
-                .droneId(mission.getDrone().getId())
-                .completedAt(LocalDateTime.now()) // Thời điểm giao hàng
-                .build();
+    private void createDeliveryCompletedOutboxEvent(DroneMission mission) {
+        try {
+            DeliveryCompletedEvent eventDTO = DeliveryCompletedEvent.builder()
+                    .orderId(mission.getOrderId())
+                    .missionId(mission.getId())
+                    .droneId(mission.getDrone().getId())
+                    .completedAt(mission.getCompletedAt() != null ? mission.getCompletedAt() : LocalDateTime.now())
+                    .build();
 
-        rabbitTemplate.convertAndSend(
-                RabbitMQConfig.DRONE_EXCHANGE,
-                RabbitMQConfig.DELIVERY_COMPLETED_ROUTING_KEY,
-                event);
+            String payloadJson = objectMapper.writeValueAsString(eventDTO);
 
-        log.info("✅ Published ORDER_DELIVERED event for order {} - Order status sẽ được đổi thành 'delivered'",
-                mission.getOrderId());
-    }
+            OutboxEvent outboxEvent = OutboxEvent.builder()
+                    .aggregateType("Mission")
+                    .aggregateId(mission.getId().toString())
+                    .type("DeliveryCompleted")
+                    .payload(payloadJson)
+                    .status(EventStatus.NEW)
+                    .createdAt(LocalDateTime.now())
+                    .build();
 
-    /**
-     * Publish delivery completed event (khi mission hoàn thành, drone về base)
-     */
-    private void publishDeliveryCompleted(DroneMission mission) {
-        DeliveryCompletedEvent event = DeliveryCompletedEvent.builder()
-                .orderId(mission.getOrderId())
-                .missionId(mission.getId())
-                .droneId(mission.getDrone().getId())
-                .completedAt(mission.getCompletedAt())
-                .build();
-
-        rabbitTemplate.convertAndSend(
-                RabbitMQConfig.DRONE_EXCHANGE,
-                RabbitMQConfig.DELIVERY_COMPLETED_ROUTING_KEY,
-                event);
-
-        log.info("✅ Published DELIVERY_COMPLETED event for order {}", mission.getOrderId());
+            outboxEventRepository.save(outboxEvent);
+            log.info("Created DeliveryCompleted outbox event for order {}", mission.getOrderId());
+        } catch (JsonProcessingException e) {
+            log.error("Failed to serialize DeliveryCompleted event payload for missionId: {}", mission.getId(), e);
+            throw new RuntimeException("Failed to create outbox event", e);
+        }
     }
 
     /**

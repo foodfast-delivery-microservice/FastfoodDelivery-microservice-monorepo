@@ -1,0 +1,7 @@
+package com.example.userservice.domain.exception;
+
+public class InvalidCredentialException extends RuntimeException{
+    public InvalidCredentialException( ) {
+        super("Sai mat khau");
+    }
+}

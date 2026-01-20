@@ -5,14 +5,16 @@ import com.example.droneservice.application.DTOs.mission.MissionResponse;
 
 import com.example.droneservice.domain.entities.Drone;
 import com.example.droneservice.domain.entities.DroneMission;
+import com.example.droneservice.domain.entities.OutboxEvent;
 import com.example.droneservice.domain.valueobjects.*;
 import com.example.droneservice.domain.repository.DroneMissionRepository;
 import com.example.droneservice.domain.repository.DroneRepository;
-import com.example.droneservice.infrastructure.config.RabbitMQConfig;
+import com.example.droneservice.domain.repository.OutboxEventRepository;
 import com.example.droneservice.infrastructure.event.DroneAssignedEvent;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,7 +32,8 @@ public class AssignDroneToOrderUseCase {
         private final DroneRepository droneRepository;
         private final DroneMissionRepository missionRepository;
         private final GetAvailableDroneUseCase getAvailableDroneUseCase;
-        private final RabbitTemplate rabbitTemplate;
+        private final OutboxEventRepository outboxEventRepository;
+        private final ObjectMapper objectMapper;
 
         private static final double AVERAGE_DRONE_SPEED_KMH = 40.0; // 40 km/h
 
@@ -97,33 +100,45 @@ public class AssignDroneToOrderUseCase {
                                 drone.getSerialNumber(), request.getOrderId(), savedMission.getId(),
                                 totalDistance, estimatedDuration);
 
-                // Publish DRONE_ASSIGNED event to update order status to DELIVERING
-                publishDroneAssignedEvent(savedMission, drone, estimatedDuration);
+                // Create OutboxEvent for DRONE_ASSIGNED event
+                createDroneAssignedOutboxEvent(savedMission, drone, estimatedDuration);
 
                 return mapToResponse(savedMission, drone);
         }
 
         /**
-         * Publish DRONE_ASSIGNED event to notify Order Service
-         * Order Service will update order status to DELIVERING
+         * Create OutboxEvent for DRONE_ASSIGNED event
+         * OutboxEventRelay will publish it to notify Order Service
          */
-        private void publishDroneAssignedEvent(DroneMission mission, Drone drone, Integer estimatedDurationMinutes) {
-                DroneAssignedEvent event = DroneAssignedEvent.builder()
-                                .orderId(mission.getOrderId())
-                                .droneId(drone.getId())
-                                .droneSerialNumber(drone.getSerialNumber())
-                                .missionId(mission.getId())
-                                .estimatedArrival(LocalDateTime.now().plusMinutes(estimatedDurationMinutes))
-                                .estimatedDurationMinutes(estimatedDurationMinutes)
-                                .build();
+        private void createDroneAssignedOutboxEvent(DroneMission mission, Drone drone, Integer estimatedDurationMinutes) {
+                try {
+                        // Create event DTO with serializable fields
+                        DroneAssignedEvent eventDTO = DroneAssignedEvent.builder()
+                                        .orderId(mission.getOrderId())
+                                        .droneId(drone.getId())
+                                        .droneSerialNumber(drone.getSerialNumber())
+                                        .missionId(mission.getId())
+                                        .estimatedArrival(LocalDateTime.now().plusMinutes(estimatedDurationMinutes))
+                                        .estimatedDurationMinutes(estimatedDurationMinutes)
+                                        .build();
 
-                rabbitTemplate.convertAndSend(
-                                RabbitMQConfig.DRONE_EXCHANGE,
-                                RabbitMQConfig.DRONE_ASSIGNED_ROUTING_KEY,
-                                event);
+                        String payloadJson = objectMapper.writeValueAsString(eventDTO);
 
-                log.info("📡 Published DRONE_ASSIGNED event for order {} - Order status sẽ được đổi thành 'DELIVERING'",
-                                mission.getOrderId());
+                        OutboxEvent outboxEvent = OutboxEvent.builder()
+                                        .aggregateType("Mission")
+                                        .aggregateId(mission.getId().toString())
+                                        .type("DroneAssigned")
+                                        .payload(payloadJson)
+                                        .status(EventStatus.NEW)
+                                        .createdAt(LocalDateTime.now())
+                                        .build();
+
+                        outboxEventRepository.save(outboxEvent);
+                        log.debug("Created DroneAssigned outbox event for missionId: {}", mission.getId());
+                } catch (JsonProcessingException e) {
+                        log.error("Failed to serialize DroneAssigned event payload for missionId: {}", mission.getId(), e);
+                        throw new RuntimeException("Failed to create outbox event", e);
+                }
         }
 
         private MissionResponse mapToResponse(DroneMission mission, Drone drone) {

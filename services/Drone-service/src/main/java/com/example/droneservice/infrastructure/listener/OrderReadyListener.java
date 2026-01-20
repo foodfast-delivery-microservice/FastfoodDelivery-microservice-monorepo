@@ -4,15 +4,11 @@ import com.example.droneservice.application.DTOs.drone.AssignDroneRequest;
 import com.example.droneservice.application.DTOs.mission.MissionResponse;
 import com.example.droneservice.application.usecases.drone.AssignDroneToOrderUseCase;
 import com.example.droneservice.infrastructure.config.RabbitMQConfig;
-import com.example.droneservice.infrastructure.event.DroneAssignedEvent;
 import com.example.droneservice.infrastructure.event.OrderReadyEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Component;
-
-import java.time.LocalDateTime;
 
 /**
  * Listener for ORDER_READY_TO_SHIP events from Order Service
@@ -24,7 +20,6 @@ import java.time.LocalDateTime;
 public class OrderReadyListener {
 
     private final AssignDroneToOrderUseCase assignDroneUseCase;
-    private final RabbitTemplate rabbitTemplate;
 
     @RabbitListener(queues = RabbitMQConfig.ORDER_READY_QUEUE)
     public void handleOrderReadyToShip(OrderReadyEvent event) {
@@ -47,7 +42,7 @@ public class OrderReadyListener {
                     .deliveryLongitude(event.getDeliveryLongitude())
                     .build();
 
-            // Assign drone
+            // Assign drone (this will create OutboxEvent internally)
             MissionResponse mission = assignDroneUseCase.execute(request);
 
             log.info("✅ Drone {} assigned to order {}. Mission ID: {}, ETA: {} minutes",
@@ -56,22 +51,8 @@ public class OrderReadyListener {
                     mission.getId(),
                     mission.getEstimatedDurationMinutes());
 
-            // Publish DRONE_ASSIGNED event
-            DroneAssignedEvent assignedEvent = DroneAssignedEvent.builder()
-                    .orderId(event.getOrderId())
-                    .droneId(mission.getDroneId())
-                    .droneSerialNumber(mission.getDroneSerialNumber())
-                    .missionId(mission.getId())
-                    .estimatedArrival(LocalDateTime.now().plusMinutes(mission.getEstimatedDurationMinutes()))
-                    .estimatedDurationMinutes(mission.getEstimatedDurationMinutes())
-                    .build();
-
-            rabbitTemplate.convertAndSend(
-                    RabbitMQConfig.DRONE_EXCHANGE,
-                    RabbitMQConfig.DRONE_ASSIGNED_ROUTING_KEY,
-                    assignedEvent);
-
-            log.info("📡 Published DRONE_ASSIGNED event for order {}", event.getOrderId());
+            // Note: DRONE_ASSIGNED event is now published via OutboxEventRelay
+            // The event is created in AssignDroneToOrderUseCase
 
         } catch (IllegalStateException e) {
             log.error("❌ No available drones for order {}: {}",
