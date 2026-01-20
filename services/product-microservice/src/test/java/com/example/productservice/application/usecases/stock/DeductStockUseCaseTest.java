@@ -2,6 +2,8 @@ package com.example.productservice.application.usecases.stock;
 
 import com.example.productservice.domain.entities.Product;
 import com.example.productservice.domain.repository.ProductRepository;
+import com.example.productservice.domain.valueobjects.Price;
+import com.example.productservice.domain.valueobjects.Stock;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -46,8 +48,8 @@ class DeductStockUseCaseTest {
                 .id(productId)
                 .name("Test Product")
                 .description("Test Description")
-                .price(BigDecimal.valueOf(100000))
-                .stock(10)
+                .price(new Price(BigDecimal.valueOf(100000)))
+                .stock(new Stock(10))
                 .category(Product.Category.FOOD)
                 .merchantId(merchantId)
                 .active(true)
@@ -65,7 +67,7 @@ class DeductStockUseCaseTest {
         deductStockUseCase.execute(productId, quantity, merchantId);
 
         // Then
-        assertThat(validProduct.getStock()).isEqualTo(5); // 10 - 5 = 5
+        assertThat(validProduct.getStock().getQuantity()).isEqualTo(5); // 10 - 5 = 5
         verify(productRepository, times(1)).findByIdAndMerchantIdWithLock(productId, merchantId);
         verify(productRepository, times(1)).save(validProduct);
     }
@@ -107,7 +109,7 @@ class DeductStockUseCaseTest {
     @DisplayName("❌ Should throw IllegalArgumentException when insufficient stock")
     void testExecute_InsufficientStock() {
         // Given
-        validProduct.setStock(3); // Less than quantity (5)
+        validProduct.setStock(new Stock(3)); // Less than quantity (5)
         when(productRepository.findByIdAndMerchantIdWithLock(productId, merchantId))
                 .thenReturn(Optional.of(validProduct));
 
@@ -124,7 +126,7 @@ class DeductStockUseCaseTest {
     @DisplayName("✅ Should deduct exact quantity when stock equals quantity")
     void testExecute_ExactStockMatch() {
         // Given
-        validProduct.setStock(5); // Exactly equals quantity
+        validProduct.setStock(new Stock(5)); // Exactly equals quantity
         when(productRepository.findByIdAndMerchantIdWithLock(productId, merchantId))
                 .thenReturn(Optional.of(validProduct));
 
@@ -132,7 +134,7 @@ class DeductStockUseCaseTest {
         deductStockUseCase.execute(productId, quantity, merchantId);
 
         // Then
-        assertThat(validProduct.getStock()).isEqualTo(0); // 5 - 5 = 0
+        assertThat(validProduct.getStock().getQuantity()).isEqualTo(0); // 5 - 5 = 0
         verify(productRepository, times(1)).findByIdAndMerchantIdWithLock(productId, merchantId);
         verify(productRepository, times(1)).save(validProduct);
     }
