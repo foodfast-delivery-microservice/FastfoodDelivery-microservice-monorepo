@@ -36,12 +36,12 @@ public class RestoreStockUseCase {
             );
         }
 
-        // Restore stock (đã được lock, không có race condition)
-        int oldStock = product.getStock();
-        product.setStock(product.getStock() + quantity);
+        // Restore stock using domain business logic (đã được lock, không có race condition)
+        int oldStock = product.getStock() != null ? product.getStock().getQuantity() : 0;
+        product.restoreStock(quantity);
         productRepository.save(product);
 
         log.info("[STOCK_RESTORE] Stock restored successfully - productId: {}, merchantId: {}, oldStock: {}, restoredQuantity: {}, newStock: {}",
-                productId, merchantId, oldStock, quantity, product.getStock());
+                productId, merchantId, oldStock, quantity, product.getStock().getQuantity());
     }
 }

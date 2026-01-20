@@ -1,6 +1,8 @@
 package com.example.productservice.infrastructure.persistence.mapper;
 
 import com.example.productservice.domain.entities.Product;
+import com.example.productservice.domain.valueobjects.Price;
+import com.example.productservice.domain.valueobjects.Stock;
 import com.example.productservice.infrastructure.persistence.entity.ProductJpaEntity;
 
 /**
@@ -20,8 +22,10 @@ public class ProductMapper {
         jpaEntity.setId(domainEntity.getId());
         jpaEntity.setName(domainEntity.getName());
         jpaEntity.setDescription(domainEntity.getDescription());
-        jpaEntity.setPrice(domainEntity.getPrice());
-        jpaEntity.setStock(domainEntity.getStock());
+        // Convert Price value object to BigDecimal
+        jpaEntity.setPrice(domainEntity.getPrice() != null ? domainEntity.getPrice().getAmount() : null);
+        // Convert Stock value object to Integer
+        jpaEntity.setStock(domainEntity.getStock() != null ? domainEntity.getStock().getQuantity() : null);
         jpaEntity.setCategory(domainEntity.getCategory());
         jpaEntity.setMerchantId(domainEntity.getMerchantId());
         jpaEntity.setActive(domainEntity.isActive());
@@ -42,8 +46,10 @@ public class ProductMapper {
         domainEntity.setId(jpaEntity.getId());
         domainEntity.setName(jpaEntity.getName());
         domainEntity.setDescription(jpaEntity.getDescription());
-        domainEntity.setPrice(jpaEntity.getPrice());
-        domainEntity.setStock(jpaEntity.getStock());
+        // Convert BigDecimal to Price value object
+        domainEntity.setPrice(jpaEntity.getPrice() != null ? new Price(jpaEntity.getPrice()) : null);
+        // Convert Integer to Stock value object
+        domainEntity.setStock(jpaEntity.getStock() != null ? new Stock(jpaEntity.getStock()) : null);
         domainEntity.setCategory(jpaEntity.getCategory());
         domainEntity.setMerchantId(jpaEntity.getMerchantId());
         domainEntity.setActive(jpaEntity.isActive());

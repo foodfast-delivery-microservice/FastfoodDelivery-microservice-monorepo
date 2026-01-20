@@ -36,22 +36,12 @@ public class DeductStockUseCase {
             );
         }
 
-        // Validate stock đủ (check sau khi đã lock)
-        if (product.getStock() < quantity) {
-            log.error("[STOCK_DEDUCTION] Insufficient stock - productId: {}, merchantId: {}, available: {}, required: {}",
-                    productId, merchantId, product.getStock(), quantity);
-            throw new IllegalArgumentException(
-                    String.format("Insufficient stock for productId: %d. Available: %d, Required: %d",
-                            productId, product.getStock(), quantity)
-            );
-        }
-
-        // Deduct stock (đã được lock, không có race condition)
-        int oldStock = product.getStock();
-        product.setStock(product.getStock() - quantity);
+        // Deduct stock using domain business logic (đã được lock, không có race condition)
+        int oldStock = product.getStock() != null ? product.getStock().getQuantity() : 0;
+        product.deductStock(quantity);
         productRepository.save(product);
 
         log.info("[STOCK_DEDUCTION] Stock deducted successfully - productId: {}, merchantId: {}, oldStock: {}, deductedQuantity: {}, newStock: {}",
-                productId, merchantId, oldStock, quantity, product.getStock());
+                productId, merchantId, oldStock, quantity, product.getStock().getQuantity());
     }
 }

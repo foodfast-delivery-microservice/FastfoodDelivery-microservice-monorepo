@@ -5,6 +5,8 @@ import com.example.productservice.application.DTOs.ProductResponse;
 import com.example.productservice.domain.entities.Product;
 import com.example.productservice.domain.exception.InvalidIdException;
 import com.example.productservice.domain.repository.ProductRepository;
+import com.example.productservice.domain.valueobjects.Price;
+import com.example.productservice.domain.valueobjects.Stock;
 import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
@@ -32,10 +34,10 @@ public class UpdateProductUseCase {
             existingProduct.setDescription(productPatch.getDescription());
         }
         if (productPatch.getPrice() != null) {
-            existingProduct.setPrice(productPatch.getPrice());
+            existingProduct.setPrice(new Price(productPatch.getPrice()));
         }
         if (productPatch.getStock() != null) {
-            existingProduct.setStock(productPatch.getStock());
+            existingProduct.setStock(new Stock(productPatch.getStock()));
         }
         if (productPatch.getCategory() != null) {
             existingProduct.setCategory(productPatch.getCategory());

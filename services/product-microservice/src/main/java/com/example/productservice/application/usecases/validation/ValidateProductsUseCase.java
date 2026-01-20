@@ -45,14 +45,15 @@ public class ValidateProductsUseCase {
                 Product product = productOpt.get();
                 response.setProductId(product.getId());
                 response.setProductName(product.getName());
-                response.setUnitPrice(product.getPrice());
+                // Convert Price value object to BigDecimal
+                response.setUnitPrice(product.getPrice() != null ? product.getPrice().getAmount() : null);
                 response.setMerchantId(product.getMerchantId());
 
                 if (!product.isActive()) {
                     response.setSuccess(false);
                     response.setMessage("Product inactive");
-                } else if (product.getStock() >= item.getQuantity()) {
-                    // du hang
+                } else if (product.canBePurchased(item.getQuantity())) {
+                    // du hang - using domain business logic
                     response.setSuccess(true);
                     response.setMessage(null);
                 } else {

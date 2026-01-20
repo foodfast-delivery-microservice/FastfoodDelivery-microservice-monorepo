@@ -26,8 +26,10 @@ public class ProductResponse {
         productResponse.setId(product.getId());
         productResponse.setName(product.getName());
         productResponse.setDescription(product.getDescription());
-        productResponse.setPrice(product.getPrice());
-        productResponse.setStock(product.getStock());
+        // Convert Price value object to BigDecimal
+        productResponse.setPrice(product.getPrice() != null ? product.getPrice().getAmount() : null);
+        // Convert Stock value object to Integer
+        productResponse.setStock(product.getStock() != null ? product.getStock().getQuantity() : null);
         productResponse.setCategory(product.getCategory().name());
         productResponse.setActive(product.isActive());
         productResponse.setMerchantId(product.getMerchantId());
