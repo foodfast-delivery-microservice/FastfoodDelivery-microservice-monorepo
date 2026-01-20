@@ -2,32 +2,37 @@ package com.example.userservice.application.usecases.user;
 
 import com.example.userservice.domain.exception.*;
 import com.example.userservice.domain.entities.User;
+import com.example.userservice.domain.entities.OutboxEvent;
 import com.example.userservice.domain.repository.UserRepository;
-import com.example.userservice.infrastructure.messaging.EventPublisher;
+import com.example.userservice.domain.repository.OutboxEventRepository;
+import com.example.userservice.domain.valueobjects.EventStatus;
 import com.example.userservice.infrastructure.messaging.event.MerchantActivatedEvent;
 import com.example.userservice.infrastructure.messaging.event.MerchantDeactivatedEvent;
 import com.example.userservice.application.DTOs.event.UserUpdatedEventDTO;
+import com.example.userservice.application.DTOs.user.UserContext;
 import com.example.userservice.application.DTOs.user.UserPatchDTO;
+import com.example.userservice.application.service.EventPayloadSerializer;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.util.Set;
+import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class UpdateUserUseCase {
     private final UserRepository userRepository;
-    private final EventPublisher eventPublisher;
+    private final OutboxEventRepository outboxEventRepository;
+    private final EventPayloadSerializer eventPayloadSerializer;
     private final ValidateUserAccessUseCase validateUserAccessUseCase;
 
     @Transactional
     // user tự thay đổi thông tin của mình
-    public User updateUser(Long id, UserPatchDTO userPatchDTO, Authentication authentication) {
+    public User updateUser(Long id, UserPatchDTO userPatchDTO, UserContext userContext) {
         // Validate: User can only update their own account (unless ADMIN)
-        validateUserAccessUseCase.execute(id, authentication);
+        validateUserAccessUseCase.execute(id, userContext);
 
         User existingUser = userRepository.findById(id)
                 .orElseThrow(() -> new InvalidId(id));
@@ -85,8 +90,7 @@ public class UpdateUserUseCase {
         boolean merchantDeactivated = false;
         boolean merchantActivated = false;
         if (userPatchDTO.getActive() != null) {
-            boolean admin = isAdmin(authentication);
-            if (!admin) {
+            if (!userContext.isAdmin()) {
                 throw new AdminAccessDeniedException();
             }
             boolean requestedActive = userPatchDTO.getActive();
@@ -101,47 +105,95 @@ public class UpdateUserUseCase {
 
         User updatedUser = userRepository.save(existingUser);
 
-        // -- BƯỚC MỚI: BẮN RA SỰ KIỆN --
-        UserUpdatedEventDTO eventDTO = UserUpdatedEventDTO.builder()
-                .userId(updatedUser.getId())
-                .newUsername(updatedUser.getUsername())
-                .newEmail(updatedUser.getEmail())
-                .build();
-
-        eventPublisher.publishUserUpdated(eventDTO);
+        // -- CREATE OUTBOX EVENTS FOR RELIABLE EVENT PUBLISHING --
+        // Always create UserUpdated event
+        createUserUpdatedOutboxEvent(updatedUser);
 
         if (merchantDeactivated) {
-            MerchantDeactivatedEvent event = MerchantDeactivatedEvent.builder()
-                    .merchantId(updatedUser.getId())
-                    .occurredAt(java.time.Instant.now())
-                    .reason("Merchant deactivated via admin request")
-                    .build();
-            eventPublisher.publishMerchantDeactivated(event);
+            createMerchantDeactivatedOutboxEvent(updatedUser);
         }
 
         if (merchantActivated) {
-            MerchantActivatedEvent event = MerchantActivatedEvent.builder()
-                    .merchantId(updatedUser.getId())
-                    .occurredAt(java.time.Instant.now())
-                    .reason("Merchant reactivated via admin request")
-                    .triggeredBy(authentication != null ? authentication.getName() : "system")
-                    .build();
-            eventPublisher.publishMerchantActivated(event);
+            createMerchantActivatedOutboxEvent(updatedUser, userContext);
         }
-
-        // -- KẾT THÚC BƯỚC MỚI --
 
         return updatedUser;
-
     }
 
-    private boolean isAdmin(Authentication authentication) {
-        if (authentication == null) {
-            return false;
-        }
-        return authentication.getAuthorities().stream()
-                .map(GrantedAuthority::getAuthority)
-                .anyMatch(auth -> "ROLE_ADMIN".equalsIgnoreCase(auth) || "ADMIN".equalsIgnoreCase(auth));
+    /**
+     * Create OutboxEvent for UserUpdated event
+     */
+    private void createUserUpdatedOutboxEvent(User user) {
+        UserUpdatedEventDTO eventDTO = UserUpdatedEventDTO.builder()
+                .userId(user.getId())
+                .newUsername(user.getUsername())
+                .newEmail(user.getEmail())
+                .build();
+
+        String payloadJson = eventPayloadSerializer.serialize(eventDTO);
+
+            OutboxEvent event = OutboxEvent.builder()
+                    .aggregateType("User")
+                    .aggregateId(user.getId().toString())
+                    .type("UserUpdated")
+                    .payload(payloadJson)
+                    .status(EventStatus.NEW)
+                    .createdAt(LocalDateTime.now())
+                    .build();
+
+        outboxEventRepository.save(event);
+        log.debug("Created UserUpdated outbox event for userId: {}", user.getId());
+    }
+
+    /**
+     * Create OutboxEvent for MerchantDeactivated event
+     */
+    private void createMerchantDeactivatedOutboxEvent(User user) {
+        MerchantDeactivatedEvent eventDTO = MerchantDeactivatedEvent.builder()
+                .merchantId(user.getId())
+                .occurredAt(java.time.Instant.now())
+                .reason("Merchant deactivated via admin request")
+                .build();
+
+        String payloadJson = eventPayloadSerializer.serialize(eventDTO);
+
+            OutboxEvent event = OutboxEvent.builder()
+                    .aggregateType("User")
+                    .aggregateId(user.getId().toString())
+                    .type("MerchantDeactivated")
+                    .payload(payloadJson)
+                    .status(EventStatus.NEW)
+                    .createdAt(LocalDateTime.now())
+                    .build();
+
+        outboxEventRepository.save(event);
+        log.debug("Created MerchantDeactivated outbox event for merchantId: {}", user.getId());
+    }
+
+    /**
+     * Create OutboxEvent for MerchantActivated event
+     */
+    private void createMerchantActivatedOutboxEvent(User user, UserContext userContext) {
+        MerchantActivatedEvent eventDTO = MerchantActivatedEvent.builder()
+                .merchantId(user.getId())
+                .occurredAt(java.time.Instant.now())
+                .reason("Merchant reactivated via admin request")
+                .triggeredBy(userContext != null ? userContext.username() : "system")
+                .build();
+
+        String payloadJson = eventPayloadSerializer.serialize(eventDTO);
+
+            OutboxEvent event = OutboxEvent.builder()
+                    .aggregateType("User")
+                    .aggregateId(user.getId().toString())
+                    .type("MerchantActivated")
+                    .payload(payloadJson)
+                    .status(EventStatus.NEW)
+                    .createdAt(LocalDateTime.now())
+                    .build();
+
+        outboxEventRepository.save(event);
+        log.debug("Created MerchantActivated outbox event for merchantId: {}", user.getId());
     }
 
     // thay đổi role của user

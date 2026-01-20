@@ -4,7 +4,8 @@ import com.example.userservice.application.usecases.user.*;
 import com.example.userservice.application.usecases.restaurant.*;
 import com.example.userservice.domain.repository.RestaurantRepository;
 import com.example.userservice.domain.repository.UserRepository;
-import com.example.userservice.infrastructure.messaging.EventPublisher;
+import com.example.userservice.domain.repository.OutboxEventRepository;
+import com.example.userservice.application.service.EventPayloadSerializer;
 import com.example.userservice.infrastructure.service.GeocodingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -17,7 +18,8 @@ public class UserUseCaseConfig {
 
     private final UserRepository userRepository;
     private final RestaurantRepository restaurantRepository;
-    private final EventPublisher eventPublisher;
+    private final OutboxEventRepository outboxEventRepository;
+    private final EventPayloadSerializer eventPayloadSerializer;
     private final PasswordEncoder passwordEncoder;
 
 
@@ -44,7 +46,7 @@ public class UserUseCaseConfig {
 
     @Bean
     public UpdateUserUseCase updateUserUseCase() {
-        return new UpdateUserUseCase(userRepository, eventPublisher, validateUserAccessUseCase());
+        return new UpdateUserUseCase(userRepository, outboxEventRepository, eventPayloadSerializer, validateUserAccessUseCase());
     }
 
     @Bean

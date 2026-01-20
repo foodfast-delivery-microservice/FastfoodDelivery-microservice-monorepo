@@ -4,18 +4,23 @@ import com.example.userservice.application.usecases.user.*;
 import com.example.userservice.application.DTOs.user.ChangePasswordRequest;
 import com.example.userservice.application.DTOs.user.CreateUserRequest;
 import com.example.userservice.application.DTOs.user.CreateUserResponse;
+import com.example.userservice.application.DTOs.user.UserContext;
 import com.example.userservice.application.DTOs.user.UserPatchDTO;
+import com.example.userservice.infrastructure.security.UserPrincipal;
 import com.example.userservice.interfaces.common.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.web.bind.annotation.*;
 
 import com.example.userservice.domain.entities.User;
 
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/users")
@@ -46,8 +51,10 @@ public class UserController {
             @PathVariable Long id,
             @RequestBody UserPatchDTO dto,
             Authentication authentication) {
+        // Extract UserContext from Authentication
+        UserContext userContext = extractUserContext(authentication);
         // Authorization is handled in UpdateUserUseCase
-        User updated = updateUserUseCase.updateUser(id, dto, authentication);
+        User updated = updateUserUseCase.updateUser(id, dto, userContext);
 
         ApiResponse<User> result = new ApiResponse<>(
                 HttpStatus.OK,
@@ -62,8 +69,10 @@ public class UserController {
             @PathVariable Long id,
             @RequestBody ChangePasswordRequest request,
             Authentication authentication) {
+        // Extract UserContext from Authentication
+        UserContext userContext = extractUserContext(authentication);
         // Authorization is handled in ChangePasswordUseCase
-        User updated = changePasswordUseCase.execute(id, request, authentication);
+        User updated = changePasswordUseCase.execute(id, request, userContext);
         ApiResponse<User> result = new ApiResponse<>(
                 HttpStatus.OK,
                 "changed password",
@@ -170,6 +179,36 @@ public class UserController {
                 response,
                 null);
         return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Extract UserContext from Spring Security Authentication object
+     * This method isolates Spring Security dependencies in the controller layer
+     */
+    private UserContext extractUserContext(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new org.springframework.security.access.AccessDeniedException("User is not authenticated");
+        }
+
+        String username = authentication.getName();
+        Long userId = null;
+        
+        // Extract userId from principal
+        if (authentication.getPrincipal() instanceof UserPrincipal) {
+            UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
+            userId = userPrincipal.getUser().getId();
+        }
+
+        // Extract roles
+        Set<String> roles = authentication.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .collect(Collectors.toSet());
+
+        // Check if admin
+        boolean isAdmin = roles.stream()
+                .anyMatch(role -> "ROLE_ADMIN".equalsIgnoreCase(role) || "ADMIN".equalsIgnoreCase(role));
+
+        return new UserContext(username, userId, roles, isAdmin);
     }
 
 }
