@@ -1,19 +1,15 @@
 package com.example.order_service.application.usecase;
 
-import com.example.order_service.application.dto.OrderItemResponse;
 import com.example.order_service.application.dto.OrderListRequest;
 import com.example.order_service.application.dto.OrderListResponse;
 import com.example.order_service.application.dto.PageResponse;
-import com.example.order_service.domain.entities.Order;
+import com.example.order_service.domain.valueobjects.OrderQuery;
 import com.example.order_service.domain.valueobjects.OrderStatus;
+import com.example.order_service.domain.valueobjects.PageRequest;
+import com.example.order_service.domain.valueobjects.PageResult;
 import com.example.order_service.domain.repository.OrderRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,14 +27,11 @@ public class GetMerchantOrdersUseCase {
     public PageResponse<OrderListResponse> execute(Long merchantId, OrderListRequest request) {
         log.info("Getting orders for merchant: {} with request: {}", merchantId, request);
 
-        // Build specification for filtering (always include merchantId filter)
-        Specification<Order> spec = buildSpecification(merchantId, request);
+        // Build domain query object (always include merchantId)
+        OrderQuery query = buildOrderQuery(merchantId, request);
 
-        // Build pageable for pagination and sorting
-        Pageable pageable = buildPageable(request);
-
-        // Query orders
-        Page<Order> orderPage = orderRepository.findAll(spec, pageable);
+        // Query orders using domain repository
+        PageResult<com.example.order_service.domain.entities.Order> orderPage = orderRepository.findAll(query);
 
         // Convert to response
         List<OrderListResponse> orderResponses = orderPage.getContent().stream()
@@ -47,62 +40,45 @@ public class GetMerchantOrdersUseCase {
 
         return PageResponse.<OrderListResponse>builder()
                 .content(orderResponses)
-                .page(orderPage.getNumber())
+                .page(orderPage.getPage())
                 .size(orderPage.getSize())
                 .totalElements(orderPage.getTotalElements())
                 .totalPages(orderPage.getTotalPages())
                 .first(orderPage.isFirst())
                 .last(orderPage.isLast())
-                .hasNext(orderPage.hasNext())
-                .hasPrevious(orderPage.hasPrevious())
+                .hasNext(orderPage.isHasNext())
+                .hasPrevious(orderPage.isHasPrevious())
                 .build();
     }
 
-    private Specification<Order> buildSpecification(Long merchantId, OrderListRequest request) {
-        return (root, query, criteriaBuilder) -> {
-            var predicates = new java.util.ArrayList<jakarta.persistence.criteria.Predicate>();
-
-            // Always filter by merchantId
-            predicates.add(criteriaBuilder.equal(root.get("merchantId"), merchantId));
-
-            // Filter by status
-            if (request.getStatus() != null && !request.getStatus().trim().isEmpty()) {
-                try {
-                    OrderStatus status = OrderStatus.valueOf(request.getStatus().toUpperCase());
-                    predicates.add(criteriaBuilder.equal(root.get("status"), status));
-                } catch (IllegalArgumentException e) {
-                    log.warn("Invalid order status: {}", request.getStatus());
-                }
+    private OrderQuery buildOrderQuery(Long merchantId, OrderListRequest request) {
+        OrderStatus status = null;
+        if (request.getStatus() != null && !request.getStatus().trim().isEmpty()) {
+            try {
+                status = OrderStatus.valueOf(request.getStatus().toUpperCase());
+            } catch (IllegalArgumentException e) {
+                log.warn("Invalid order status: {}", request.getStatus());
             }
+        }
 
-            // Filter by order code
-            if (request.getOrderCode() != null && !request.getOrderCode().trim().isEmpty()) {
-                predicates.add(criteriaBuilder.like(
-                        criteriaBuilder.lower(root.get("orderCode")),
-                        "%" + request.getOrderCode().toLowerCase() + "%"));
-            }
+        PageRequest.SortDirection sortDirection = "ASC".equalsIgnoreCase(request.getSortDirection())
+                ? PageRequest.SortDirection.ASC
+                : PageRequest.SortDirection.DESC;
 
-            // Filter by date range
-            if (request.getFromDate() != null) {
-                predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get("createdAt"), request.getFromDate()));
-            }
+        PageRequest pageRequest = PageRequest.builder()
+                .page(request.getPage())
+                .size(request.getSize())
+                .sortBy(request.getSortBy())
+                .sortDirection(sortDirection)
+                .build();
 
-            if (request.getToDate() != null) {
-                predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get("createdAt"), request.getToDate()));
-            }
-
-            return criteriaBuilder.and(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
-        };
+        return OrderQuery.builder()
+                .merchantId(merchantId) // Always filter by merchantId
+                .status(status)
+                .orderCode(request.getOrderCode())
+                .startDate(request.getFromDate())
+                .endDate(request.getToDate())
+                .pageRequest(pageRequest)
+                .build();
     }
-
-    private Pageable buildPageable(OrderListRequest request) {
-        Sort.Direction direction = "ASC".equalsIgnoreCase(request.getSortDirection())
-                ? Sort.Direction.ASC
-                : Sort.Direction.DESC;
-
-        Sort sort = Sort.by(direction, request.getSortBy());
-
-        return PageRequest.of(request.getPage(), request.getSize(), sort);
-    }
-
 }

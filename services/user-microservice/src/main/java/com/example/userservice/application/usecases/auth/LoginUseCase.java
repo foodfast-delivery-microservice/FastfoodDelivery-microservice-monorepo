@@ -4,18 +4,18 @@ import com.example.userservice.domain.exception.AccountNotApprovedException;
 import com.example.userservice.domain.exception.InvalidCredentialException;
 import com.example.userservice.domain.exception.UserNotFoundException;
 import com.example.userservice.domain.entities.User;
+import com.example.userservice.domain.port.PasswordEncoderPort;
+import com.example.userservice.domain.port.TokenGeneratorPort;
 import com.example.userservice.domain.repository.UserRepository;
-import com.example.userservice.infrastructure.security.SecurityUtil;
 import com.example.userservice.application.DTOs.auth.LoginRequest;
 import com.example.userservice.application.DTOs.auth.LoginResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.crypto.password.PasswordEncoder;
 
 @RequiredArgsConstructor
 public class LoginUseCase {
     private final UserRepository userRepository;
-    private final PasswordEncoder passwordEncoder;
-    private final SecurityUtil securityUtil;
+    private final PasswordEncoderPort passwordEncoderPort;
+    private final TokenGeneratorPort tokenGeneratorPort;
 
     public LoginResponse login (LoginRequest loginRequest) {
         // 1. Tìm user theo username
@@ -23,7 +23,7 @@ public class LoginUseCase {
                 .orElseThrow(()-> new UserNotFoundException(loginRequest.getUsername()));
 
         // 2. Kiểm tra password
-        if  (!passwordEncoder.matches(loginRequest.getPassword(), user.getPassword())) {
+        if  (!passwordEncoderPort.matches(loginRequest.getPassword(), user.getPassword())) {
             throw new InvalidCredentialException();
         }
 
@@ -32,8 +32,8 @@ public class LoginUseCase {
         }
 
         // 3. Sinh token
-        String accessToken = securityUtil.createAccessToken(user);
-        String refreshToken = securityUtil.createRefreshToken(user.getUsername());
+        String accessToken = tokenGeneratorPort.createAccessToken(user);
+        String refreshToken = tokenGeneratorPort.createRefreshToken(user.getUsername());
 
         return new LoginResponse(user.getId().toString(),user.getUsername(),accessToken,refreshToken);
     }
