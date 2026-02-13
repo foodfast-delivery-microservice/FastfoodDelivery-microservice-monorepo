@@ -1,10 +1,10 @@
 package com.example.order_service.domain.repository;
 
 import com.example.order_service.domain.entities.Order;
+import com.example.order_service.domain.valueobjects.OrderQuery;
 import com.example.order_service.domain.valueobjects.OrderStatus;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
+import com.example.order_service.domain.valueobjects.PageRequest;
+import com.example.order_service.domain.valueobjects.PageResult;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -14,9 +14,7 @@ import java.util.Optional;
 
 /**
  * Pure domain repository interface for Order aggregate.
- * Note: Contains some JPA-specific methods (Specification, Pageable) for
- * pragmatic reasons.
- * TODO: Replace with pure domain query objects in future refactoring.
+ * All methods use domain value objects, no framework dependencies.
  */
 public interface OrderRepository {
 
@@ -31,8 +29,8 @@ public interface OrderRepository {
 
         boolean existsById(Long id);
 
-        // Dynamic queries (JPA-specific - pragmatic approach)
-        Page<Order> findAll(Specification<Order> spec, Pageable pageable);
+        // Dynamic queries using domain query object
+        PageResult<Order> findAll(OrderQuery query);
 
         // Business queries
         Optional<Order> findByOrderCode(String orderCode);

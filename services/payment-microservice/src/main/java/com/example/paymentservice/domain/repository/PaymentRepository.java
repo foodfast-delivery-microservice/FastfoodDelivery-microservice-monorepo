@@ -1,8 +1,8 @@
 package com.example.paymentservice.domain.repository;
 
 import com.example.paymentservice.domain.entities.Payment;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
+import com.example.paymentservice.domain.valueobjects.PageRequest;
+import com.example.paymentservice.domain.valueobjects.PageResult;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -11,7 +11,7 @@ import java.util.Optional;
 
 /**
  * Pure domain repository interface for Payment aggregate.
- * Note: Contains some Spring Data-specific methods (Page, Pageable) for pragmatic reasons.
+ * All methods use domain value objects, no framework dependencies.
  */
 public interface PaymentRepository {
     
@@ -24,25 +24,25 @@ public interface PaymentRepository {
     
     List<Payment> findByUserId(Long userId);
     
-    // Merchant queries
-    Page<Payment> findByMerchantId(Long merchantId, Pageable pageable);
+    // Merchant queries with pagination
+    PageResult<Payment> findByMerchantId(Long merchantId, PageRequest pageRequest);
     
-    Page<Payment> findByMerchantIdAndStatus(Long merchantId, Payment.Status status, Pageable pageable);
+    PageResult<Payment> findByMerchantIdAndStatus(Long merchantId, Payment.Status status, PageRequest pageRequest);
     
     List<Payment> findByMerchantIdAndStatus(Long merchantId, Payment.Status status);
     
-    Page<Payment> findByMerchantIdAndCreatedAtBetween(
+    PageResult<Payment> findByMerchantIdAndCreatedAtBetween(
                     Long merchantId,
                     LocalDateTime fromDate,
                     LocalDateTime toDate,
-                    Pageable pageable);
+                    PageRequest pageRequest);
     
-    Page<Payment> findByMerchantIdAndStatusAndCreatedAtBetween(
+    PageResult<Payment> findByMerchantIdAndStatusAndCreatedAtBetween(
                     Long merchantId,
                     Payment.Status status,
                     LocalDateTime fromDate,
                     LocalDateTime toDate,
-                    Pageable pageable);
+                    PageRequest pageRequest);
     
     // Statistics queries
     BigDecimal sumAmountByMerchantIdAndStatusAndCreatedAtBetween(
