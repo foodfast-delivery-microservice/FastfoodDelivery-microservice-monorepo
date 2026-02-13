@@ -2,7 +2,9 @@ package com.example.order_service.infrastructure.persistence.adapter;
 
 import com.example.order_service.domain.entities.Order;
 import com.example.order_service.domain.repository.OrderRepository;
+import com.example.order_service.domain.valueobjects.OrderQuery;
 import com.example.order_service.domain.valueobjects.OrderStatus;
+import com.example.order_service.domain.valueobjects.PageResult;
 import com.example.order_service.infrastructure.persistence.entity.OrderJpaEntity;
 import com.example.order_service.infrastructure.persistence.mapper.OrderMapper;
 import com.example.order_service.infrastructure.persistence.repository.OrderJpaRepository;
@@ -60,16 +62,64 @@ public class OrderRepositoryImpl implements OrderRepository {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
-    public Page<Order> findAll(Specification<Order> spec, Pageable pageable) {
-        // Delegate to JPA repository which supports Specification queries
-        // Note: Specification in use case uses domain Order but JPA needs
-        // OrderJpaEntity
-        // This is a pragmatic workaround - ideally we'd have separate domain criteria
-        // objects
-        Specification<OrderJpaEntity> jpaSpec = (Specification<OrderJpaEntity>) (Specification<?>) spec;
-        Page<OrderJpaEntity> jpaPage = orderJpaRepository.findAll(jpaSpec, pageable);
-        return jpaPage.map(OrderMapper::toDomainEntity);
+    public PageResult<Order> findAll(OrderQuery query) {
+        // Build JPA Specification from domain query
+        Specification<OrderJpaEntity> spec = buildSpecification(query);
+        
+        // Convert domain PageRequest to Spring Pageable
+        Pageable pageable = PageRequestConverter.toSpringPageable(query.getPageRequest());
+        
+        // Query using JPA repository
+        Page<OrderJpaEntity> jpaPage = orderJpaRepository.findAll(spec, pageable);
+        
+        // Convert to domain entities
+        List<Order> domainOrders = jpaPage.getContent().stream()
+                .map(OrderMapper::toDomainEntity)
+                .collect(Collectors.toList());
+        
+        // Convert Spring Page to domain PageResult
+        return PageResultConverter.toDomainPageResult(
+                new org.springframework.data.domain.PageImpl<>(domainOrders, pageable, jpaPage.getTotalElements()),
+                query.getPageRequest()
+        );
+    }
+    
+    private Specification<OrderJpaEntity> buildSpecification(OrderQuery query) {
+        return (root, criteriaQuery, criteriaBuilder) -> {
+            var predicates = new java.util.ArrayList<jakarta.persistence.criteria.Predicate>();
+            
+            if (query.getUserId() != null) {
+                predicates.add(criteriaBuilder.equal(root.get("userId"), query.getUserId()));
+            }
+            
+            if (query.getMerchantId() != null) {
+                predicates.add(criteriaBuilder.equal(root.get("merchantId"), query.getMerchantId()));
+            }
+            
+            if (query.getStatus() != null) {
+                predicates.add(criteriaBuilder.equal(root.get("status"), query.getStatus()));
+            }
+            
+            if (query.getStatuses() != null && !query.getStatuses().isEmpty()) {
+                predicates.add(root.get("status").in(query.getStatuses()));
+            }
+            
+            if (query.getOrderCode() != null && !query.getOrderCode().trim().isEmpty()) {
+                predicates.add(criteriaBuilder.like(
+                        criteriaBuilder.lower(root.get("orderCode")),
+                        "%" + query.getOrderCode().toLowerCase() + "%"));
+            }
+            
+            if (query.getStartDate() != null) {
+                predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get("createdAt"), query.getStartDate()));
+            }
+            
+            if (query.getEndDate() != null) {
+                predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get("createdAt"), query.getEndDate()));
+            }
+            
+            return criteriaBuilder.and(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
+        };
     }
 
     @Override
