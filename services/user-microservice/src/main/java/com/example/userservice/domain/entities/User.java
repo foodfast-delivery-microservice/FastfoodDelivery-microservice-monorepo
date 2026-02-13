@@ -1,10 +1,10 @@
 package com.example.userservice.domain.entities;
 
+import com.example.userservice.domain.port.PasswordEncoderPort;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.springframework.security.crypto.password.PasswordEncoder;
 
 /**
  * Pure domain entity representing a User.
@@ -47,10 +47,10 @@ public class User {
      * Business logic: Change user password with validation
      * 
      * @param newPassword The new password to set
-     * @param passwordEncoder The password encoder to hash the password
+     * @param passwordEncoderPort The password encoder port to hash the password
      * @throws IllegalArgumentException if password is invalid
      */
-    public void changePassword(String newPassword, PasswordEncoder passwordEncoder) {
+    public void changePassword(String newPassword, PasswordEncoderPort passwordEncoderPort) {
         if (newPassword == null || newPassword.trim().isEmpty()) {
             throw new IllegalArgumentException("New password cannot be empty");
         }
@@ -63,7 +63,7 @@ public class User {
                     "Password must be at least 8 characters long, contain upper and lower case letters, a number, and a special character.");
         }
 
-        this.password = passwordEncoder.encode(newPassword);
+        this.password = passwordEncoderPort.encode(newPassword);
     }
 
     /**

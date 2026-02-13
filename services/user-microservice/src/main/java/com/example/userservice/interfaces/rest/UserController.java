@@ -229,7 +229,7 @@ public class UserController {
      */
     private UserContext extractUserContext(Authentication authentication) {
         if (authentication == null || !authentication.isAuthenticated()) {
-            throw new org.springframework.security.access.AccessDeniedException("User is not authenticated");
+            throw new com.example.userservice.domain.exception.AccessDeniedException("User is not authenticated");
         }
 
         String username = authentication.getName();
