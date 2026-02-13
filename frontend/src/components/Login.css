@@ -109,6 +109,12 @@
   transform: scale(0.97);
 }
 
+.login-btn:disabled {
+  opacity: 0.75;
+  cursor: not-allowed;
+  transform: none;
+}
+
 /* ---------- Register Link ---------- */
 .register-link {
   display: block;
