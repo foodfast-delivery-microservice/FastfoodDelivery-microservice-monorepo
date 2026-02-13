@@ -150,6 +150,23 @@ services:
       rabbitmq-broker:
         condition: service_started
 
+  # 10. Notification Service
+  notification-service:
+    build: ./services/notification-microservice
+    container_name: notification-service
+    ports:
+      - "8086:8086"
+    environment:
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://registry-service:8761/eureka/
+      SPRING_RABBITMQ_HOST: rabbitmq-broker
+      MAIL_USERNAME: ${MAIL_USERNAME}
+      MAIL_PASSWORD: ${MAIL_PASSWORD}
+    depends_on:
+      registry-service:
+        condition: service_started
+      rabbitmq-broker:
+        condition: service_started
+
   # 9. Frontend Application
   frontend:
     build: ./frontend
