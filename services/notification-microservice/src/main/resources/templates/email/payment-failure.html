@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thanh toán thất bại</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+        }
+
+        .header {
+            background-color: #dc3545;
+            color: #ffffff;
+            padding: 30px 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+
+        .content {
+            padding: 30px 20px;
+        }
+
+        .error-icon {
+            text-align: center;
+            font-size: 48px;
+            color: #dc3545;
+            margin: 20px 0;
+        }
+
+        .message {
+            text-align: center;
+            font-size: 18px;
+            color: #dc3545;
+            font-weight: bold;
+            margin-bottom: 30px;
+        }
+
+        .details {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .detail-row:last-child {
+            border-bottom: none;
+        }
+
+        .detail-label {
+            font-weight: bold;
+            color: #666;
+        }
+
+        .detail-value {
+            color: #333;
+        }
+
+        .amount {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .reason-box {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .reason-box strong {
+            color: #856404;
+        }
+
+        .reason-text {
+            color: #856404;
+            margin-top: 10px;
+        }
+
+        .help-text {
+            background-color: #e7f3ff;
+            border-left: 4px solid #007bff;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .help-text p {
+            margin: 5px 0;
+            color: #004085;
+        }
+
+        .button {
+            display: block;
+            width: 100%;
+            max-width: 300px;
+            margin: 30px auto;
+            padding: 15px 30px;
+            background-color: #007bff;
+            color: #ffffff;
+            text-decoration: none;
+            border-radius: 5px;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .button:hover {
+            background-color: #0056b3;
+        }
+
+        .footer {
+            background-color: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            font-size: 12px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>Thanh toán thất bại</h1>
+    </div>
+    <div class="content">
+        <div class="error-icon">✗</div>
+        <div class="message">Rất tiếc, thanh toán của bạn không thành công</div>
+
+        <div class="details">
+            <div class="detail-row">
+                <span class="detail-label">Mã đơn hàng:</span>
+                <span class="detail-value" th:text="${orderId}">#12345</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Số tiền:</span>
+                <span class="detail-value amount" th:text="${amount}">0 VNĐ</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Thời gian:</span>
+                <span class="detail-value" th:text="${paymentTime}">01/01/2024 10:00:00</span>
+            </div>
+        </div>
+
+        <div class="reason-box">
+            <strong>Lý do thất bại:</strong>
+            <div class="reason-text" th:text="${failureReason}">Không xác định</div>
+        </div>
+
+        <div class="help-text">
+            <p><strong>Bạn có thể thử lại bằng cách:</strong></p>
+            <p>1. Kiểm tra lại thông tin thẻ/tài khoản</p>
+            <p>2. Đảm bảo số dư tài khoản đủ để thanh toán</p>
+            <p>3. Liên hệ ngân hàng nếu vấn đề vẫn tiếp tục</p>
+            <p>4. Thử lại thanh toán cho đơn hàng này</p>
+        </div>
+
+        <a href="#" class="button" th:href="'http://localhost:3000/orders/' + ${orderId} + '/payment'">Thử lại thanh
+            toán</a>
+    </div>
+    <div class="footer">
+        <p>Nếu bạn cần hỗ trợ, vui lòng liên hệ với chúng tôi qua email hỗ trợ.</p>
+        <p>&copy; 2024 FastFood Delivery. Tất cả quyền được bảo lưu.</p>
+    </div>
+</div>
+</body>
+</html>
