@@ -143,6 +143,8 @@ public class ProcessPaymentUseCase {
                     PaymentSuccessEventPayload payload = PaymentSuccessEventPayload.builder()
                             .paymentId(existingPayment.getId())
                             .orderId(existingPayment.getOrderId())
+                            .userId(existingPayment.getUserId())
+                            .transactionNo(existingPayment.getTransactionNo())
                             .build();
                     createOutboxEvent(existingPayment, "PAYMENT_SUCCESS", payload);
                 } else {
@@ -198,6 +200,8 @@ public class ProcessPaymentUseCase {
             PaymentSuccessEventPayload payload = PaymentSuccessEventPayload.builder()
                     .paymentId(payment.getId())
                     .orderId(payment.getOrderId())
+                    .userId(payment.getUserId())
+                    .transactionNo(payment.getTransactionNo())
                     .build();
             createOutboxEvent(payment, "PAYMENT_SUCCESS", payload);
             return true;
@@ -214,6 +218,7 @@ public class ProcessPaymentUseCase {
             PaymentFailedEventPayload payload = PaymentFailedEventPayload.builder()
                     .paymentId(payment.getId())
                     .orderId(payment.getOrderId())
+                    .userId(payment.getUserId())
                     .reason(e.getMessage())
                     .build();
             createOutboxEvent(payment, "PAYMENT_FAILED", payload);

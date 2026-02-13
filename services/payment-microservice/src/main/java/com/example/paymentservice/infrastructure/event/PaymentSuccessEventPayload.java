@@ -12,5 +12,7 @@ import lombok.NoArgsConstructor;
 public class PaymentSuccessEventPayload {
     private Long paymentId;
     private Long orderId;
+    private Long userId;
+    private String transactionNo;
 }
 
