@@ -6,6 +6,7 @@ import com.example.notificationservice.domain.port.EmailSenderPort;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Profile;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -15,6 +16,7 @@ import java.time.Instant;
 @RestController
 @RequestMapping("/api/v1/test/email")
 @RequiredArgsConstructor
+@Profile({"dev", "test"})
 public class TestEmailController {
 
     private final EmailSenderPort emailSenderPort;
@@ -44,7 +46,7 @@ public class TestEmailController {
         } catch (Exception e) {
             log.error("Failed to send test payment success email", e);
             return ResponseEntity.internalServerError()
-                    .body("Failed to send email: " + e.getMessage());
+                    .body("Failed to send email");
         }
     }
 
@@ -74,7 +76,7 @@ public class TestEmailController {
         } catch (Exception e) {
             log.error("Failed to send test payment failed email", e);
             return ResponseEntity.internalServerError()
-                    .body("Failed to send email: " + e.getMessage());
+                    .body("Failed to send email");
         }
     }
 
@@ -103,7 +105,7 @@ public class TestEmailController {
         } catch (Exception e) {
             log.error("Failed to send test payment refunded email", e);
             return ResponseEntity.internalServerError()
-                    .body("Failed to send email: " + e.getMessage());
+                    .body("Failed to send email");
         }
     }
 
