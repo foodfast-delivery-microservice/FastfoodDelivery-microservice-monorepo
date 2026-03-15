@@ -9,7 +9,6 @@ import com.example.notificationservice.domain.repository.EmailNotificationReposi
 import com.example.notificationservice.domain.valueobjects.EmailStatus;
 import com.example.notificationservice.infrastructure.template.EmailTemplateEngine;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 import io.micrometer.core.instrument.Counter;
@@ -300,14 +299,25 @@ public class EmailServiceAdapter implements EmailSenderPort {
                                    String emailType, String to,
                                    com.example.notificationservice.domain.valueobjects.NotificationType notificationType) {
         log.error("Failed to send {} email to: {}", emailType, to, e);
-        
+
+        String safeMessage = sanitizeErrorMessage(e);
+
         if (emailRecord != null) {
-            emailRecord.markAsFailed(e.getMessage());
+            emailRecord.markAsFailed(safeMessage);
             emailNotificationRepository.save(emailRecord);
         }
 
         // Metrics
         incrementEmailCounter("failed", notificationType.name());
+    }
+
+    private String sanitizeErrorMessage(Exception e) {
+        if (e == null || e.getMessage() == null || e.getMessage().isBlank()) {
+            return "Unexpected error";
+        }
+        String msg = e.getMessage().trim();
+        int maxLength = 255;
+        return msg.length() > maxLength ? msg.substring(0, maxLength - 3) + "..." : msg;
     }
 
     private void incrementEmailCounter(String status, String type) {

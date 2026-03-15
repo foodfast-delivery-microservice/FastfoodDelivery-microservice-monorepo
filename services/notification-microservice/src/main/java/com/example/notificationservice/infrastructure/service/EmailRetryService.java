@@ -120,7 +120,10 @@ public class EmailRetryService {
 
         } catch (Exception e) {
             log.error("Failed to retry email notification: id={}", notification.getId(), e);
-            notification.markAsFailed(e.getMessage());
+            String safeMessage = e != null && e.getMessage() != null && !e.getMessage().isBlank()
+                    ? (e.getMessage().length() > 255 ? e.getMessage().substring(0, 252) + "..." : e.getMessage())
+                    : "Unexpected error";
+            notification.markAsFailed(safeMessage);
             repository.save(notification);
         }
     }
