@@ -1,6 +1,9 @@
 package com.example.notificationservice.infrastructure.service;
 
 import com.example.notificationservice.domain.entities.EmailNotification;
+import com.example.notificationservice.domain.entities.Notification;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.example.notificationservice.domain.repository.EmailNotificationRepository;
 import com.example.notificationservice.domain.valueobjects.EmailStatus;
 import lombok.RequiredArgsConstructor;
@@ -11,6 +14,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Service for retrying failed email notifications with exponential backoff.
@@ -22,6 +26,7 @@ public class EmailRetryService {
 
     private final EmailNotificationRepository repository;
     private final EmailServiceAdapter emailServiceAdapter;
+    private final ObjectMapper objectMapper;
 
     @Value("${notification.email.retry.max-retries:3}")
     private int maxRetries;
@@ -88,18 +93,28 @@ public class EmailRetryService {
             repository.save(notification);
 
             // Reconstruct notification from stored data
-            com.example.notificationservice.domain.entities.Notification domainNotification =
-                    com.example.notificationservice.domain.entities.Notification.builder()
-                            .type(notification.getType())
-                            .recipient(notification.getRecipient())
-                            .template(notification.getTemplate())
-                            .subject(notification.getSubject())
-                            .build();
+            Map<String, Object> data = null;
+            if (notification.getPayloadJson() != null) {
+                try {
+                    data = objectMapper.readValue(
+                            notification.getPayloadJson(),
+                            new TypeReference<Map<String, Object>>() {}
+                    );
+                } catch (Exception ex) {
+                    log.warn("Failed to deserialize payloadJson for email notification id={}, continuing without data",
+                            notification.getId(), ex);
+                }
+            }
+
+            Notification domainNotification = Notification.builder()
+                    .type(notification.getType())
+                    .recipient(notification.getRecipient())
+                    .template(notification.getTemplate())
+                    .subject(notification.getSubject())
+                    .data(data)
+                    .build();
 
             emailServiceAdapter.sendGenericNotification(domainNotification);
-
-            notification.markAsSent();
-            repository.save(notification);
 
             log.info("Successfully retried email notification: id={}", notification.getId());
 

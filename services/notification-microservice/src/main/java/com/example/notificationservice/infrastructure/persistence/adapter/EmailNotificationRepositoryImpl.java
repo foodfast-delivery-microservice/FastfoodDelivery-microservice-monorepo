@@ -82,6 +82,7 @@ public class EmailNotificationRepositoryImpl implements EmailNotificationReposit
                 .lastRetryAt(domain.getLastRetryAt())
                 .errorMessage(domain.getErrorMessage())
                 .eventId(domain.getEventId())
+                .payloadJson(domain.getPayloadJson())
                 .build();
         return entity;
     }
@@ -100,6 +101,7 @@ public class EmailNotificationRepositoryImpl implements EmailNotificationReposit
                 .lastRetryAt(entity.getLastRetryAt())
                 .errorMessage(entity.getErrorMessage())
                 .eventId(entity.getEventId())
+                .payloadJson(entity.getPayloadJson())
                 .build();
     }
 }

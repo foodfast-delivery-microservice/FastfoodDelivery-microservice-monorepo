@@ -24,6 +24,7 @@ public class EmailNotification {
     private Instant lastRetryAt;
     private String errorMessage;
     private String eventId; // Reference to original event (paymentId, orderId, etc.)
+    private String payloadJson;
 
     private EmailNotification() {
         // Private constructor for builder
@@ -79,6 +80,10 @@ public class EmailNotification {
 
     public String getEventId() {
         return eventId;
+    }
+
+    public String getPayloadJson() {
+        return payloadJson;
     }
 
     /**
@@ -150,6 +155,7 @@ public class EmailNotification {
         private Instant lastRetryAt;
         private String errorMessage;
         private String eventId;
+        private String payloadJson;
 
         public EmailNotificationBuilder id(Long id) {
             this.id = id;
@@ -221,6 +227,11 @@ public class EmailNotification {
             return this;
         }
 
+        public EmailNotificationBuilder payloadJson(String payloadJson) {
+            this.payloadJson = payloadJson;
+            return this;
+        }
+
         public EmailNotification build() {
             EmailNotification notification = new EmailNotification();
             notification.id = this.id;
@@ -235,6 +246,7 @@ public class EmailNotification {
             notification.lastRetryAt = this.lastRetryAt;
             notification.errorMessage = this.errorMessage;
             notification.eventId = this.eventId;
+            notification.payloadJson = this.payloadJson;
             return notification;
         }
     }

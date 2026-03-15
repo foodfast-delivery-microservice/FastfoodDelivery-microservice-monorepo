@@ -48,6 +48,7 @@ public class EmailNotificationJpaEntity {
     @Column(nullable = false, length = 100)
     private String template;
 
+    @Builder.Default
     @Column(nullable = false)
     private Integer retryCount = 0;
 
@@ -63,6 +64,10 @@ public class EmailNotificationJpaEntity {
 
     @Column(length = 100)
     private String eventId;
+
+    @Lob
+    @Column(name = "payload_json")
+    private String payloadJson;
 
     @PrePersist
     protected void onCreate() {

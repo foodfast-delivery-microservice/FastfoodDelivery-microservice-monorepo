@@ -8,6 +8,9 @@ import com.example.notificationservice.domain.port.EmailSenderPort;
 import com.example.notificationservice.domain.repository.EmailNotificationRepository;
 import com.example.notificationservice.domain.valueobjects.EmailStatus;
 import com.example.notificationservice.infrastructure.template.EmailTemplateEngine;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -38,6 +41,7 @@ public class EmailServiceAdapter implements EmailSenderPort {
     private final EmailNotificationRepository emailNotificationRepository;
     private final MeterRegistry meterRegistry;
     private final EmailSubjectService emailSubjectService;
+    private final ObjectMapper objectMapper;
 
     @Value("${spring.mail.from:noreply@fastfooddelivery.com}")
     private String fromEmail;
@@ -149,6 +153,16 @@ public class EmailServiceAdapter implements EmailSenderPort {
                 notification.getType(), notification.getRecipient(), notification.getTemplate());
 
         // Create email notification record
+        String payloadJson = null;
+        if (notification.getData() != null) {
+            try {
+                payloadJson = objectMapper.writeValueAsString(notification.getData());
+            } catch (JsonProcessingException e) {
+                log.warn("Failed to serialize notification data for persistence, continuing without payload. type={}, recipient={}",
+                        notification.getType(), notification.getRecipient(), e);
+            }
+        }
+
         EmailNotification emailRecord = EmailNotification.builder()
                 .type(notification.getType())
                 .recipient(notification.getRecipient())
@@ -156,6 +170,7 @@ public class EmailServiceAdapter implements EmailSenderPort {
                 .template(notification.getTemplate())
                 .status(EmailStatus.PENDING)
                 .eventId(extractEventId(notification))
+                .payloadJson(payloadJson)
                 .build();
         emailRecord = emailNotificationRepository.save(emailRecord);
 
