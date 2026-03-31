@@ -25,6 +25,10 @@ public class User {
     private boolean approved = true;
     private boolean active = true;
 
+    // Email verification fields
+    private boolean emailVerified = false;
+    private String pendingEmail;
+
     // Common Profile Fields
     private String fullName;
     private String phone;

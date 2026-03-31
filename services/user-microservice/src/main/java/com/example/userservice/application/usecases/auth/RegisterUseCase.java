@@ -18,16 +18,19 @@ public class RegisterUseCase {
     private final PasswordEncoderPort passwordEncoderPort;
     private final com.example.userservice.domain.repository.OutboxEventRepository outboxEventRepository;
     private final com.example.userservice.application.service.EventPayloadSerializer eventPayloadSerializer;
+    private final com.example.userservice.application.service.EmailOtpService emailOtpService;
 
     public RegisterUseCase(UserRepository userRepository, RestaurantRepository restaurantRepository,
             PasswordEncoderPort passwordEncoderPort,
             com.example.userservice.domain.repository.OutboxEventRepository outboxEventRepository,
-            com.example.userservice.application.service.EventPayloadSerializer eventPayloadSerializer) {
+            com.example.userservice.application.service.EventPayloadSerializer eventPayloadSerializer,
+            com.example.userservice.application.service.EmailOtpService emailOtpService) {
         this.userRepository = userRepository;
         this.restaurantRepository = restaurantRepository;
         this.passwordEncoderPort = passwordEncoderPort;
         this.outboxEventRepository = outboxEventRepository;
         this.eventPayloadSerializer = eventPayloadSerializer;
+        this.emailOtpService = emailOtpService;
     }
 
     // cho user tự đăng kí
@@ -49,6 +52,7 @@ public class RegisterUseCase {
         user.setRole(role);
         user.setApproved(approved);
         user.setActive(true);
+        user.setEmailVerified(false);
 
         // Map Profile Fields
         user.setFullName(registerRequest.getFullName());
@@ -66,6 +70,7 @@ public class RegisterUseCase {
 
         // -- CREATE OUTBOX EVENT FOR RELIABLE EVENT PUBLISHING --
         createUserRegisteredOutboxEvent(saved);
+        emailOtpService.generateForSignup(saved);
 
         // Automatically create restaurant for MERCHANT users
         if (role == User.UserRole.MERCHANT && saved.getRestaurantName() != null

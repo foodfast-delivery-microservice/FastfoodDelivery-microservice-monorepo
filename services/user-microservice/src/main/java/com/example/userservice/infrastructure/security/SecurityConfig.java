@@ -47,7 +47,10 @@ public class SecurityConfig {
                         // Internal API for service-to-service calls (no authentication required)
                         .requestMatchers("/api/internal/**").permitAll()
 
-                        .requestMatchers("/api/v1/auth/**").permitAll()
+                        .requestMatchers("/api/v1/auth/register").permitAll()
+                        .requestMatchers("/api/v1/auth/login").permitAll()
+                        .requestMatchers("/api/v1/auth/email/verify-otp").permitAll()
+                        .requestMatchers("/api/v1/auth/email/resend-otp").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
                         .requestMatchers("/api/v1/restaurants/me/**").hasAnyRole("MERCHANT", "ADMIN")

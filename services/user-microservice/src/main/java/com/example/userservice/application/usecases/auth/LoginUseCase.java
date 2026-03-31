@@ -1,6 +1,7 @@
 package com.example.userservice.application.usecases.auth;
 
 import com.example.userservice.domain.exception.AccountNotApprovedException;
+import com.example.userservice.domain.exception.EmailNotVerifiedException;
 import com.example.userservice.domain.exception.InvalidCredentialException;
 import com.example.userservice.domain.exception.UserNotFoundException;
 import com.example.userservice.domain.entities.User;
@@ -29,6 +30,10 @@ public class LoginUseCase {
 
         if (user.getRole() == User.UserRole.MERCHANT && !user.isApproved()) {
             throw new AccountNotApprovedException(user.getId());
+        }
+
+        if (!user.isEmailVerified()) {
+            throw new EmailNotVerifiedException(user.getEmail());
         }
 
         // 3. Sinh token

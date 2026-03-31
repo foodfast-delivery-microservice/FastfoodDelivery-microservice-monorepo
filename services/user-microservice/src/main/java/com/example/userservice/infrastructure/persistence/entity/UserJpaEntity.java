@@ -42,6 +42,12 @@ public class UserJpaEntity {
     @Column(nullable = false)
     private boolean active = true;
 
+    @Column(nullable = false)
+    private boolean emailVerified = false;
+
+    @Column
+    private String pendingEmail;
+
     // Common Profile Fields
     private String fullName;
     private String phone;

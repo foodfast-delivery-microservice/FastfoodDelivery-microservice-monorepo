@@ -24,6 +24,8 @@ public class UserMapper {
         jpaEntity.setRole(domainEntity.getRole());
         jpaEntity.setApproved(domainEntity.isApproved());
         jpaEntity.setActive(domainEntity.isActive());
+        jpaEntity.setEmailVerified(domainEntity.isEmailVerified());
+        jpaEntity.setPendingEmail(domainEntity.getPendingEmail());
         jpaEntity.setFullName(domainEntity.getFullName());
         jpaEntity.setPhone(domainEntity.getPhone());
         jpaEntity.setAddress(domainEntity.getAddress());
@@ -52,6 +54,8 @@ public class UserMapper {
         domainEntity.setRole(jpaEntity.getRole());
         domainEntity.setApproved(jpaEntity.isApproved());
         domainEntity.setActive(jpaEntity.isActive());
+        domainEntity.setEmailVerified(jpaEntity.isEmailVerified());
+        domainEntity.setPendingEmail(jpaEntity.getPendingEmail());
         domainEntity.setFullName(jpaEntity.getFullName());
         domainEntity.setPhone(jpaEntity.getPhone());
         domainEntity.setAddress(jpaEntity.getAddress());

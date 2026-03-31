@@ -5,6 +5,7 @@ import com.example.userservice.domain.valueobjects.EventStatus;
 import com.example.userservice.domain.repository.OutboxEventRepository;
 import com.example.userservice.infrastructure.messaging.event.MerchantActivatedEvent;
 import com.example.userservice.infrastructure.messaging.event.MerchantDeactivatedEvent;
+import com.example.userservice.application.DTOs.event.EmailVerificationOtpRequestedEvent;
 import com.example.userservice.application.DTOs.event.UserUpdatedEventDTO;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +25,9 @@ public class OutboxEventRelay {
     private final OutboxEventRepository outboxEventRepository;
     private final RabbitTemplate rabbitTemplate;
     private final ObjectMapper objectMapper;
+
+    @org.springframework.beans.factory.annotation.Value("${app.otp.email.ttl-minutes:10}")
+    private long otpTtlMinutes;
 
     // Tên Exchange (sàn giao dịch)
     public static final String USER_EVENTS_EXCHANGE = "user.events";
@@ -109,6 +113,32 @@ public class OutboxEventRelay {
                                 ex);
                         // If mapping fails, maybe skip or strip metadata?
                         // For now we assume payload is valid JSON of UserRegisteredEvent
+                        payloadToSend = event.getPayload();
+                    }
+                } else if ("EmailVerificationOtpRequested".equals(event.getType())) {
+                    exchange = "notification.exchange";
+                    routingKey = "notification.email.otp.requested";
+
+                    try {
+                        EmailVerificationOtpRequestedEvent otpEvent = objectMapper.readValue(
+                                event.getPayload(),
+                                EmailVerificationOtpRequestedEvent.class
+                        );
+
+                        java.util.Map<String, Object> data = new java.util.HashMap<>();
+                        data.put("otpCode", otpEvent.getOtpCode());
+                        data.put("type", otpEvent.getType());
+                        data.put("expiresMinutes", otpTtlMinutes);
+
+                        java.util.Map<String, Object> notificationEvent = new java.util.HashMap<>();
+                        notificationEvent.put("eventType", "EMAIL_VERIFICATION_OTP");
+                        notificationEvent.put("recipient", otpEvent.getEmail());
+                        notificationEvent.put("template", "email-verification-otp");
+                        notificationEvent.put("data", data);
+
+                        payloadToSend = notificationEvent;
+                    } catch (Exception ex) {
+                        log.error("Failed to deserialize/map EmailVerificationOtpRequested payload for event id={}", event.getId(), ex);
                         payloadToSend = event.getPayload();
                     }
                 } else {
