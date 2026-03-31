@@ -88,7 +88,20 @@ function Login() {
       message.success(`Chào mừng, ${userProfile.fullName || userProfile.username || "người dùng"} 👋`, 2);
     } catch (err) {
       console.error("Login Error:", err);
-      let msg = err.response?.data?.message || err.response?.data?.error || "Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.";
+      const errorBody = err.response?.data;
+      const errorCode = errorBody?.errorCode || errorBody?.code;
+      let msg = errorBody?.message || errorBody?.error || "Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.";
+
+      if (errorCode === "EMAIL_NOT_VERIFIED") {
+        const unverifiedEmail = errorBody?.data?.email;
+        if (unverifiedEmail) {
+          message.warning("Email chưa được xác thực. Đang chuyển hướng đến trang xác thực...", 2);
+          navigate(`/verify-email?email=${encodeURIComponent(unverifiedEmail)}&type=SIGNUP`);
+          return;
+        }
+        msg = "Email của bạn chưa được xác thực. Vui lòng kiểm tra hộp thư để lấy mã OTP và xác thực tài khoản trước khi đăng nhập.";
+      }
+
       if (!err.response) {
         msg = "Không thể kết nối server. Kiểm tra Gateway (localhost:8080) đã chạy chưa hoặc lỗi mạng.";
       }

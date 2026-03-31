@@ -5,8 +5,11 @@ import com.example.userservice.interfaces.common.ApiResponse;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+import java.util.stream.Collectors;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -88,5 +91,56 @@ public class GlobalExceptionHandler {
                 null,
                 "USER_ALREADY_EXISTS");
         return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    }
+
+    @ExceptionHandler(EmailNotVerifiedException.class)
+    public ResponseEntity<ApiResponse<java.util.Map<String, String>>> handleEmailNotVerified(EmailNotVerifiedException ex) {
+        java.util.Map<String, String> data = java.util.Map.of("email", ex.getEmail());
+        ApiResponse<java.util.Map<String, String>> response = new ApiResponse<>(
+                HttpStatus.FORBIDDEN,
+                ex.getMessage(),
+                data,
+                "EMAIL_NOT_VERIFIED");
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
+    }
+
+    @ExceptionHandler({OtpInvalidException.class, OtpExpiredException.class, OtpTooManyAttemptsException.class})
+    public ResponseEntity<ApiResponse<Void>> handleOtpExceptions(RuntimeException ex) {
+        String code = ex instanceof OtpExpiredException
+                ? "OTP_EXPIRED"
+                : ex instanceof OtpTooManyAttemptsException
+                        ? "OTP_TOO_MANY_ATTEMPTS"
+                        : "OTP_INVALID";
+
+        ApiResponse<Void> response = new ApiResponse<>(
+                HttpStatus.BAD_REQUEST,
+                ex.getMessage(),
+                null,
+                code);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
+
+    @ExceptionHandler(OtpResendLimitExceededException.class)
+    public ResponseEntity<ApiResponse<Void>> handleOtpResendLimit(OtpResendLimitExceededException ex) {
+        ApiResponse<Void> response = new ApiResponse<>(
+                HttpStatus.TOO_MANY_REQUESTS,
+                ex.getMessage(),
+                null,
+                "OTP_RESEND_LIMIT_EXCEEDED");
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(response);
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ApiResponse<Void>> handleValidationExceptions(MethodArgumentNotValidException ex) {
+        String errorMessage = ex.getBindingResult().getFieldErrors().stream()
+                .map(error -> error.getField() + ": " + error.getDefaultMessage())
+                .collect(Collectors.joining(", "));
+
+        ApiResponse<Void> response = new ApiResponse<>(
+                HttpStatus.BAD_REQUEST,
+                errorMessage,
+                null,
+                "VALIDATION_ERROR");
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
 }

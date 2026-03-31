@@ -16,6 +16,7 @@ import Checkout from "./components/Checkout";
 import OrderHistory from "./components/OrderHistory";
 import Login from "./components/Login";
 import Register from "./components/Register";
+import VerifyEmail from "./components/VerifyEmail";
 import RestaurantList from "./components/RestaurantList";
 import RestaurantDetail from "./components/RestaurantDetail";
 import WaitingForConfirmation from "./components/WaitingForConfirmation";
@@ -192,6 +193,7 @@ function App() {
             <Route index element={<RestaurantList />} />
             <Route path="login" element={<Login />} />
             <Route path="register" element={<Register />} />
+            <Route path="verify-email" element={<VerifyEmail />} />
             <Route path="product-detail/:id" element={<ProductDetail onAdd={handleAdd} />} />
             <Route path="restaurant/:id" element={<RestaurantDetail onAdd={handleAdd} />} />
             
