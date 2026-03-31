@@ -30,6 +30,16 @@ export const updateProfile = async (partial) => {
   return unwrapData(data)
 }
 
+export const verifyEmailOtp = async ({ email, otp, type }) => {
+  const { data } = await http.post('/auth/email/verify-otp', { email, otp, type })
+  return unwrapData(data)
+}
+
+export const resendEmailOtp = async ({ email, type }) => {
+  const { data } = await http.post('/auth/email/resend-otp', { email, type })
+  return unwrapData(data)
+}
+
 
 
 
