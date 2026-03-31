@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 /**
  * Listener for generic notification events from RabbitMQ.
  * Delegates to SendGenericNotificationUseCase for business logic.
- * 
+ * <p>
  * Error Handling Strategy:
  * - Throws exception to trigger RabbitMQ retry mechanism and DLQ
  * - Invalid events (validation errors) are logged and exception is thrown

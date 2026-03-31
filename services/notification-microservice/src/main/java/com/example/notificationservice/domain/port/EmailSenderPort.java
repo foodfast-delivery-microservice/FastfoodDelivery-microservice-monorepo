@@ -16,6 +16,7 @@ public interface EmailSenderPort {
 
     /**
      * Sends a generic notification email.
+     *
      * @param notification domain entity containing all notification details
      * @throws RuntimeException if email sending fails
      */

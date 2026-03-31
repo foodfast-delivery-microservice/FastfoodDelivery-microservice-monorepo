@@ -17,9 +17,9 @@ public class UserEmailResponse {
     @NotNull(message = "User ID cannot be null")
     @Positive(message = "User ID must be positive")
     private Long id;
-    
+
     private String fullName;
-    
+
     @Email(message = "Email must be a valid email address")
     private String email;
 }

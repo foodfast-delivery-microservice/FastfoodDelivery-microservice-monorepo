@@ -16,16 +16,16 @@ import java.util.Map;
 @NoArgsConstructor
 @AllArgsConstructor
 public class NotificationEvent implements Serializable {
-    
+
     @NotBlank(message = "Event type cannot be blank")
     private String eventType;
-    
+
     @NotBlank(message = "Recipient email cannot be blank")
     @Email(message = "Recipient must be a valid email address")
     private String recipient;
-    
+
     @NotBlank(message = "Template cannot be blank")
     private String template;
-    
+
     private Map<String, Object> data;
 }

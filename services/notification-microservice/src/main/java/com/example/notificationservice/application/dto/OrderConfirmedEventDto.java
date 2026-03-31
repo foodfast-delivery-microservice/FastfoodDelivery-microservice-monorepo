@@ -14,18 +14,18 @@ import java.math.BigDecimal;
 @NoArgsConstructor
 @AllArgsConstructor
 public class OrderConfirmedEventDto {
-    
+
     @NotNull(message = "Order ID cannot be null")
     @Positive(message = "Order ID must be positive")
     private Long orderId;
-    
+
     private String orderCode;
-    
+
     @NotNull(message = "User ID cannot be null")
     @Positive(message = "User ID must be positive")
     private Long userId;
-    
+
     private BigDecimal amount;
-    
+
     private String timestamp;
 }

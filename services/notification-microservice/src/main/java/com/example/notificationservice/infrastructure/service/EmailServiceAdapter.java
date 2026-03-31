@@ -174,10 +174,10 @@ public class EmailServiceAdapter implements EmailSenderPort {
         emailRecord = emailNotificationRepository.save(emailRecord);
 
         try {
-            Map<String, Object> templateVariables = notification.getData() != null 
-                    ? new HashMap<>(notification.getData()) 
+            Map<String, Object> templateVariables = notification.getData() != null
+                    ? new HashMap<>(notification.getData())
                     : new HashMap<>();
-            
+
             // Send email (without rate limiter here as it's already persisted)
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
@@ -202,7 +202,7 @@ public class EmailServiceAdapter implements EmailSenderPort {
                     notification.getType(), notification.getRecipient());
 
         } catch (Exception e) {
-            handleEmailFailure(emailRecord, e, "generic notification", 
+            handleEmailFailure(emailRecord, e, "generic notification",
                     notification.getRecipient().getValue(), notification.getType());
             throw new RuntimeException("Failed to send notification email", e);
         }
@@ -227,17 +227,17 @@ public class EmailServiceAdapter implements EmailSenderPort {
      * Reduces code duplication across all email sending methods.
      * Includes persistence, rate limiting, and metrics.
      *
-     * @param to recipient email address
-     * @param subject email subject
-     * @param templateName template name (without .html extension)
+     * @param to                recipient email address
+     * @param subject           email subject
+     * @param templateName      template name (without .html extension)
      * @param templateVariables variables for template rendering
-     * @param emailType description of email type for logging
-     * @param notificationType notification type for persistence
-     * @param eventId event ID for tracking (paymentId, orderId, etc.)
+     * @param emailType         description of email type for logging
+     * @param notificationType  notification type for persistence
+     * @param eventId           event ID for tracking (paymentId, orderId, etc.)
      * @throws RuntimeException if email sending fails
      */
     @RateLimiter(name = "emailRateLimiter")
-    private void sendEmail(String to, String subject, String templateName, 
+    private void sendEmail(String to, String subject, String templateName,
                            Map<String, Object> templateVariables, String emailType,
                            com.example.notificationservice.domain.valueobjects.NotificationType notificationType,
                            String eventId) {
@@ -289,15 +289,15 @@ public class EmailServiceAdapter implements EmailSenderPort {
      * Overloaded method for backward compatibility (without persistence).
      * Used by generic notification which already handles persistence.
      */
-    private void sendEmail(String to, String subject, String templateName, 
+    private void sendEmail(String to, String subject, String templateName,
                            Map<String, Object> templateVariables, String emailType) {
         sendEmail(to, subject, templateName, templateVariables, emailType,
                 com.example.notificationservice.domain.valueobjects.NotificationType.GENERIC, null);
     }
 
-    private void handleEmailFailure(EmailNotification emailRecord, Exception e, 
-                                   String emailType, String to,
-                                   com.example.notificationservice.domain.valueobjects.NotificationType notificationType) {
+    private void handleEmailFailure(EmailNotification emailRecord, Exception e,
+                                    String emailType, String to,
+                                    com.example.notificationservice.domain.valueobjects.NotificationType notificationType) {
         log.error("Failed to send {} email to: {}", emailType, to, e);
 
         String safeMessage = sanitizeErrorMessage(e);

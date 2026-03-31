@@ -26,6 +26,7 @@ public class SendOrderConfirmedEmailUseCase {
 
     /**
      * Handles order confirmed event and sends email notification.
+     *
      * @param event order confirmed event DTO (validated via Bean Validation)
      * @throws IllegalArgumentException if event is invalid or user email not found
      */
@@ -39,7 +40,7 @@ public class SendOrderConfirmedEmailUseCase {
             throw new IllegalArgumentException("User ID cannot be null");
         }
 
-        log.info("Processing order confirmed email: orderId={}, userId={}", 
+        log.info("Processing order confirmed email: orderId={}, userId={}",
                 event.getOrderId(), event.getUserId());
 
         UserEmailResponse user = userServicePort.getUserEmailById(event.getUserId());
@@ -49,7 +50,7 @@ public class SendOrderConfirmedEmailUseCase {
         }
 
         emailSenderPort.sendOrderConfirmedEmail(event, user.getEmail());
-        log.info("Order confirmed email sent successfully: userId={}, orderId={}", 
+        log.info("Order confirmed email sent successfully: userId={}, orderId={}",
                 event.getUserId(), event.getOrderId());
     }
 }

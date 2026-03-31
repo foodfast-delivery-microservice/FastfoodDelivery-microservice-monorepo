@@ -21,8 +21,9 @@ public class EmailSubjectService {
 
     /**
      * Gets subject for a template with variable substitution.
+     *
      * @param templateName template name (e.g., "payment-success")
-     * @param variables variables for substitution (e.g., {"orderId": "123"})
+     * @param variables    variables for substitution (e.g., {"orderId": "123"})
      * @return resolved subject
      */
     public String getSubject(String templateName, Map<String, Object> variables) {

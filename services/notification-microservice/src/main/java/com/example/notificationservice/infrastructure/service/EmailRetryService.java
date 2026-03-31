@@ -75,7 +75,7 @@ public class EmailRetryService {
                 : notification.getCreatedAt().plusSeconds(delaySeconds);
 
         if (Instant.now().isBefore(nextRetryTime)) {
-            log.debug("Email {} not ready for retry yet. Next retry at {}", 
+            log.debug("Email {} not ready for retry yet. Next retry at {}",
                     notification.getId(), nextRetryTime);
             return false;
         }
@@ -85,8 +85,8 @@ public class EmailRetryService {
 
     private void retryEmail(EmailNotification notification) {
         try {
-            log.info("Retrying email notification: id={}, recipient={}, attempt={}", 
-                    notification.getId(), notification.getRecipient(), 
+            log.info("Retrying email notification: id={}, recipient={}, attempt={}",
+                    notification.getId(), notification.getRecipient(),
                     notification.getRetryCount() + 1);
 
             notification.markAsRetrying();
@@ -98,7 +98,8 @@ public class EmailRetryService {
                 try {
                     data = objectMapper.readValue(
                             notification.getPayloadJson(),
-                            new TypeReference<Map<String, Object>>() {}
+                            new TypeReference<Map<String, Object>>() {
+                            }
                     );
                 } catch (Exception ex) {
                     log.warn("Failed to deserialize payloadJson for email notification id={}, continuing without data",

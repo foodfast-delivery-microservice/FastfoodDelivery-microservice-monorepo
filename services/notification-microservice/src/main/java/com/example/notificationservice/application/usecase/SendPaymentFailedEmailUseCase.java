@@ -26,6 +26,7 @@ public class SendPaymentFailedEmailUseCase {
 
     /**
      * Handles payment failed event and sends email notification.
+     *
      * @param event payment event DTO (validated via Bean Validation)
      * @throws IllegalArgumentException if event is invalid or user email not found
      */
@@ -49,7 +50,7 @@ public class SendPaymentFailedEmailUseCase {
         }
 
         emailSenderPort.sendPaymentFailedEmail(event, user.getEmail());
-        log.info("Payment failed email sent successfully: userId={}, orderId={}", 
+        log.info("Payment failed email sent successfully: userId={}, orderId={}",
                 event.getUserId(), event.getOrderId());
     }
 }

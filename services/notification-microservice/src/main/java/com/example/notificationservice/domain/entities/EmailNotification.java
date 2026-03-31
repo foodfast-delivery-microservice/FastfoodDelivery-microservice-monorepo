@@ -97,6 +97,7 @@ public class EmailNotification {
 
     /**
      * Marks email as failed and increments retry count.
+     *
      * @param errorMessage error message
      */
     public void markAsFailed(String errorMessage) {
@@ -119,6 +120,7 @@ public class EmailNotification {
 
     /**
      * Checks if email can be retried based on max retry count.
+     *
      * @param maxRetries maximum number of retries allowed
      * @return true if can retry
      */
@@ -131,6 +133,7 @@ public class EmailNotification {
 
     /**
      * Calculates next retry delay using exponential backoff.
+     *
      * @param baseDelaySeconds base delay in seconds
      * @return delay in seconds
      */

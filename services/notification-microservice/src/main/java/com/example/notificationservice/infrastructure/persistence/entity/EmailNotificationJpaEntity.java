@@ -16,10 +16,10 @@ import java.time.Instant;
  */
 @Entity
 @Table(name = "email_notifications", indexes = {
-    @Index(name = "idx_status", columnList = "status"),
-    @Index(name = "idx_recipient", columnList = "recipient"),
-    @Index(name = "idx_event_id", columnList = "event_id"),
-    @Index(name = "idx_status_retry", columnList = "status, last_retry_at")
+        @Index(name = "idx_status", columnList = "status"),
+        @Index(name = "idx_recipient", columnList = "recipient"),
+        @Index(name = "idx_event_id", columnList = "event_id"),
+        @Index(name = "idx_status_retry", columnList = "status, last_retry_at")
 })
 @Data
 @Builder

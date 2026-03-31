@@ -5,6 +5,7 @@ package com.example.notificationservice.domain.valueobjects;
  */
 public enum NotificationType {
     USER_REGISTERED,
+    EMAIL_VERIFICATION_OTP,
     ORDER_CONFIRMED,
     PAYMENT_SUCCESS,
     PAYMENT_FAILED,

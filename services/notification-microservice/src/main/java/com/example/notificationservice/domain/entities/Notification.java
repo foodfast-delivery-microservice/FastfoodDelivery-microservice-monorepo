@@ -47,6 +47,7 @@ public class Notification {
 
     /**
      * Validates that the notification can be sent.
+     *
      * @throws IllegalStateException if notification is invalid
      */
     public void validate() {
@@ -63,6 +64,7 @@ public class Notification {
 
     /**
      * Checks if the notification can be sent.
+     *
      * @return true if all required fields are present
      */
     public boolean canSend() {
@@ -76,6 +78,7 @@ public class Notification {
 
     /**
      * Gets the subject for the email, using default if not provided.
+     *
      * @return email subject
      */
     public String getEmailSubject() {
@@ -88,10 +91,11 @@ public class Notification {
     private String getDefaultSubject() {
         return switch (type) {
             case USER_REGISTERED -> "Welcome to FastFood Delivery!";
+            case EMAIL_VERIFICATION_OTP -> "Verify your email address";
             case ORDER_CONFIRMED -> {
-                String orderCode = data != null && data.containsKey("orderCode") 
-                    ? String.valueOf(data.get("orderCode")) 
-                    : "";
+                String orderCode = data != null && data.containsKey("orderCode")
+                        ? String.valueOf(data.get("orderCode"))
+                        : "";
                 yield "Order Confirmation #" + orderCode;
             }
             case PAYMENT_SUCCESS -> "Payment Successful!";

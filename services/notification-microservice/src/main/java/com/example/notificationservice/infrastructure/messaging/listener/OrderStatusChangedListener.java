@@ -14,7 +14,7 @@ import java.math.BigDecimal;
 /**
  * Listener for order status changed events from RabbitMQ.
  * Only sends email when order status changes to CONFIRMED.
- * 
+ * <p>
  * Error Handling Strategy:
  * - Throws exception to trigger RabbitMQ retry mechanism and DLQ
  * - This ensures failed notifications are not lost and can be retried

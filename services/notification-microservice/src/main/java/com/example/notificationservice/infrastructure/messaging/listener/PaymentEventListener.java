@@ -18,7 +18,7 @@ import java.time.Instant;
 /**
  * Listener for payment-related events from RabbitMQ.
  * Delegates to use cases for business logic.
- * 
+ * <p>
  * Error Handling Strategy:
  * - Throws exception to trigger RabbitMQ retry mechanism and DLQ
  * - This ensures failed notifications are not lost and can be retried

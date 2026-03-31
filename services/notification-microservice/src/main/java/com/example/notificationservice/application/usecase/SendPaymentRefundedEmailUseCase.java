@@ -31,14 +31,15 @@ public class SendPaymentRefundedEmailUseCase {
 
     /**
      * Handles payment refunded event and sends email notification.
+     *
      * @param paymentId payment ID (must be positive)
-     * @param orderId order ID (must be positive)
-     * @param reason refund reason
+     * @param orderId   order ID (must be positive)
+     * @param reason    refund reason
      * @throws IllegalArgumentException if parameters are invalid or user email not found
      */
-    public void handle(@NotNull @Positive Long paymentId, 
-                      @NotNull @Positive Long orderId, 
-                      String reason) {
+    public void handle(@NotNull @Positive Long paymentId,
+                       @NotNull @Positive Long orderId,
+                       String reason) {
         if (paymentId == null || paymentId <= 0) {
             throw new IllegalArgumentException("Payment ID must be positive");
         }
@@ -46,7 +47,7 @@ public class SendPaymentRefundedEmailUseCase {
             throw new IllegalArgumentException("Order ID must be positive");
         }
 
-        log.info("Processing payment refunded event: paymentId={}, orderId={}, reason={}", 
+        log.info("Processing payment refunded event: paymentId={}, orderId={}, reason={}",
                 paymentId, orderId, reason);
 
         // 1. Fetch order details to get userId and amount
@@ -81,7 +82,7 @@ public class SendPaymentRefundedEmailUseCase {
 
         // 4. Send email
         emailSenderPort.sendPaymentRefundedEmail(eventDto, user.getEmail());
-        log.info("Payment refunded email sent successfully: userId={}, orderId={}", 
+        log.info("Payment refunded email sent successfully: userId={}, orderId={}",
                 order.getUserId(), orderId);
     }
 }

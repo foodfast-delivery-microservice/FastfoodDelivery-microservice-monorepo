@@ -25,14 +25,24 @@ public class SendGenericNotificationUseCase {
 
     /**
      * Handles a generic notification event.
+     *
      * @param event notification event DTO (validated via Bean Validation)
      * @throws IllegalArgumentException if event is invalid or domain validation fails
-     * @throws RuntimeException if email sending fails
+     * @throws RuntimeException         if email sending fails
      */
     public void handle(@Valid NotificationEvent event) {
         if (event == null) {
             log.warn("Received null notification event, skipping");
             throw new IllegalArgumentException("Notification event cannot be null");
+        }
+        if (event.getEventType() == null || event.getEventType().isBlank()) {
+            throw new IllegalArgumentException("Event type cannot be blank");
+        }
+        if (event.getRecipient() == null || event.getRecipient().isBlank()) {
+            throw new IllegalArgumentException("Recipient email cannot be blank");
+        }
+        if (event.getTemplate() == null || event.getTemplate().isBlank()) {
+            throw new IllegalArgumentException("Template cannot be blank");
         }
 
         log.info("Processing generic notification: type={}, recipient={}, template={}",

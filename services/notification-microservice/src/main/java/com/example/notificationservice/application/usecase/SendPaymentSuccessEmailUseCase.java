@@ -26,6 +26,7 @@ public class SendPaymentSuccessEmailUseCase {
 
     /**
      * Handles payment success event and sends email notification.
+     *
      * @param event payment event DTO (validated via Bean Validation)
      * @throws IllegalArgumentException if event is invalid or user email not found
      */
@@ -49,7 +50,7 @@ public class SendPaymentSuccessEmailUseCase {
         }
 
         emailSenderPort.sendPaymentSuccessEmail(event, user.getEmail());
-        log.info("Payment success email sent successfully: userId={}, orderId={}", 
+        log.info("Payment success email sent successfully: userId={}, orderId={}",
                 event.getUserId(), event.getOrderId());
     }
 }
