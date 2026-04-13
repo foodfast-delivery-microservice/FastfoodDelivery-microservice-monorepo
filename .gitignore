@@ -18,3 +18,5 @@ build/
 # Bỏ qua thư mục uploads (files được upload từ users)
 uploads/
 **/uploads/
+
+.agent/
