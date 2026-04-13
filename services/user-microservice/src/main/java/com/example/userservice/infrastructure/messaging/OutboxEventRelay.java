@@ -48,6 +48,7 @@ public class OutboxEventRelay {
         for (OutboxEvent event : pendingEvents) {
             try {
                 // 2. Xác định routing key và payload object dựa trên loại event
+                String exchange = USER_EVENTS_EXCHANGE;
                 String routingKey;
                 Object payloadToSend;
 
@@ -72,7 +73,42 @@ public class OutboxEventRelay {
                     try {
                         payloadToSend = objectMapper.readValue(event.getPayload(), MerchantDeactivatedEvent.class);
                     } catch (Exception ex) {
-                        log.error("Failed to deserialize MerchantDeactivated payload for event id={}", event.getId(), ex);
+                        log.error("Failed to deserialize MerchantDeactivated payload for event id={}", event.getId(),
+                                ex);
+                        payloadToSend = event.getPayload();
+                    }
+                } else if ("UserRegistered".equals(event.getType())) {
+                    // Send to Notification Service via Notification Exchange
+                    exchange = "notification.exchange";
+                    routingKey = "notification.user.registered";
+
+                    try {
+                        com.example.userservice.application.DTOs.event.UserRegisteredEvent userEvent = objectMapper
+                                .readValue(event.getPayload(),
+                                        com.example.userservice.application.DTOs.event.UserRegisteredEvent.class);
+
+                        // Map to NotificationEvent structure (as Map or specific DTO class if shared)
+                        // Here we construct a compatible object structure (or Map) to match
+                        // NotificationEvent in Consumer
+                        java.util.Map<String, Object> notificationData = new java.util.HashMap<>();
+                        notificationData.put("name", userEvent.getFullName());
+                        notificationData.put("username", userEvent.getUsername());
+                        notificationData.put("loginUrl", "http://localhost:3000/login"); // Should be externalized
+
+                        // Create Notification Payload
+                        java.util.Map<String, Object> notificationEvent = new java.util.HashMap<>();
+                        notificationEvent.put("eventType", "USER_REGISTERED");
+                        notificationEvent.put("recipient", userEvent.getEmail());
+                        notificationEvent.put("template", "welcome-email");
+                        notificationEvent.put("data", notificationData);
+
+                        payloadToSend = notificationEvent;
+
+                    } catch (Exception ex) {
+                        log.error("Failed to deserialize/map UserRegistered payload for event id={}", event.getId(),
+                                ex);
+                        // If mapping fails, maybe skip or strip metadata?
+                        // For now we assume payload is valid JSON of UserRegisteredEvent
                         payloadToSend = event.getPayload();
                     }
                 } else {
@@ -82,7 +118,7 @@ public class OutboxEventRelay {
 
                 // 3. Gửi event lên RabbitMQ
                 rabbitTemplate.convertAndSend(
-                        USER_EVENTS_EXCHANGE,
+                        exchange,
                         routingKey,
                         payloadToSend);
 

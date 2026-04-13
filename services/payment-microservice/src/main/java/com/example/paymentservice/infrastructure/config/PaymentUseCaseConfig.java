@@ -1,6 +1,7 @@
 package com.example.paymentservice.infrastructure.config;
 
 import com.example.paymentservice.application.service.EventPayloadSerializer;
+import com.example.paymentservice.application.usecase.GetPaymentByOrderIdUseCase;
 import com.example.paymentservice.application.usecase.ProcessPaymentUseCase;
 import com.example.paymentservice.application.usecase.ProcessRefundUseCase;
 import com.example.paymentservice.domain.port.OrderServicePort;
@@ -34,5 +35,10 @@ public class PaymentUseCaseConfig {
     @Bean
     public ProcessRefundUseCase processRefundUseCase() {
         return new ProcessRefundUseCase(paymentRepository, outboxEventRepository, eventPayloadSerializer);
+    }
+
+    @Bean
+    public GetPaymentByOrderIdUseCase getPaymentByOrderIdUseCase() {
+        return new GetPaymentByOrderIdUseCase(paymentRepository);
     }
 }

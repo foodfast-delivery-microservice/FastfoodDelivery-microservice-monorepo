@@ -59,6 +59,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/users/*/validate")
                         .hasAnyRole("USER", "ADMIN", "MERCHANT")
 
+                        // Email endpoint for Notification Service (no authentication required)
+                        .requestMatchers(HttpMethod.GET, "/api/v1/users/*/email").permitAll()
+
                         // Allow getting own profile
                         .requestMatchers(HttpMethod.GET, "/api/v1/users/me").authenticated()
 

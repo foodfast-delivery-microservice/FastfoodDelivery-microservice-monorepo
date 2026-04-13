@@ -5,6 +5,7 @@ import com.example.userservice.application.DTOs.user.ChangePasswordRequest;
 import com.example.userservice.application.DTOs.user.CreateUserRequest;
 import com.example.userservice.application.DTOs.user.CreateUserResponse;
 import com.example.userservice.application.DTOs.user.UserContext;
+import com.example.userservice.application.DTOs.user.UserEmailResponse;
 import com.example.userservice.application.DTOs.user.UserPatchDTO;
 import com.example.userservice.infrastructure.security.UserPrincipal;
 import com.example.userservice.interfaces.common.ApiResponse;
@@ -139,6 +140,47 @@ public class UserController {
         }
     }
 
+    /**
+     * Get user email endpoint for Notification Service
+     * GET /api/v1/users/{id}/email
+     * Returns minimal user information (id, fullName, email) for email notifications
+     */
+    @GetMapping("/{id}/email")
+    public ResponseEntity<ApiResponse<UserEmailResponse>> getUserEmail(@PathVariable Long id) {
+        try {
+            CreateUserResponse user = getUserByIdUseCase.execute(id);
+            
+            UserEmailResponse emailResponse = UserEmailResponse.builder()
+                    .id(user.getId())
+                    .fullName(user.getFullName())
+                    .email(user.getEmail())
+                    .build();
+
+            ApiResponse<UserEmailResponse> result = new ApiResponse<>(
+                    HttpStatus.OK,
+                    "user email retrieved",
+                    emailResponse,
+                    null);
+            return ResponseEntity.ok(result);
+        } catch (com.example.userservice.domain.exception.InvalidId ex) {
+            // User not found - return 404
+            ApiResponse<UserEmailResponse> result = new ApiResponse<>(
+                    HttpStatus.NOT_FOUND,
+                    ex.getMessage(),
+                    null,
+                    "INVALID_ID");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(result);
+        } catch (Exception ex) {
+            // Other errors - return 500
+            ApiResponse<UserEmailResponse> result = new ApiResponse<>(
+                    HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Error retrieving user email: " + ex.getMessage(),
+                    null,
+                    "INTERNAL_SERVER_ERROR");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(result);
+        }
+    }
+
     @DeleteMapping("/{id}")
     // @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<String>> deleteUser(@PathVariable Long id) {
@@ -187,7 +229,7 @@ public class UserController {
      */
     private UserContext extractUserContext(Authentication authentication) {
         if (authentication == null || !authentication.isAuthenticated()) {
-            throw new org.springframework.security.access.AccessDeniedException("User is not authenticated");
+            throw new com.example.userservice.domain.exception.AccessDeniedException("User is not authenticated");
         }
 
         String username = authentication.getName();

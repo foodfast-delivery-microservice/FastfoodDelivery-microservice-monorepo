@@ -2,6 +2,8 @@ package com.example.paymentservice.infrastructure.persistence.adapter;
 
 import com.example.paymentservice.domain.entities.Payment;
 import com.example.paymentservice.domain.repository.PaymentRepository;
+import com.example.paymentservice.domain.valueobjects.PageRequest;
+import com.example.paymentservice.domain.valueobjects.PageResult;
 import com.example.paymentservice.infrastructure.persistence.entity.PaymentJpaEntity;
 import com.example.paymentservice.infrastructure.persistence.mapper.PaymentMapper;
 import com.example.paymentservice.infrastructure.persistence.repository.PaymentJpaRepository;
@@ -54,21 +56,25 @@ public class PaymentRepositoryImpl implements PaymentRepository {
     }
 
     @Override
-    public Page<Payment> findByMerchantId(Long merchantId, Pageable pageable) {
+    public PageResult<Payment> findByMerchantId(Long merchantId, PageRequest pageRequest) {
+        Pageable pageable = PageRequestConverter.toSpringPageable(pageRequest);
         Page<PaymentJpaEntity> jpaPage = paymentJpaRepository.findByMerchantId(merchantId, pageable);
         List<Payment> domainEntities = jpaPage.getContent().stream()
                 .map(PaymentMapper::toDomainEntity)
                 .collect(Collectors.toList());
-        return new PageImpl<>(domainEntities, pageable, jpaPage.getTotalElements());
+        Page<Payment> domainPage = new PageImpl<>(domainEntities, pageable, jpaPage.getTotalElements());
+        return PageResultConverter.toDomainPageResult(domainPage, pageRequest);
     }
 
     @Override
-    public Page<Payment> findByMerchantIdAndStatus(Long merchantId, Payment.Status status, Pageable pageable) {
+    public PageResult<Payment> findByMerchantIdAndStatus(Long merchantId, Payment.Status status, PageRequest pageRequest) {
+        Pageable pageable = PageRequestConverter.toSpringPageable(pageRequest);
         Page<PaymentJpaEntity> jpaPage = paymentJpaRepository.findByMerchantIdAndStatus(merchantId, status, pageable);
         List<Payment> domainEntities = jpaPage.getContent().stream()
                 .map(PaymentMapper::toDomainEntity)
                 .collect(Collectors.toList());
-        return new PageImpl<>(domainEntities, pageable, jpaPage.getTotalElements());
+        Page<Payment> domainPage = new PageImpl<>(domainEntities, pageable, jpaPage.getTotalElements());
+        return PageResultConverter.toDomainPageResult(domainPage, pageRequest);
     }
 
     @Override
@@ -79,32 +85,36 @@ public class PaymentRepositoryImpl implements PaymentRepository {
     }
 
     @Override
-    public Page<Payment> findByMerchantIdAndCreatedAtBetween(
+    public PageResult<Payment> findByMerchantIdAndCreatedAtBetween(
                     Long merchantId,
                     LocalDateTime fromDate,
                     LocalDateTime toDate,
-                    Pageable pageable) {
+                    PageRequest pageRequest) {
+        Pageable pageable = PageRequestConverter.toSpringPageable(pageRequest);
         Page<PaymentJpaEntity> jpaPage = paymentJpaRepository.findByMerchantIdAndCreatedAtBetween(
                 merchantId, fromDate, toDate, pageable);
         List<Payment> domainEntities = jpaPage.getContent().stream()
                 .map(PaymentMapper::toDomainEntity)
                 .collect(Collectors.toList());
-        return new PageImpl<>(domainEntities, pageable, jpaPage.getTotalElements());
+        Page<Payment> domainPage = new PageImpl<>(domainEntities, pageable, jpaPage.getTotalElements());
+        return PageResultConverter.toDomainPageResult(domainPage, pageRequest);
     }
 
     @Override
-    public Page<Payment> findByMerchantIdAndStatusAndCreatedAtBetween(
+    public PageResult<Payment> findByMerchantIdAndStatusAndCreatedAtBetween(
                     Long merchantId,
                     Payment.Status status,
                     LocalDateTime fromDate,
                     LocalDateTime toDate,
-                    Pageable pageable) {
+                    PageRequest pageRequest) {
+        Pageable pageable = PageRequestConverter.toSpringPageable(pageRequest);
         Page<PaymentJpaEntity> jpaPage = paymentJpaRepository.findByMerchantIdAndStatusAndCreatedAtBetween(
                 merchantId, status, fromDate, toDate, pageable);
         List<Payment> domainEntities = jpaPage.getContent().stream()
                 .map(PaymentMapper::toDomainEntity)
                 .collect(Collectors.toList());
-        return new PageImpl<>(domainEntities, pageable, jpaPage.getTotalElements());
+        Page<Payment> domainPage = new PageImpl<>(domainEntities, pageable, jpaPage.getTotalElements());
+        return PageResultConverter.toDomainPageResult(domainPage, pageRequest);
     }
 
     @Override

@@ -5,25 +5,25 @@ import com.example.userservice.domain.exception.InvalidRoleException;
 import com.example.userservice.domain.exception.UsernameAlreadyExistException;
 import com.example.userservice.domain.entities.Restaurant;
 import com.example.userservice.domain.entities.User;
+import com.example.userservice.domain.port.PasswordEncoderPort;
 import com.example.userservice.domain.repository.RestaurantRepository;
 import com.example.userservice.domain.repository.UserRepository;
 import com.example.userservice.infrastructure.service.GeocodingService;
 import com.example.userservice.application.DTOs.user.CreateUserRequest;
 import com.example.userservice.application.DTOs.user.CreateUserResponse;
-import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.math.BigDecimal;
 
 public class CreateUserUseCase {
     private final UserRepository userRepository;
     private final RestaurantRepository restaurantRepository;
-    private final PasswordEncoder passwordEncoder;
+    private final PasswordEncoderPort passwordEncoderPort;
     private final GeocodingService geocodingService;
 
-    public CreateUserUseCase(UserRepository userRepository, RestaurantRepository restaurantRepository, PasswordEncoder passwordEncoder, GeocodingService geocodingService) {
+    public CreateUserUseCase(UserRepository userRepository, RestaurantRepository restaurantRepository, PasswordEncoderPort passwordEncoderPort, GeocodingService geocodingService) {
         this.userRepository = userRepository;
         this.restaurantRepository = restaurantRepository;
-        this.passwordEncoder = passwordEncoder;
+        this.passwordEncoderPort = passwordEncoderPort;
         this.geocodingService = geocodingService;
     }
 
@@ -54,7 +54,7 @@ public class CreateUserUseCase {
         User user = new User();
         user.setUsername(createUserRequest.getUsername());
         user.setEmail(createUserRequest.getEmail());
-        user.setPassword(passwordEncoder.encode(createUserRequest.getPassword()));
+        user.setPassword(passwordEncoderPort.encode(createUserRequest.getPassword()));
         user.setRole(role);
         user.setApproved(approved);
         user.setActive(true);

@@ -49,6 +49,7 @@ public class FailPendingPaymentsDueToMerchantDeactivatedUseCase {
         PaymentFailedEventPayload payload = PaymentFailedEventPayload.builder()
                 .paymentId(payment.getId())
                 .orderId(payment.getOrderId())
+                .userId(payment.getUserId())
                 .reason(reason)
                 .build();
 

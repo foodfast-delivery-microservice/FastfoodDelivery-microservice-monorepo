@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hoàn tiền thành công</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+        }
+
+        .header {
+            background-color: #ff9800;
+            color: #ffffff;
+            padding: 30px 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+
+        .content {
+            padding: 30px 20px;
+        }
+
+        .refund-icon {
+            text-align: center;
+            font-size: 48px;
+            color: #ff9800;
+            margin: 20px 0;
+        }
+
+        .message {
+            text-align: center;
+            font-size: 18px;
+            color: #ff9800;
+            font-weight: bold;
+            margin-bottom: 30px;
+        }
+
+        .details {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .detail-row:last-child {
+            border-bottom: none;
+        }
+
+        .detail-label {
+            font-weight: bold;
+            color: #666;
+        }
+
+        .detail-value {
+            color: #333;
+        }
+
+        .amount {
+            font-size: 24px;
+            font-weight: bold;
+            color: #ff9800;
+        }
+
+        .reason-box {
+            background-color: #fff3cd;
+            border-left: 4px solid #ff9800;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .reason-box p {
+            margin: 5px 0;
+            color: #333;
+        }
+
+        .button {
+            display: block;
+            width: 100%;
+            max-width: 300px;
+            margin: 30px auto;
+            padding: 15px 30px;
+            background-color: #007bff;
+            color: #ffffff;
+            text-decoration: none;
+            border-radius: 5px;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .button:hover {
+            background-color: #0056b3;
+        }
+
+        .footer {
+            background-color: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            font-size: 12px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>Hoàn tiền thành công</h1>
+    </div>
+    <div class="content">
+        <div class="refund-icon">↩</div>
+        <div class="message">Đơn hàng của bạn đã được hoàn tiền!</div>
+
+        <div class="details">
+            <div class="detail-row">
+                <span class="detail-label">Mã đơn hàng:</span>
+                <span class="detail-value" th:text="${orderId}">#12345</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Mã thanh toán:</span>
+                <span class="detail-value" th:text="${paymentId}">#67890</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Số tiền hoàn lại:</span>
+                <span class="detail-value amount" th:text="${amount}">0 VNĐ</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Thời gian hoàn tiền:</span>
+                <span class="detail-value" th:text="${refundTime}">01/01/2024 10:00:00</span>
+            </div>
+        </div>
+
+        <div class="reason-box">
+            <p><strong>Lý do hoàn tiền:</strong></p>
+            <p th:text="${refundReason}">Không xác định</p>
+        </div>
+
+        <a href="#" class="button" th:href="'http://localhost:3000/orders/' + ${orderId}">Xem đơn hàng</a>
+    </div>
+    <div class="footer">
+        <p>Tiền hoàn lại sẽ được chuyển về tài khoản của bạn trong vòng 3-5 ngày làm việc.</p>
+        <p>Nếu bạn có bất kỳ câu hỏi nào, vui lòng liên hệ với chúng tôi qua email hỗ trợ.</p>
+        <p>&copy; 2024 FastFood Delivery. Tất cả quyền được bảo lưu.</p>
+    </div>
+</div>
+</body>
+</html>

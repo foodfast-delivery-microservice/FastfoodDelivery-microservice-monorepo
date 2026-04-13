@@ -7,6 +7,7 @@ import com.example.paymentservice.application.dto.PaymentResponse;
 import com.example.paymentservice.application.dto.PaymentStatisticsResponse;
 import com.example.paymentservice.application.usecase.GetMerchantPaymentStatisticsUseCase;
 import com.example.paymentservice.application.usecase.GetMerchantPaymentsUseCase;
+import com.example.paymentservice.application.usecase.GetPaymentByOrderIdUseCase;
 import com.example.paymentservice.application.usecase.ProcessPaymentUseCase;
 import com.example.paymentservice.domain.exception.InvalidJwtTokenException;
 import com.example.paymentservice.infrastructure.security.JwtTokenService;
@@ -33,7 +34,7 @@ public class PaymentController {
     private final JwtTokenService jwtTokenService;
     private final GetMerchantPaymentsUseCase getMerchantPaymentsUseCase;
     private final GetMerchantPaymentStatisticsUseCase getMerchantPaymentStatisticsUseCase;
-    private final com.example.paymentservice.domain.repository.PaymentRepository paymentRepository;
+    private final GetPaymentByOrderIdUseCase getPaymentByOrderIdUseCase;
 
     @PostMapping
     public ResponseEntity<?> processPayment(
@@ -180,24 +181,8 @@ public class PaymentController {
      */
     @GetMapping("/order/{orderId}")
     public ResponseEntity<PaymentResponse> getPaymentByOrderId(@PathVariable Long orderId) {
-        log.info("Getting payment for orderId: {}", orderId);
-        
-        return paymentRepository.findByOrderId(orderId)
-                .map(payment -> {
-                    PaymentResponse response = PaymentResponse.builder()
-                            .id(payment.getId())
-                            .orderId(payment.getOrderId())
-                            .userId(payment.getUserId())
-                            .merchantId(payment.getMerchantId())
-                            .amount(payment.getAmount())
-                            .currency(payment.getCurrency())
-                            .status(payment.getStatus().toString())
-                            .transactionNo(payment.getTransactionNo())
-                            .failReason(payment.getFailReason())
-                            .timestamp(payment.getCreatedAt())
-                            .build();
-                    return ResponseEntity.ok(response);
-                })
-                .orElse(ResponseEntity.notFound().build());
+        return getPaymentByOrderIdUseCase.execute(orderId)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 }

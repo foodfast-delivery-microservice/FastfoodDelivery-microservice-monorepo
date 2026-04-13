@@ -1,8 +1,8 @@
 package com.example.userservice.application.usecases.user;
 
 import com.example.userservice.application.DTOs.user.UserContext;
+import com.example.userservice.domain.exception.AccessDeniedException;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 
 /**

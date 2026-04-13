@@ -5,12 +5,10 @@ import com.example.paymentservice.application.dto.PaymentListRequest;
 import com.example.paymentservice.application.dto.PaymentResponse;
 import com.example.paymentservice.domain.entities.Payment;
 import com.example.paymentservice.domain.repository.PaymentRepository;
+import com.example.paymentservice.domain.valueobjects.PageRequest;
+import com.example.paymentservice.domain.valueobjects.PageResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,35 +26,35 @@ public class GetMerchantPaymentsUseCase {
     public PageResponse<PaymentResponse> execute(Long merchantId, PaymentListRequest request) {
         log.info("Getting payments for merchant: {} with request: {}", merchantId, request);
 
-        // Build pageable for pagination and sorting
-        Pageable pageable = buildPageable(request);
+        // Build domain page request
+        PageRequest pageRequest = buildPageRequest(request);
 
-        // Query payments based on filters
-        Page<Payment> paymentPage;
+        // Query payments based on filters using domain repository
+        PageResult<Payment> paymentPage;
         if (request.getStatus() != null && !request.getStatus().trim().isEmpty()) {
             try {
                 Payment.Status status = Payment.Status.valueOf(request.getStatus().toUpperCase());
                 if (request.getFromDate() != null && request.getToDate() != null) {
                     paymentPage = paymentRepository.findByMerchantIdAndStatusAndCreatedAtBetween(
-                            merchantId, status, request.getFromDate(), request.getToDate(), pageable);
+                            merchantId, status, request.getFromDate(), request.getToDate(), pageRequest);
                 } else {
-                    paymentPage = paymentRepository.findByMerchantIdAndStatus(merchantId, status, pageable);
+                    paymentPage = paymentRepository.findByMerchantIdAndStatus(merchantId, status, pageRequest);
                 }
             } catch (IllegalArgumentException e) {
                 log.warn("Invalid payment status: {}", request.getStatus());
                 // Fallback to query without status filter
                 if (request.getFromDate() != null && request.getToDate() != null) {
                     paymentPage = paymentRepository.findByMerchantIdAndCreatedAtBetween(
-                            merchantId, request.getFromDate(), request.getToDate(), pageable);
+                            merchantId, request.getFromDate(), request.getToDate(), pageRequest);
                 } else {
-                    paymentPage = paymentRepository.findByMerchantId(merchantId, pageable);
+                    paymentPage = paymentRepository.findByMerchantId(merchantId, pageRequest);
                 }
             }
         } else if (request.getFromDate() != null && request.getToDate() != null) {
             paymentPage = paymentRepository.findByMerchantIdAndCreatedAtBetween(
-                    merchantId, request.getFromDate(), request.getToDate(), pageable);
+                    merchantId, request.getFromDate(), request.getToDate(), pageRequest);
         } else {
-            paymentPage = paymentRepository.findByMerchantId(merchantId, pageable);
+            paymentPage = paymentRepository.findByMerchantId(merchantId, pageRequest);
         }
 
         // Convert to response
@@ -66,25 +64,28 @@ public class GetMerchantPaymentsUseCase {
 
         return PageResponse.<PaymentResponse>builder()
                 .content(paymentResponses)
-                .page(paymentPage.getNumber())
+                .page(paymentPage.getPage())
                 .size(paymentPage.getSize())
                 .totalElements(paymentPage.getTotalElements())
                 .totalPages(paymentPage.getTotalPages())
                 .first(paymentPage.isFirst())
                 .last(paymentPage.isLast())
-                .hasNext(paymentPage.hasNext())
-                .hasPrevious(paymentPage.hasPrevious())
+                .hasNext(paymentPage.isHasNext())
+                .hasPrevious(paymentPage.isHasPrevious())
                 .build();
     }
 
-    private Pageable buildPageable(PaymentListRequest request) {
-        Sort.Direction direction = "ASC".equalsIgnoreCase(request.getSortDirection())
-                ? Sort.Direction.ASC
-                : Sort.Direction.DESC;
+    private PageRequest buildPageRequest(PaymentListRequest request) {
+        PageRequest.SortDirection sortDirection = "ASC".equalsIgnoreCase(request.getSortDirection())
+                ? PageRequest.SortDirection.ASC
+                : PageRequest.SortDirection.DESC;
 
-        Sort sort = Sort.by(direction, request.getSortBy());
-
-        return PageRequest.of(request.getPage(), request.getSize(), sort);
+        return PageRequest.builder()
+                .page(request.getPage())
+                .size(request.getSize())
+                .sortBy(request.getSortBy())
+                .sortDirection(sortDirection)
+                .build();
     }
 
     private PaymentResponse mapToPaymentResponse(Payment payment) {

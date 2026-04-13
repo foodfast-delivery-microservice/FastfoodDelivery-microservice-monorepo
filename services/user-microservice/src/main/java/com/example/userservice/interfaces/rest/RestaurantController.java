@@ -4,6 +4,7 @@ import com.example.userservice.application.usecases.restaurant.GetRestaurantById
 import com.example.userservice.application.usecases.restaurant.GetRestaurantByMerchantIdUseCase;
 import com.example.userservice.application.usecases.restaurant.GetRestaurantsUseCase;
 import com.example.userservice.application.usecases.restaurant.UpdateRestaurantUseCase;
+import com.example.userservice.domain.exception.AccessDeniedException;
 import com.example.userservice.domain.exception.ResourceNotFoundException;
 import com.example.userservice.domain.entities.Restaurant;
 import com.example.userservice.domain.entities.User;
@@ -22,7 +23,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.lang.NonNull;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
