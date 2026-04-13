@@ -13,7 +13,7 @@ import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 
 @Configuration
-public class jwtConfig {
+public class JwtConfig {
 
     @Value("${app.jwt.base64-secretkey}")
     private String jwtKey;

@@ -2,10 +2,7 @@ package com.example.droneservice.domain.entities;
 
 import com.example.droneservice.domain.valueobjects.Coordinates;
 import com.example.droneservice.domain.valueobjects.Status;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.time.LocalDateTime;
 
@@ -15,6 +12,7 @@ import java.time.LocalDateTime;
  * framework.
  */
 @Getter
+@Setter
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
@@ -91,44 +89,4 @@ public class DroneMission {
         return status.isFinal();
     }
 
-    // Setters for framework compatibility
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public void setDrone(Drone drone) {
-        this.drone = drone;
-    }
-
-    public void setOrderId(Long orderId) {
-        this.orderId = orderId;
-    }
-
-    public void setPickupLocation(Coordinates pickupLocation) {
-        this.pickupLocation = pickupLocation;
-    }
-
-    public void setDeliveryLocation(Coordinates deliveryLocation) {
-        this.deliveryLocation = deliveryLocation;
-    }
-
-    public void setStatus(Status status) {
-        this.status = status;
-    }
-
-    public void setDistanceKm(Double distanceKm) {
-        this.distanceKm = distanceKm;
-    }
-
-    public void setEstimatedDurationMinutes(Integer estimatedDurationMinutes) {
-        this.estimatedDurationMinutes = estimatedDurationMinutes;
-    }
-
-    public void setStartedAt(LocalDateTime startedAt) {
-        this.startedAt = startedAt;
-    }
-
-    public void setCompletedAt(LocalDateTime completedAt) {
-        this.completedAt = completedAt;
-    }
 }

@@ -1,10 +1,7 @@
 package com.example.droneservice.domain.entities;
 
 import com.example.droneservice.domain.valueobjects.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -15,6 +12,7 @@ import java.util.List;
  * framework.
  */
 @Getter
+@Setter
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
@@ -115,42 +113,5 @@ public class Drone {
                     "Invalid state transition from " + this.state + " to " + newState);
         }
         this.state = newState;
-    }
-
-    // Setters for framework compatibility (e.g., mappers)
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public void setSerialNumber(SerialNumber serialNumber) {
-        this.serialNumber = serialNumber;
-    }
-
-    public void setModel(String model) {
-        this.model = model;
-    }
-
-    public void setBatteryLevel(BatteryLevel batteryLevel) {
-        this.batteryLevel = batteryLevel;
-    }
-
-    public void setState(State state) {
-        this.state = state;
-    }
-
-    public void setCurrentLocation(Coordinates currentLocation) {
-        this.currentLocation = currentLocation;
-    }
-
-    public void setBaseLocation(Coordinates baseLocation) {
-        this.baseLocation = baseLocation;
-    }
-
-    public void setWeightCapacity(WeightCapacity weightCapacity) {
-        this.weightCapacity = weightCapacity;
-    }
-
-    public void setMissions(List<DroneMission> missions) {
-        this.missions = missions;
     }
 }

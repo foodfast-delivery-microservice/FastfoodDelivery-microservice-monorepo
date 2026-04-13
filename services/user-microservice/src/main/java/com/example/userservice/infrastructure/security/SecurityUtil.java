@@ -35,6 +35,7 @@ public class SecurityUtil {
         Instant now = Instant.now();
         Instant validity = now.plus(jwtAccessExpiration, ChronoUnit.SECONDS);
 
+        // jwt bây giờ có đủ thông tin quyền của user
         JwtClaimsSet claims = JwtClaimsSet.builder()
                 .issuedAt(now)
                 .expiresAt(validity)

@@ -39,7 +39,7 @@ public class AssignDroneToOrderUseCase {
 
         @Transactional
         public MissionResponse execute(AssignDroneRequest request) {
-                log.info("🚁 Assigning drone to order: {}", request.getOrderId());
+                log.info("Assigning drone to order: {}", request.getOrderId());
 
                 // Find available drone (đã validate pin đủ cho toàn bộ lộ trình)
                 Drone drone = getAvailableDroneUseCase.execute(
@@ -64,14 +64,14 @@ public class AssignDroneToOrderUseCase {
 
                 // Validate battery using BatteryLevel value object
                 if (!drone.getBatteryLevel().canSupport(totalDistance, 10.0)) {
-                        log.error("❌ Battery validation failed! Drone {} has insufficient battery",
+                        log.error("Battery validation failed! Drone {} has insufficient battery",
                                         drone.getSerialNumber().getValue());
                         throw new IllegalStateException(
                                         String.format("Drone %s has insufficient battery for this mission",
                                                         drone.getSerialNumber().getValue()));
                 }
 
-                log.info("✅ Battery validation passed: Drone {} can complete mission",
+                log.info("Battery validation passed: Drone {} can complete mission",
                                 drone.getSerialNumber().getValue());
 
                 // Calculate mission details (sử dụng totalDistance đã tính ở trên)
