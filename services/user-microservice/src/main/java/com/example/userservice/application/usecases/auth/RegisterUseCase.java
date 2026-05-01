@@ -20,17 +20,21 @@ public class RegisterUseCase {
     private final com.example.userservice.application.service.EventPayloadSerializer eventPayloadSerializer;
     private final com.example.userservice.application.service.EmailOtpService emailOtpService;
 
+    private final String adminSecretKey;
+
     public RegisterUseCase(UserRepository userRepository, RestaurantRepository restaurantRepository,
             PasswordEncoderPort passwordEncoderPort,
             com.example.userservice.domain.repository.OutboxEventRepository outboxEventRepository,
             com.example.userservice.application.service.EventPayloadSerializer eventPayloadSerializer,
-            com.example.userservice.application.service.EmailOtpService emailOtpService) {
+            com.example.userservice.application.service.EmailOtpService emailOtpService,
+            String adminSecretKey) {
         this.userRepository = userRepository;
         this.restaurantRepository = restaurantRepository;
         this.passwordEncoderPort = passwordEncoderPort;
         this.outboxEventRepository = outboxEventRepository;
         this.eventPayloadSerializer = eventPayloadSerializer;
         this.emailOtpService = emailOtpService;
+        this.adminSecretKey = adminSecretKey;
     }
 
     // cho user tự đăng kí
@@ -42,7 +46,7 @@ public class RegisterUseCase {
             throw new EmailAlreadyExistException(registerRequest.getEmail());
         }
 
-        User.UserRole role = resolveRole(registerRequest.getRole());
+        User.UserRole role = resolveRole(registerRequest.getRole(), registerRequest.getAdminSecret());
         boolean approved = role != User.UserRole.MERCHANT;
 
         User user = new User();
@@ -103,7 +107,7 @@ public class RegisterUseCase {
         return CreateUserResponse.fromEntity(saved);
     }
 
-    private User.UserRole resolveRole(String requestedRole) {
+    private User.UserRole resolveRole(String requestedRole, String providedAdminSecret) {
         if (requestedRole == null || requestedRole.trim().isEmpty()) {
             return User.UserRole.USER;
         }
@@ -111,7 +115,9 @@ public class RegisterUseCase {
         try {
             User.UserRole role = User.UserRole.valueOf(requestedRole.trim().toUpperCase());
             if (role == User.UserRole.ADMIN) {
-                throw new InvalidRoleException(requestedRole);
+                if (providedAdminSecret == null || !providedAdminSecret.equals(this.adminSecretKey)) {
+                    throw new InvalidRoleException(requestedRole);
+                }
             }
             return role;
         } catch (IllegalArgumentException ex) {

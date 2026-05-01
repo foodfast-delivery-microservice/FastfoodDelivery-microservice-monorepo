@@ -55,21 +55,31 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             Jwt jwt = decoder.decode(token);
 
             String username = jwt.getSubject();
+            System.out.println("Processing JWT for user: " + username);
 
             if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+                try {
+                    UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+                    
+                    System.out.println("User authorities: " + userDetails.getAuthorities());
 
-                UsernamePasswordAuthenticationToken authToken =
-                        new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+                    UsernamePasswordAuthenticationToken authToken =
+                            new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
 
-                authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                    authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
-                SecurityContextHolder.getContext().setAuthentication(authToken);
+                    SecurityContextHolder.getContext().setAuthentication(authToken);
+                    System.out.println("Authentication set in SecurityContext for: " + username);
+                } catch (org.springframework.security.core.userdetails.UsernameNotFoundException e) {
+                    System.err.println("User not found in database: " + username + ". Proceeding as unauthenticated.");
+                }
             }
 
         } catch (JwtException e) {
             // Nếu token sai hoặc hết hạn thì bỏ qua
-            System.out.println("Invalid JWT: " + e.getMessage());
+            System.err.println("Invalid JWT for request " + request.getRequestURI() + ": " + e.getMessage());
+        } catch (Exception e) {
+            System.err.println("Unexpected error processing JWT: " + e.getMessage());
         }
 
         filterChain.doFilter(request, response);

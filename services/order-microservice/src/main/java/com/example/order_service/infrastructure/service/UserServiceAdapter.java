@@ -95,14 +95,13 @@ public class UserServiceAdapter implements UserServicePort {
                 log.info("=== CALLING USER SERVICE ===");
                 log.info("Endpoint: GET /api/v1/users/{}/validate", userId);
 
-                // Gọi User Service GET /api/v1/users/{id}/validate (endpoint cho phép USER role)
+                // Gọi User Service GET /api/v1/users/internal/validate/{id} (endpoint nội bộ, permitAll)
                 // Response format: ApiResponse<CreateUserResponse>
                 String responseJson = userWebClient.get()
-                        .uri("/{id}/validate", userId)
-                        .header("Authorization", "Bearer " + jwtToken)
+                        .uri("/internal/validate/{id}", userId)
                         .retrieve()
                         .bodyToMono(String.class)
-                        .doOnError(error -> log.error("Error calling User Service: {}", error.getMessage()))
+                        .doOnError(error -> log.error("Error calling User Service Internal: {}", error.getMessage()))
                         .block();
 
                 if (responseJson == null) {
@@ -140,14 +139,16 @@ public class UserServiceAdapter implements UserServicePort {
             } catch (WebClientResponseException.Forbidden ex) {
                 // 403 Forbidden là lỗi authorization, không phải service unavailable
                 // Không nên trigger Circuit Breaker với lỗi này
-                log.error("Access forbidden when calling user service (403). UserId: {}, Message: {}", 
-                        userId, ex.getMessage());
+                String responseBody = ex.getResponseBodyAsString();
+                log.error("Access forbidden when calling user service (403). UserId: {}, Error: {}, Response: {}", 
+                        userId, ex.getMessage(), responseBody);
                 throw new OrderValidationException(
-                        "Không có quyền truy cập User Service. Vui lòng kiểm tra token và quyền truy cập."
+                        "Không có quyền truy cập User Service. Token có thể thiếu role cần thiết hoặc endpoint bị chặn."
                 );
             } catch (WebClientResponseException.Unauthorized ex) {
                 // 401 Unauthorized là lỗi authentication
-                log.error("Auth failed when calling user service (401)", ex);
+                String responseBody = ex.getResponseBodyAsString();
+                log.error("Auth failed when calling user service (401). Error: {}, Response: {}", ex.getMessage(), responseBody);
                 throw new OrderValidationException("Token không hợp lệ hoặc đã hết hạn");
             } catch (org.springframework.web.reactive.function.client.WebClientResponseException e) {
                 // Các lỗi HTTP khác (500, 503, etc.) - có thể là service unavailable

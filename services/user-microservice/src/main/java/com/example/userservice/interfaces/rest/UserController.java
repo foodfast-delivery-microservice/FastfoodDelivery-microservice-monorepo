@@ -107,10 +107,10 @@ public class UserController {
 
     /**
      * Validate user endpoint for Order Service
-     * Allows USER role to validate if user exists and is active
-     * GET /api/v1/users/{id}/validate
+     * Public: GET /api/v1/users/{id}/validate
+     * Internal: GET /api/v1/users/internal/validate/{id}
      */
-    @GetMapping("/{id}/validate")
+    @GetMapping({ "/{id}/validate", "/internal/validate/{id}" })
     public ResponseEntity<ApiResponse<CreateUserResponse>> validateUser(@PathVariable Long id) {
         try {
             CreateUserResponse getUser = getUserByIdUseCase.execute(id);

@@ -44,7 +44,7 @@ services:
       - "8080:8080"
     environment:
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://registry-service:8761/eureka/
-      APP_JWT_SECRETKEY: g5rhnoLF2O4S/p5wPKY9ojbK3X2g6ifB6cG9lkaLUg9quMDtO1PSI4J6biyJHZ5uAnyTbuTyaWRpHy+BADU7NQ==
+      APP_JWT_SECRETKEY: ${APP_JWT_SECRETKEY}
     depends_on:
       registry-service:
         condition: service_started
@@ -61,7 +61,8 @@ services:
       SPRING_DATASOURCE_PASSWORD: 1234
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://registry-service:8761/eureka/
       SPRING_RABBITMQ_HOST: rabbitmq-broker
-      APP_JWT_SECRETKEY: g5rhnoLF2O4S/p5wPKY9ojbK3X2g6ifB6cG9lkaLUg9quMDtO1PSI4J6biyJHZ5uAnyTbuTyaWRpHy+BADU7NQ==
+      APP_JWT_SECRETKEY: ${APP_JWT_SECRETKEY}
+      APP_ADMIN_SECRET: ${APP_ADMIN_SECRET}
     depends_on:
       registry-service:
         condition: service_started
@@ -81,7 +82,7 @@ services:
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: 1234
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://registry-service:8761/eureka/
-      APP_JWT_SECRETKEY: g5rhnoLF2O4S/p5wPKY9ojbK3X2g6ifB6cG9lkaLUg9quMDtO1PSI4J6biyJHZ5uAnyTbuTyaWRpHy+BADU7NQ==
+      APP_JWT_SECRETKEY: ${APP_JWT_SECRETKEY}
       SPRING_RABBITMQ_HOST: rabbitmq-broker
     depends_on:
       registry-service:
@@ -132,7 +133,7 @@ services:
         condition: service_started
 
   drone-service:
-    build: ./services/Drone-service
+    build: ./services/drone-microservice
     container_name: drone-service
     ports:
       - "8085:8085"
@@ -161,11 +162,16 @@ services:
       SPRING_RABBITMQ_HOST: rabbitmq-broker
       MAIL_USERNAME: ${MAIL_USERNAME}
       MAIL_PASSWORD: ${MAIL_PASSWORD}
+      DATABASE_URL: jdbc:mysql://mysql-db:3306/notificationservice
+      DATABASE_USERNAME: root
+      DATABASE_PASSWORD: 1234
     depends_on:
       registry-service:
         condition: service_started
       rabbitmq-broker:
         condition: service_started
+      mysql-db:
+        condition: service_healthy
 
   # 9. Frontend Application
   frontend:

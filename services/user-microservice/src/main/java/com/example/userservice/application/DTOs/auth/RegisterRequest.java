@@ -15,6 +15,10 @@ public class RegisterRequest {
   // maybe dư
   private String role;
 
+  // for seeding admin via api
+  private String adminSecret;
+
+
   // Common Profile Fields
   private String fullName;
   private String phone;

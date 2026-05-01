@@ -46,6 +46,7 @@ public class SecurityConfig {
                         
                         // Internal API for service-to-service calls (no authentication required)
                         .requestMatchers("/api/internal/**").permitAll()
+                        .requestMatchers("/api/v1/users/internal/**").permitAll()
 
                         .requestMatchers("/api/v1/auth/register").permitAll()
                         .requestMatchers("/api/v1/auth/login").permitAll()
@@ -58,8 +59,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PATCH, "/api/v1/restaurants/me/**").hasAnyRole("MERCHANT", "ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/v1/restaurants/**").permitAll()
                         // Validation endpoint cho phép USER role (cho Order Service)
-                        // Pattern: /api/v1/users/{id}/validate - chỉ match 1 level path variable
-                        .requestMatchers(HttpMethod.GET, "/api/v1/users/*/validate")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/users/{id}/validate")
                         .hasAnyRole("USER", "ADMIN", "MERCHANT")
 
                         // Email endpoint for Notification Service (no authentication required)

@@ -18,9 +18,10 @@ public class AuthUseCaseconfig {
             PasswordEncoderPort passwordEncoderPort,
             com.example.userservice.domain.repository.OutboxEventRepository outboxEventRepository,
             com.example.userservice.application.service.EventPayloadSerializer eventPayloadSerializer,
-            EmailOtpService emailOtpService) {
+            EmailOtpService emailOtpService,
+            @org.springframework.beans.factory.annotation.Value("${app.admin.secret:super_secret_admin_123}") String adminSecretKey) {
         return new RegisterUseCase(userRepository, restaurantRepository, passwordEncoderPort, outboxEventRepository,
-                eventPayloadSerializer, emailOtpService);
+                eventPayloadSerializer, emailOtpService, adminSecretKey);
     }
 
     @Bean
