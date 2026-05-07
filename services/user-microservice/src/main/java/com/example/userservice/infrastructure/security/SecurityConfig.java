@@ -50,6 +50,8 @@ public class SecurityConfig {
 
                         .requestMatchers("/api/v1/auth/register").permitAll()
                         .requestMatchers("/api/v1/auth/login").permitAll()
+                        .requestMatchers("/api/v1/auth/forgot-password").permitAll()
+                        .requestMatchers("/api/v1/auth/reset-password").permitAll()
                         .requestMatchers("/api/v1/auth/email/verify-otp").permitAll()
                         .requestMatchers("/api/v1/auth/email/resend-otp").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
