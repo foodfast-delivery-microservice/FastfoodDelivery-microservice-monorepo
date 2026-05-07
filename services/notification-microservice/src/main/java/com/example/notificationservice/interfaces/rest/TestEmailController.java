@@ -40,7 +40,7 @@ public class TestEmailController {
                     .status("SUCCESS")
                     .build();
 
-            emailSenderPort.sendPaymentSuccessEmail(eventDto, request.getEmail());
+            emailSenderPort.sendPaymentSuccessEmail(eventDto, request.getEmail(), request.getUserId());
 
             return ResponseEntity.ok("Payment success email sent successfully to: " + request.getEmail());
         } catch (Exception e) {
@@ -70,7 +70,7 @@ public class TestEmailController {
                     .failureReason(request.getFailureReason() != null ? request.getFailureReason() : "Lỗi thanh toán không xác định")
                     .build();
 
-            emailSenderPort.sendPaymentFailedEmail(eventDto, request.getEmail());
+            emailSenderPort.sendPaymentFailedEmail(eventDto, request.getEmail(), request.getUserId());
 
             return ResponseEntity.ok("Payment failed email sent successfully to: " + request.getEmail());
         } catch (Exception e) {
@@ -99,7 +99,7 @@ public class TestEmailController {
                     .failureReason(request.getFailureReason() != null ? request.getFailureReason() : "Hoàn tiền theo yêu cầu")
                     .build();
 
-            emailSenderPort.sendPaymentRefundedEmail(eventDto, request.getEmail());
+            emailSenderPort.sendPaymentRefundedEmail(eventDto, request.getEmail(), request.getUserId());
 
             return ResponseEntity.ok("Payment refunded email sent successfully to: " + request.getEmail());
         } catch (Exception e) {

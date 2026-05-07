@@ -49,7 +49,7 @@ public class SendOrderConfirmedEmailUseCase {
             throw new IllegalArgumentException("User email not found for userId: " + event.getUserId());
         }
 
-        emailSenderPort.sendOrderConfirmedEmail(event, user.getEmail());
+        emailSenderPort.sendOrderConfirmedEmail(event, user.getEmail(), event.getUserId());
         log.info("Order confirmed email sent successfully: userId={}, orderId={}",
                 event.getUserId(), event.getOrderId());
     }

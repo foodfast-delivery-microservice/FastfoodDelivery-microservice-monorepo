@@ -18,5 +18,13 @@ build/
 # Bỏ qua thư mục uploads (files được upload từ users)
 uploads/
 **/uploads/
+docs/
+artifacts/
+**/node_modules
 
+# AI Agents & IDE metadata
 .agent/
+.agents/
+.claude/
+.cursor/
+skills-lock.json

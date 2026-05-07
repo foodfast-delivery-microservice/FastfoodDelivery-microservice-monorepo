@@ -1,8 +1,10 @@
 package com.example.userservice.interfaces.rest;
 
 import com.example.userservice.application.usecases.user.GetUserByIdUseCase;
+import com.example.userservice.application.usecases.user.UpdateEmailDeliverabilityUseCase;
 import com.example.userservice.interfaces.common.ApiResponse;
 import com.example.userservice.application.DTOs.user.CreateUserResponse;
+import com.example.userservice.application.DTOs.user.UpdateEmailDeliverabilityRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -20,6 +22,7 @@ import org.springframework.web.bind.annotation.*;
 public class InternalUserController {
 
     private final GetUserByIdUseCase getUserByIdUseCase;
+    private final UpdateEmailDeliverabilityUseCase updateEmailDeliverabilityUseCase;
 
     /**
      * Validate user by user ID (Internal API - no authentication required)
@@ -59,6 +62,44 @@ public class InternalUserController {
             ApiResponse<CreateUserResponse> result = new ApiResponse<>(
                     HttpStatus.INTERNAL_SERVER_ERROR,
                     "Error validating user: " + ex.getMessage(),
+                    null,
+                    "INTERNAL_SERVER_ERROR"
+            );
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(result);
+        }
+    }
+
+    @PatchMapping("/{id}/deliverability")
+    public ResponseEntity<ApiResponse<CreateUserResponse>> updateEmailDeliverability(
+            @PathVariable Long id,
+            @RequestBody UpdateEmailDeliverabilityRequest request
+    ) {
+        log.info("Internal API: Updating email deliverability for userId={}, undeliverable={}",
+                id, request.getUndeliverable());
+
+        try {
+            com.example.userservice.domain.entities.User updatedUser = updateEmailDeliverabilityUseCase.execute(id, request);
+            CreateUserResponse response = CreateUserResponse.fromEntity(updatedUser);
+            ApiResponse<CreateUserResponse> result = new ApiResponse<>(
+                    HttpStatus.OK,
+                    "user email deliverability updated",
+                    response,
+                    null
+            );
+            return ResponseEntity.ok(result);
+        } catch (com.example.userservice.domain.exception.InvalidId ex) {
+            ApiResponse<CreateUserResponse> result = new ApiResponse<>(
+                    HttpStatus.NOT_FOUND,
+                    ex.getMessage(),
+                    null,
+                    "INVALID_ID"
+            );
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(result);
+        } catch (Exception ex) {
+            log.error("Internal API: Error updating user deliverability for userId={}", id, ex);
+            ApiResponse<CreateUserResponse> result = new ApiResponse<>(
+                    HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Error updating user deliverability: " + ex.getMessage(),
                     null,
                     "INTERNAL_SERVER_ERROR"
             );

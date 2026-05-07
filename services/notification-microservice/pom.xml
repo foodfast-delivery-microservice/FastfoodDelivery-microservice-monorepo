@@ -123,6 +123,12 @@
             <version>7.4</version>
         </dependency>
 
+        <!-- Redis for Idempotency and Caching -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
+        </dependency>
+
         <!-- Lombok -->
         <dependency>
             <groupId>org.projectlombok</groupId>

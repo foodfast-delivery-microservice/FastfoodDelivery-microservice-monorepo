@@ -147,7 +147,10 @@ public class RabbitMQConfig {
 
     @Bean
     public Jackson2JsonMessageConverter jackson2JsonMessageConverter() {
-        return new Jackson2JsonMessageConverter();
+        Jackson2JsonMessageConverter converter = new Jackson2JsonMessageConverter();
+        // Configure to use the type from the listener method signature if __TypeId__ is missing or doesn't match
+        converter.setAlwaysConvertToInferredType(true);
+        return converter;
     }
 
     @Bean

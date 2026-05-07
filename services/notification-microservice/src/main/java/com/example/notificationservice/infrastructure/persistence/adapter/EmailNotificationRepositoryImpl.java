@@ -83,6 +83,7 @@ public class EmailNotificationRepositoryImpl implements EmailNotificationReposit
                 .errorMessage(domain.getErrorMessage())
                 .eventId(domain.getEventId())
                 .payloadJson(domain.getPayloadJson())
+                .userId(domain.getUserId())
                 .build();
         return entity;
     }
@@ -102,6 +103,7 @@ public class EmailNotificationRepositoryImpl implements EmailNotificationReposit
                 .errorMessage(entity.getErrorMessage())
                 .eventId(entity.getEventId())
                 .payloadJson(entity.getPayloadJson())
+                .userId(entity.getUserId())
                 .build();
     }
 }

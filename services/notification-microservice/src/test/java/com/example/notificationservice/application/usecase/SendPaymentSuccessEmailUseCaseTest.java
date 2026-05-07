@@ -60,14 +60,14 @@ class SendPaymentSuccessEmailUseCaseTest {
         useCase.handle(eventDto);
 
         verify(userServicePort).getUserEmailById(10L);
-        verify(emailSenderPort).sendPaymentSuccessEmail(eq(eventDto), eq("test@example.com"));
+        verify(emailSenderPort).sendPaymentSuccessEmail(eq(eventDto), eq("test@example.com"), eq(10L));
     }
 
     @Test
     void shouldThrowExceptionWhenEventIsNull() {
         assertThrows(IllegalArgumentException.class, () -> useCase.handle(null));
         verify(userServicePort, never()).getUserEmailById(any());
-        verify(emailSenderPort, never()).sendPaymentSuccessEmail(any(), any());
+        verify(emailSenderPort, never()).sendPaymentSuccessEmail(any(), any(), any());
     }
 
     @Test
@@ -77,7 +77,7 @@ class SendPaymentSuccessEmailUseCaseTest {
         assertThrows(IllegalArgumentException.class, () -> useCase.handle(eventDto));
 
         verify(userServicePort, never()).getUserEmailById(any());
-        verify(emailSenderPort, never()).sendPaymentSuccessEmail(any(), any());
+        verify(emailSenderPort, never()).sendPaymentSuccessEmail(any(), any(), any());
     }
 
     @Test
@@ -87,7 +87,7 @@ class SendPaymentSuccessEmailUseCaseTest {
         assertThrows(IllegalArgumentException.class, () -> useCase.handle(eventDto));
 
         verify(userServicePort).getUserEmailById(10L);
-        verify(emailSenderPort, never()).sendPaymentSuccessEmail(any(), any());
+        verify(emailSenderPort, never()).sendPaymentSuccessEmail(any(), any(), any());
     }
 
     @Test
@@ -98,7 +98,7 @@ class SendPaymentSuccessEmailUseCaseTest {
         assertThrows(IllegalArgumentException.class, () -> useCase.handle(eventDto));
 
         verify(userServicePort).getUserEmailById(10L);
-        verify(emailSenderPort, never()).sendPaymentSuccessEmail(any(), any());
+        verify(emailSenderPort, never()).sendPaymentSuccessEmail(any(), any(), any());
     }
 
     @Test
@@ -109,6 +109,6 @@ class SendPaymentSuccessEmailUseCaseTest {
         assertThrows(IllegalArgumentException.class, () -> useCase.handle(eventDto));
 
         verify(userServicePort).getUserEmailById(10L);
-        verify(emailSenderPort, never()).sendPaymentSuccessEmail(any(), any());
+        verify(emailSenderPort, never()).sendPaymentSuccessEmail(any(), any(), any());
     }
 }

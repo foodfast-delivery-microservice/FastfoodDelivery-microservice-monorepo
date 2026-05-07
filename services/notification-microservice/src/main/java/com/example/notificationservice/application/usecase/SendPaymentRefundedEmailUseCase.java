@@ -81,7 +81,7 @@ public class SendPaymentRefundedEmailUseCase {
                 .build();
 
         // 4. Send email
-        emailSenderPort.sendPaymentRefundedEmail(eventDto, user.getEmail());
+        emailSenderPort.sendPaymentRefundedEmail(eventDto, user.getEmail(), order.getUserId());
         log.info("Payment refunded email sent successfully: userId={}, orderId={}",
                 order.getUserId(), orderId);
     }

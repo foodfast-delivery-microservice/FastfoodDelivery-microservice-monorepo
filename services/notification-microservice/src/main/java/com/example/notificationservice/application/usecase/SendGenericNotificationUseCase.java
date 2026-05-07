@@ -53,6 +53,7 @@ public class SendGenericNotificationUseCase {
             Notification notification = Notification.builder()
                     .type(event.getEventType())
                     .recipient(event.getRecipient())
+                    .userId(event.getUserId())
                     .template(event.getTemplate())
                     .data(event.getData())
                     .build();

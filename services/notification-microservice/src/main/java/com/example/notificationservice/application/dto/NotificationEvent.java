@@ -27,5 +27,7 @@ public class NotificationEvent implements Serializable {
     @NotBlank(message = "Template cannot be blank")
     private String template;
 
+    private Long userId;
+
     private Map<String, Object> data;
 }
