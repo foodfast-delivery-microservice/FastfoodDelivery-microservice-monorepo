@@ -13,6 +13,7 @@ public class Notification {
 
     private NotificationType type;
     private EmailAddress recipient;
+    private Long userId; // Added for deliverability check
     private String template;
     private Map<String, Object> data;
     private String subject;
@@ -31,6 +32,10 @@ public class Notification {
 
     public EmailAddress getRecipient() {
         return recipient;
+    }
+
+    public Long getUserId() {
+        return userId;
     }
 
     public String getTemplate() {
@@ -101,6 +106,7 @@ public class Notification {
             case PAYMENT_SUCCESS -> "Payment Successful!";
             case PAYMENT_FAILED -> "Payment Required: Transaction Failed";
             case PAYMENT_REFUNDED -> "Refund Processed";
+            case USER_FORGOT_PASSWORD -> "Password Reset Request";
             default -> "Notification from FastFood Delivery";
         };
     }
@@ -108,6 +114,7 @@ public class Notification {
     public static class NotificationBuilder {
         private NotificationType type;
         private EmailAddress recipient;
+        private Long userId;
         private String template;
         private Map<String, Object> data;
         private String subject;
@@ -132,6 +139,11 @@ public class Notification {
             return this;
         }
 
+        public NotificationBuilder userId(Long userId) {
+            this.userId = userId;
+            return this;
+        }
+
         public NotificationBuilder template(String template) {
             this.template = template;
             return this;
@@ -151,6 +163,7 @@ public class Notification {
             Notification notification = new Notification();
             notification.type = this.type;
             notification.recipient = this.recipient;
+            notification.userId = this.userId;
             notification.template = this.template;
             notification.data = this.data;
             notification.subject = this.subject;

@@ -1,0 +1,4 @@
+ALTER TABLE users
+    ADD COLUMN email_undeliverable BOOLEAN NOT NULL DEFAULT FALSE,
+    ADD COLUMN last_bounce_at TIMESTAMP NULL,
+    ADD COLUMN bounce_count INT NOT NULL DEFAULT 0;

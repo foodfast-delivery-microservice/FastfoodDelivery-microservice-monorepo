@@ -29,6 +29,11 @@ public class User {
     private boolean emailVerified = false;
     private String pendingEmail;
 
+    // Email deliverability fields
+    private boolean emailUndeliverable = false;
+    private java.time.LocalDateTime lastBounceAt;
+    private int bounceCount = 0;
+
     // Common Profile Fields
     private String fullName;
     private String phone;

@@ -25,6 +25,8 @@ public class EmailNotification {
     private String errorMessage;
     private String eventId; // Reference to original event (paymentId, orderId, etc.)
     private String payloadJson;
+    private Long userId; // Added for tracking
+
 
     private EmailNotification() {
         // Private constructor for builder
@@ -85,6 +87,11 @@ public class EmailNotification {
     public String getPayloadJson() {
         return payloadJson;
     }
+
+    public Long getUserId() {
+        return userId;
+    }
+
 
     /**
      * Marks email as sent successfully.
@@ -159,6 +166,8 @@ public class EmailNotification {
         private String errorMessage;
         private String eventId;
         private String payloadJson;
+        private Long userId;
+
 
         public EmailNotificationBuilder id(Long id) {
             this.id = id;
@@ -235,6 +244,12 @@ public class EmailNotification {
             return this;
         }
 
+        public EmailNotificationBuilder userId(Long userId) {
+            this.userId = userId;
+            return this;
+        }
+
+
         public EmailNotification build() {
             EmailNotification notification = new EmailNotification();
             notification.id = this.id;
@@ -250,7 +265,9 @@ public class EmailNotification {
             notification.errorMessage = this.errorMessage;
             notification.eventId = this.eventId;
             notification.payloadJson = this.payloadJson;
+            notification.userId = this.userId;
             return notification;
+
         }
     }
 }
