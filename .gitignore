@@ -28,3 +28,14 @@ artifacts/
 .claude/
 .cursor/
 skills-lock.json
+# Environment variables (credentials)
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Security-sensitive files
+*.pem
+*.key
+*.p12
+*.jks
