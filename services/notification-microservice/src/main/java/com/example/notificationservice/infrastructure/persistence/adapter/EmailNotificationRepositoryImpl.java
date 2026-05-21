@@ -68,6 +68,18 @@ public class EmailNotificationRepositoryImpl implements EmailNotificationReposit
                 .collect(Collectors.toList());
     }
 
+    @Override
+    public org.springframework.data.domain.Page<EmailNotification> findAll(
+            EmailStatus status,
+            com.example.notificationservice.domain.valueobjects.NotificationType type,
+            String recipient,
+            Instant fromDate,
+            Instant toDate,
+            org.springframework.data.domain.Pageable pageable) {
+        return jpaRepository.findAllFiltered(status, type, recipient, fromDate, toDate, pageable)
+                .map(this::toDomainEntity);
+    }
+
     private EmailNotificationJpaEntity toJpaEntity(EmailNotification domain) {
         EmailNotificationJpaEntity entity = EmailNotificationJpaEntity.builder()
                 .id(domain.getId())

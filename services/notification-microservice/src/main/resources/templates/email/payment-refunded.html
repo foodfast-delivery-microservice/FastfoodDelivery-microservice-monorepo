@@ -4,166 +4,100 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hoàn tiền thành công</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            margin: 0;
-            padding: 0;
-            background-color: #f4f4f4;
-        }
-
-        .container {
-            max-width: 600px;
-            margin: 0 auto;
-            background-color: #ffffff;
-        }
-
-        .header {
-            background-color: #ff9800;
-            color: #ffffff;
-            padding: 30px 20px;
-            text-align: center;
-        }
-
-        .header h1 {
-            margin: 0;
-            font-size: 24px;
-        }
-
-        .content {
-            padding: 30px 20px;
-        }
-
-        .refund-icon {
-            text-align: center;
-            font-size: 48px;
-            color: #ff9800;
-            margin: 20px 0;
-        }
-
-        .message {
-            text-align: center;
-            font-size: 18px;
-            color: #ff9800;
-            font-weight: bold;
-            margin-bottom: 30px;
-        }
-
-        .details {
-            background-color: #f8f9fa;
-            border-radius: 8px;
-            padding: 20px;
-            margin: 20px 0;
-        }
-
-        .detail-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 10px 0;
-            border-bottom: 1px solid #e0e0e0;
-        }
-
-        .detail-row:last-child {
-            border-bottom: none;
-        }
-
-        .detail-label {
-            font-weight: bold;
-            color: #666;
-        }
-
-        .detail-value {
-            color: #333;
-        }
-
-        .amount {
-            font-size: 24px;
-            font-weight: bold;
-            color: #ff9800;
-        }
-
-        .reason-box {
-            background-color: #fff3cd;
-            border-left: 4px solid #ff9800;
-            padding: 15px;
-            margin: 20px 0;
-            border-radius: 4px;
-        }
-
-        .reason-box p {
-            margin: 5px 0;
-            color: #333;
-        }
-
-        .button {
-            display: block;
-            width: 100%;
-            max-width: 300px;
-            margin: 30px auto;
-            padding: 15px 30px;
-            background-color: #007bff;
-            color: #ffffff;
-            text-decoration: none;
-            border-radius: 5px;
-            text-align: center;
-            font-weight: bold;
-        }
-
-        .button:hover {
-            background-color: #0056b3;
-        }
-
-        .footer {
-            background-color: #f8f9fa;
-            padding: 20px;
-            text-align: center;
-            font-size: 12px;
-            color: #666;
-        }
-    </style>
 </head>
-<body>
-<div class="container">
-    <div class="header">
-        <h1>Hoàn tiền thành công</h1>
-    </div>
-    <div class="content">
-        <div class="refund-icon">↩</div>
-        <div class="message">Đơn hàng của bạn đã được hoàn tiền!</div>
-
-        <div class="details">
-            <div class="detail-row">
-                <span class="detail-label">Mã đơn hàng:</span>
-                <span class="detail-value" th:text="${orderId}">#12345</span>
-            </div>
-            <div class="detail-row">
-                <span class="detail-label">Mã thanh toán:</span>
-                <span class="detail-value" th:text="${paymentId}">#67890</span>
-            </div>
-            <div class="detail-row">
-                <span class="detail-label">Số tiền hoàn lại:</span>
-                <span class="detail-value amount" th:text="${amount}">0 VNĐ</span>
-            </div>
-            <div class="detail-row">
-                <span class="detail-label">Thời gian hoàn tiền:</span>
-                <span class="detail-value" th:text="${refundTime}">01/01/2024 10:00:00</span>
-            </div>
-        </div>
-
-        <div class="reason-box">
-            <p><strong>Lý do hoàn tiền:</strong></p>
-            <p th:text="${refundReason}">Không xác định</p>
-        </div>
-
-        <a href="#" class="button" th:href="'http://localhost:3000/orders/' + ${orderId}">Xem đơn hàng</a>
-    </div>
-    <div class="footer">
-        <p>Tiền hoàn lại sẽ được chuyển về tài khoản của bạn trong vòng 3-5 ngày làm việc.</p>
-        <p>Nếu bạn có bất kỳ câu hỏi nào, vui lòng liên hệ với chúng tôi qua email hỗ trợ.</p>
-        <p>&copy; 2024 FastFood Delivery. Tất cả quyền được bảo lưu.</p>
-    </div>
-</div>
+<body style="font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; color: #1e293b; margin: 0; padding: 40px 20px; line-height: 1.6;">
+    <table cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03); overflow: hidden;">
+        <!-- Header -->
+        <tr>
+            <td style="background: linear-gradient(135deg, #d97706 0%, #b45309 100%); padding: 40px 20px; text-align: center;">
+                <div style="background-color: rgba(255, 255, 255, 0.2); width: 64px; height: 64px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 16px; line-height: 64px; text-align: center; color: white; font-size: 32px; font-weight: bold; margin: 0 auto 16px auto;">↩</div>
+                <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -0.025em;">Hoàn Tiền Thành Công</h1>
+                <p style="color: #fef3c7; margin: 8px 0 0 0; font-size: 14px; font-weight: 500;">Giao dịch hoàn trả tiền đã được xử lý thành công</p>
+            </td>
+        </tr>
+        
+        <!-- Main Content -->
+        <tr>
+            <td style="padding: 40px 30px;">
+                <p style="font-size: 15px; color: #475569; margin-top: 0; margin-bottom: 24px;">Chúng tôi xin thông báo số tiền thanh toán cho đơn hàng của bạn đã được hoàn trả lại thành công theo chính sách của FastFood Delivery.</p>
+                
+                <!-- Refund details table -->
+                <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; margin-bottom: 24px;">
+                    <tr>
+                        <td style="padding: 16px 20px; border-bottom: 1px solid #e2e8f0;">
+                            <table cellpadding="0" cellspacing="0" border="0" width="100%">
+                                <tr>
+                                    <td style="font-size: 14px; font-weight: 600; color: #64748b;">Mã đơn hàng:</td>
+                                    <td align="right" th:text="${orderId}" style="font-size: 14px; font-weight: 700; color: #0f172a;">#12345</td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 16px 20px; border-bottom: 1px solid #e2e8f0;">
+                            <table cellpadding="0" cellspacing="0" border="0" width="100%">
+                                <tr>
+                                    <td style="font-size: 14px; font-weight: 600; color: #64748b;">Mã giao dịch gốc:</td>
+                                    <td align="right" th:text="${paymentId}" style="font-size: 14px; font-weight: 600; color: #334155; font-family: monospace;">#67890</td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 16px 20px; border-bottom: 1px solid #e2e8f0;">
+                            <table cellpadding="0" cellspacing="0" border="0" width="100%">
+                                <tr>
+                                    <td style="font-size: 14px; font-weight: 600; color: #64748b;">Số tiền hoàn trả:</td>
+                                    <td align="right" th:text="${amount}" style="font-size: 18px; font-weight: 800; color: #d97706;">0 VNĐ</td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 16px 20px;">
+                            <table cellpadding="0" cellspacing="0" border="0" width="100%">
+                                <tr>
+                                    <td style="font-size: 14px; font-weight: 600; color: #64748b;">Thời gian hoàn tiền:</td>
+                                    <td align="right" th:text="${refundTime}" style="font-size: 14px; font-weight: 500; color: #334155;">01/01/2024 10:00:00</td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                </table>
+                
+                <!-- Refund Reason Box -->
+                <div style="background-color: #fffbeb; border-left: 4px solid #d97706; border-radius: 4px; padding: 16px; margin-bottom: 24px;">
+                    <p style="font-size: 14px; font-weight: 700; color: #92400e; margin: 0 0 4px 0;">Lý do hoàn trả tiền:</p>
+                    <p th:text="${refundReason}" style="font-size: 13px; color: #b45309; margin: 0;">Không xác định</p>
+                </div>
+                
+                <!-- Notice Info Box -->
+                <div style="background-color: #eff6ff; border-left: 4px solid #3b82f6; border-radius: 4px; padding: 16px; margin-bottom: 30px;">
+                    <p style="font-size: 13px; color: #1e3a8a; margin: 0; line-height: 1.5;">
+                        <strong>Lưu ý:</strong> Số tiền hoàn trả thông thường sẽ được chuyển khoản trực tiếp về tài khoản hoặc thẻ gốc bạn đã sử dụng để giao dịch trong vòng <strong>3-5 ngày làm việc</strong> tùy thuộc vào quy trình xử lý của ngân hàng phát hành.
+                    </p>
+                </div>
+                
+                <!-- CTA Button -->
+                <table cellpadding="0" cellspacing="0" border="0" width="100%">
+                    <tr>
+                        <td align="center">
+                            <a th:href="'http://localhost:3000/orders/' + ${orderId}" style="display: inline-block; background-color: #d97706; color: #ffffff; font-size: 15px; font-weight: 700; text-decoration: none; padding: 14px 32px; border-radius: 10px; box-shadow: 0 4px 6px -1px rgba(217, 119, 6, 0.2); transition: background-color 0.2s;">
+                                Xem Đơn Hàng Của Bạn
+                            </a>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+        
+        <!-- Footer -->
+        <tr>
+            <td style="background-color: #f8fafc; padding: 24px 30px; border-top: 1px solid #f1f5f9; text-align: center;">
+                <p style="font-size: 11px; color: #cbd5e1; margin: 0;">Nếu cần hỗ trợ thêm thông tin hoặc chưa nhận được tiền sau thời gian trên, vui lòng liên hệ hotline hỗ trợ.</p>
+                <p style="font-size: 11px; color: #cbd5e1; margin-top: 6px; margin-bottom: 0;">&copy; 2026 FastFood Delivery. Mọi quyền được bảo lưu.</p>
+            </td>
+        </tr>
+    </table>
 </body>
 </html>

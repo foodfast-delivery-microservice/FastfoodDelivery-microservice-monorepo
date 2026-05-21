@@ -24,4 +24,12 @@ public interface EmailNotificationRepository {
     List<EmailNotification> findByRecipient(String recipient);
 
     List<EmailNotification> findByEventId(String eventId);
+
+    org.springframework.data.domain.Page<EmailNotification> findAll(
+            EmailStatus status,
+            com.example.notificationservice.domain.valueobjects.NotificationType type,
+            String recipient,
+            Instant fromDate,
+            Instant toDate,
+            org.springframework.data.domain.Pageable pageable);
 }

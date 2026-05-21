@@ -21,5 +21,12 @@ public interface EmailSenderPort {
      * @throws RuntimeException if email sending fails
      */
     void sendGenericNotification(Notification notification);
+
+    /**
+     * Sends a persisted EmailNotification record.
+     *
+     * @param emailRecord the email record to send
+     */
+    void sendEmailRecord(com.example.notificationservice.domain.entities.EmailNotification emailRecord);
 }
 

@@ -279,6 +279,15 @@ public class EmailServiceAdapter implements EmailSenderPort {
             }
 
             // Create email notification record
+            String payloadJson = null;
+            if (templateVariables != null) {
+                try {
+                    payloadJson = objectMapper.writeValueAsString(templateVariables);
+                } catch (Exception e) {
+                    log.warn("Failed to serialize template variables for persistence: eventId={}", eventId, e);
+                }
+            }
+
             emailRecord = EmailNotification.builder()
                     .type(notificationType)
                     .recipient(to)
@@ -286,6 +295,7 @@ public class EmailServiceAdapter implements EmailSenderPort {
                     .template(templateName)
                     .status(EmailStatus.PENDING)
                     .eventId(eventId)
+                    .payloadJson(payloadJson)
                     .userId(userId)
                     .build();
             emailRecord = emailNotificationRepository.save(emailRecord);
@@ -414,5 +424,52 @@ public class EmailServiceAdapter implements EmailSenderPort {
      */
     private Long extractUserIdFromEmail(String email) {
         return null;
+    }
+
+    @Override
+    public void sendEmailRecord(EmailNotification emailRecord) {
+        if (emailRecord == null) {
+            throw new IllegalArgumentException("Email record cannot be null");
+        }
+
+        log.info("Sending/Resending email record: id={}, recipient={}, template={}", 
+                emailRecord.getId(), emailRecord.getRecipient(), emailRecord.getTemplate());
+
+        try {
+            Map<String, Object> templateVariables = new HashMap<>();
+            if (emailRecord.getPayloadJson() != null && !emailRecord.getPayloadJson().isBlank()) {
+                try {
+                    templateVariables = objectMapper.readValue(emailRecord.getPayloadJson(), Map.class);
+                } catch (Exception e) {
+                    log.warn("Failed to deserialize payloadJson for email resend: id={}", emailRecord.getId(), e);
+                }
+            }
+
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+            helper.setFrom(fromEmail);
+            helper.setTo(emailRecord.getRecipient().getValue());
+            helper.setSubject(emailRecord.getSubject());
+
+            String htmlContent = templateEngine.render(emailRecord.getTemplate(), templateVariables);
+            helper.setText(htmlContent, true);
+
+            mailSender.send(message);
+
+            // Update status
+            emailRecord.markAsSent();
+            emailNotificationRepository.save(emailRecord);
+
+            // Metrics
+            incrementEmailCounter("sent", emailRecord.getType().name());
+
+            log.info("Email record sent/resent successfully: id={}", emailRecord.getId());
+
+        } catch (Exception e) {
+            handleEmailFailure(emailRecord, e, "resend", 
+                    emailRecord.getRecipient().getValue(), emailRecord.getType());
+            throw new RuntimeException("Failed to resend email", e);
+        }
     }
 }

@@ -1,9 +1,13 @@
 package com.example.notificationservice.infrastructure.messaging.listener;
 
+import com.example.notificationservice.application.dto.InAppNotificationDto;
+import com.example.notificationservice.application.usecase.CreateInAppNotificationUseCase;
 import com.example.notificationservice.application.dto.OrderConfirmedEventDto;
 import com.example.notificationservice.application.usecase.SendOrderConfirmedEmailUseCase;
+import com.example.notificationservice.domain.entities.InAppNotification;
 import com.example.notificationservice.infrastructure.config.RabbitMQConfig;
 import com.example.notificationservice.infrastructure.event.OrderStatusChangedEventPayload;
+import com.example.notificationservice.infrastructure.websocket.WebSocketNotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
@@ -27,6 +31,8 @@ import java.math.BigDecimal;
 public class OrderStatusChangedListener {
 
     private final SendOrderConfirmedEmailUseCase sendOrderConfirmedEmailUseCase;
+    private final CreateInAppNotificationUseCase createInAppNotificationUseCase;
+    private final WebSocketNotificationService webSocketNotificationService;
 
     @RabbitListener(queues = RabbitMQConfig.ORDER_STATUS_CHANGED_QUEUE)
     public void handleOrderStatusChanged(OrderStatusChangedEventPayload payload) {
@@ -38,6 +44,23 @@ public class OrderStatusChangedListener {
             if ("CONFIRMED".equalsIgnoreCase(payload.getNewStatus())) {
                 log.info("Order {} confirmed by merchant, sending confirmation email", payload.getOrderId());
 
+                // 1. Create in-app notification first
+                InAppNotification inAppRecord = null;
+                if (payload.getUserId() != null) {
+                    try {
+                        inAppRecord = createInAppNotificationUseCase.execute(
+                                payload.getUserId(),
+                                "Đơn hàng đã xác nhận",
+                                "Đơn hàng #" + payload.getOrderCode() + " được merchant duyệt",
+                                com.example.notificationservice.domain.valueobjects.NotificationType.ORDER_CONFIRMED,
+                                String.valueOf(payload.getOrderId())
+                        );
+                    } catch (Exception e) {
+                        log.error("Failed to create in-app notification for order confirmed: orderId={}", payload.getOrderId(), e);
+                    }
+                }
+
+                // 2. Trigger email sending
                 OrderConfirmedEventDto eventDto = OrderConfirmedEventDto.builder()
                         .orderId(payload.getOrderId())
                         .orderCode(payload.getOrderCode())
@@ -48,6 +71,15 @@ public class OrderStatusChangedListener {
 
                 sendOrderConfirmedEmailUseCase.handle(eventDto);
                 log.info("Successfully processed order confirmed event: orderId={}", payload.getOrderId());
+
+                // 3. Push real-time WebSocket notification
+                if (inAppRecord != null && payload.getUserId() != null) {
+                    try {
+                        webSocketNotificationService.pushToUser(payload.getUserId(), toDto(inAppRecord));
+                    } catch (Exception e) {
+                        log.error("Failed to push real-time notification for order confirmed: orderId={}", payload.getOrderId(), e);
+                    }
+                }
             } else {
                 log.debug("Order status changed to {}, no email action required", payload.getNewStatus());
                 // No exception thrown for non-CONFIRMED status - this is expected behavior
@@ -64,5 +96,21 @@ public class OrderStatusChangedListener {
                     payload.getOrderId(), payload.getNewStatus(), e);
             throw e;
         }
+    }
+
+    private InAppNotificationDto toDto(InAppNotification n) {
+        if (n == null) return null;
+        return InAppNotificationDto.builder()
+                .id(n.getId())
+                .userId(n.getUserId())
+                .title(n.getTitle())
+                .message(n.getMessage())
+                .type(n.getType())
+                .referenceId(n.getReferenceId())
+                .channel(n.getChannel())
+                .isRead(n.isRead())
+                .createdAt(n.getCreatedAt())
+                .readAt(n.getReadAt())
+                .build();
     }
 }
