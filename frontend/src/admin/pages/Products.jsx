@@ -6,7 +6,7 @@ import "./Products.css";
 const buildImageUrl = (src) => {
   if (!src) return null;
   if (src.startsWith?.("http")) return src;
-  const base = "http://localhost:8080";
+  const base = "http://localhost:8089";
   return src.startsWith("/") ? `${base}${src}` : `${base}/${src}`;
 };
 
@@ -281,7 +281,7 @@ export default function AdminProducts() {
         // Convert relative URL to full URL for display
         const fullImageUrl = imageUrl.startsWith("http") 
           ? imageUrl 
-          : `http://localhost:8080${imageUrl.startsWith("/") ? imageUrl : "/" + imageUrl}`;
+          : `http://localhost:8089${imageUrl.startsWith("/") ? imageUrl : "/" + imageUrl}`;
         return <img src={fullImageUrl} alt="product" className="product-thumb" onError={(e) => { e.target.src = 'https://via.placeholder.com/50'; }} />;
       },
     },

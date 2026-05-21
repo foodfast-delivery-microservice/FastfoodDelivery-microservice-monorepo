@@ -103,7 +103,7 @@ function Login() {
       }
 
       if (!err.response) {
-        msg = "Không thể kết nối server. Kiểm tra Gateway (localhost:8080) đã chạy chưa hoặc lỗi mạng.";
+        msg = "Không thể kết nối server. Kiểm tra Gateway (localhost:8089) đã chạy chưa hoặc lỗi mạng.";
       }
       setError(msg);
       message.error(msg);

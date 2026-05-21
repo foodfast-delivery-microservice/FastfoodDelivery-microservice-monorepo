@@ -22,6 +22,7 @@ import WaitingForConfirmation from "./components/WaitingForConfirmation";
 import ForgotPassword from "./components/ForgotPassword";
 import ResetPassword from "./components/ResetPassword";
 import VerifyEmail from "./components/VerifyEmail";
+import NotificationCenter from "./components/NotificationCenter";
 
 /* LAYOUTS */
 import UserLayout from "./layouts/UserLayout";
@@ -218,6 +219,11 @@ function App() {
             <Route path="order-history" element={
               <ProtectedRoute>
                 <OrderHistory />
+              </ProtectedRoute>
+            } />
+            <Route path="notifications" element={
+              <ProtectedRoute>
+                <NotificationCenter />
               </ProtectedRoute>
             } />
             <Route path="order/:id" element={

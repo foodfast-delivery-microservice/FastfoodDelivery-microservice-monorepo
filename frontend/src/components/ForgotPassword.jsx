@@ -13,7 +13,7 @@ const ForgotPassword = () => {
   const onFinish = async (values) => {
     setLoading(true);
     try {
-      await axios.post("http://localhost:8080/api/v1/auth/forgot-password", {
+      await axios.post("http://localhost:8089/api/v1/auth/forgot-password", {
         email: values.email,
       });
       message.success("Nếu email tồn tại, một liên kết đặt lại mật khẩu đã được gửi!");
