@@ -3,7 +3,7 @@ package com.example.order_service.infrastructure.messaging;
 import com.example.order_service.domain.entities.OutboxEvent;
 import com.example.order_service.domain.valueobjects.EventStatus;
 import com.example.order_service.domain.repository.OutboxEventRepository;
-import com.example.order_service.infrastructure.event.OrderCreatedEventPayload;
+import com.example.order_service.infrastructure.event.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
@@ -67,17 +67,23 @@ public class OutboxEventRelay {
                 Object payloadToSend = event.getPayload();
 
                 // Để tránh JSON bị "double encode" (\"{...}\"),
-                // với OrderCreated ta parse JSON thành object rồi mới gửi.
-                if ("OrderCreated".equals(event.getType())) {
-                    try {
-                        payloadToSend = objectMapper.readValue(
-                                event.getPayload(),
-                                OrderCreatedEventPayload.class);
-                    } catch (Exception ex) {
-                        log.error("Failed to deserialize OrderCreated payload for event id={}", event.getId(), ex);
-                        // Nếu lỗi, fallback gửi raw JSON string như cũ
-                        payloadToSend = event.getPayload();
+                // ta parse JSON thành object tương ứng rồi mới gửi.
+                try {
+                    if ("OrderCreated".equals(event.getType())) {
+                        payloadToSend = objectMapper.readValue(event.getPayload(), OrderCreatedEventPayload.class);
+                    } else if ("OrderStatusChanged".equals(event.getType())) {
+                        payloadToSend = objectMapper.readValue(event.getPayload(), OrderStatusChangedEvent.class);
+                    } else if ("OrderPaid".equals(event.getType())) {
+                        payloadToSend = objectMapper.readValue(event.getPayload(), OrderPaidEvent.class);
+                    } else if ("OrderRefundRequest".equals(event.getType())) {
+                        payloadToSend = objectMapper.readValue(event.getPayload(), OrderRefundRequestEvent.class);
+                    } else if ("OrderRefunded".equals(event.getType())) {
+                        payloadToSend = objectMapper.readValue(event.getPayload(), OrderRefundedEvent.class);
                     }
+                } catch (Exception ex) {
+                    log.error("Failed to deserialize {} payload for event id={}", event.getType(), event.getId(), ex);
+                    // Nếu lỗi, fallback gửi raw JSON string như cũ
+                    payloadToSend = event.getPayload();
                 }
 
                 rabbitTemplate.convertAndSend(

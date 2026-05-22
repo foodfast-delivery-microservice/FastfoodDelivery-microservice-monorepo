@@ -6,7 +6,7 @@ import "./RestaurantProducts.css";
 const buildImageUrl = (src) => {
   if (!src) return null;
   if (src.startsWith?.("http")) return src;
-  const base = "http://localhost:8080";
+  const base = "http://localhost:8089";
   return src.startsWith("/") ? `${base}${src}` : `${base}/${src}`;
 };
 

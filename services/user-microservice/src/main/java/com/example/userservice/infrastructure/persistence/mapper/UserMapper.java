@@ -26,6 +26,9 @@ public class UserMapper {
         jpaEntity.setActive(domainEntity.isActive());
         jpaEntity.setEmailVerified(domainEntity.isEmailVerified());
         jpaEntity.setPendingEmail(domainEntity.getPendingEmail());
+        jpaEntity.setEmailUndeliverable(domainEntity.isEmailUndeliverable());
+        jpaEntity.setLastBounceAt(domainEntity.getLastBounceAt());
+        jpaEntity.setBounceCount(domainEntity.getBounceCount());
         jpaEntity.setFullName(domainEntity.getFullName());
         jpaEntity.setPhone(domainEntity.getPhone());
         jpaEntity.setAddress(domainEntity.getAddress());
@@ -56,6 +59,9 @@ public class UserMapper {
         domainEntity.setActive(jpaEntity.isActive());
         domainEntity.setEmailVerified(jpaEntity.isEmailVerified());
         domainEntity.setPendingEmail(jpaEntity.getPendingEmail());
+        domainEntity.setEmailUndeliverable(jpaEntity.isEmailUndeliverable());
+        domainEntity.setLastBounceAt(jpaEntity.getLastBounceAt());
+        domainEntity.setBounceCount(jpaEntity.getBounceCount());
         domainEntity.setFullName(jpaEntity.getFullName());
         domainEntity.setPhone(jpaEntity.getPhone());
         domainEntity.setAddress(jpaEntity.getAddress());

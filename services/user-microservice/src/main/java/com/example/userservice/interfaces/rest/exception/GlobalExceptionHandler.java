@@ -23,6 +23,16 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
     }
 
+    @ExceptionHandler(DisposableEmailNotAllowedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleDisposableEmailNotAllowedException(DisposableEmailNotAllowedException ex) {
+        ApiResponse<Void> response = new ApiResponse<>(
+                HttpStatus.BAD_REQUEST,
+                ex.getMessage(),
+                null,
+                "DISPOSABLE_EMAIL_NOT_ALLOWED");
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
+
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ApiResponse<Void>> handleResourceNotFoundException(ResourceNotFoundException ex) {
         ApiResponse<Void> response = new ApiResponse<>(
@@ -35,9 +45,12 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleException(Exception ex) {
+        // Log the real error for debugging, but return a generic message to the client
+        org.slf4j.LoggerFactory.getLogger(GlobalExceptionHandler.class)
+                .error("Unexpected error", ex);
         ApiResponse<Void> response = new ApiResponse<>(
                 HttpStatus.INTERNAL_SERVER_ERROR,
-                ex.getMessage(),
+                "An unexpected error occurred",
                 null,
                 "INTERNAL_SERVER_ERROR");
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);

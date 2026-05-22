@@ -48,6 +48,15 @@ public class UserJpaEntity {
     @Column
     private String pendingEmail;
 
+    @Column(nullable = false)
+    private boolean emailUndeliverable = false;
+
+    @Column
+    private java.time.LocalDateTime lastBounceAt;
+
+    @Column(nullable = false)
+    private int bounceCount = 0;
+
     // Common Profile Fields
     private String fullName;
     private String phone;

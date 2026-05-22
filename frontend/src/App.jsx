@@ -16,10 +16,13 @@ import Checkout from "./components/Checkout";
 import OrderHistory from "./components/OrderHistory";
 import Login from "./components/Login";
 import Register from "./components/Register";
-import VerifyEmail from "./components/VerifyEmail";
 import RestaurantList from "./components/RestaurantList";
 import RestaurantDetail from "./components/RestaurantDetail";
 import WaitingForConfirmation from "./components/WaitingForConfirmation";
+import ForgotPassword from "./components/ForgotPassword";
+import ResetPassword from "./components/ResetPassword";
+import VerifyEmail from "./components/VerifyEmail";
+import NotificationCenter from "./components/NotificationCenter";
 
 /* LAYOUTS */
 import UserLayout from "./layouts/UserLayout";
@@ -193,6 +196,8 @@ function App() {
             <Route index element={<RestaurantList />} />
             <Route path="login" element={<Login />} />
             <Route path="register" element={<Register />} />
+            <Route path="forgot-password" element={<ForgotPassword />} />
+            <Route path="reset-password" element={<ResetPassword />} />
             <Route path="verify-email" element={<VerifyEmail />} />
             <Route path="product-detail/:id" element={<ProductDetail onAdd={handleAdd} />} />
             <Route path="restaurant/:id" element={<RestaurantDetail onAdd={handleAdd} />} />
@@ -214,6 +219,11 @@ function App() {
             <Route path="order-history" element={
               <ProtectedRoute>
                 <OrderHistory />
+              </ProtectedRoute>
+            } />
+            <Route path="notifications" element={
+              <ProtectedRoute>
+                <NotificationCenter />
               </ProtectedRoute>
             } />
             <Route path="order/:id" element={

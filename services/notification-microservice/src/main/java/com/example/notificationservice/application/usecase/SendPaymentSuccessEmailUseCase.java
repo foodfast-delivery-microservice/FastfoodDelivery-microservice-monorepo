@@ -49,7 +49,7 @@ public class SendPaymentSuccessEmailUseCase {
             throw new IllegalArgumentException("User email not found for userId: " + event.getUserId());
         }
 
-        emailSenderPort.sendPaymentSuccessEmail(event, user.getEmail());
+        emailSenderPort.sendPaymentSuccessEmail(event, user.getEmail(), event.getUserId());
         log.info("Payment success email sent successfully: userId={}, orderId={}",
                 event.getUserId(), event.getOrderId());
     }

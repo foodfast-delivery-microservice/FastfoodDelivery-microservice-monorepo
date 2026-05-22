@@ -11,6 +11,7 @@ public enum NotificationType {
     PAYMENT_FAILED,
     PAYMENT_REFUNDED,
     ORDER_STATUS_CHANGED,
+    USER_FORGOT_PASSWORD,
     GENERIC;
 
     public static NotificationType fromString(String type) {

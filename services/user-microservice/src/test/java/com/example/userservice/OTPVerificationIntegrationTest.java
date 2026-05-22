@@ -49,6 +49,12 @@ public class OTPVerificationIntegrationTest {
     private com.example.userservice.application.usecases.auth.ResendEmailOtpUseCase resendEmailOtpUseCase;
 
     @MockBean
+    private com.example.userservice.application.usecases.auth.ForgotPasswordUseCase forgotPasswordUseCase;
+
+    @MockBean
+    private com.example.userservice.application.usecases.auth.ResetPasswordUseCase resetPasswordUseCase;
+
+    @MockBean
     private org.springframework.security.core.userdetails.UserDetailsService userDetailsService;
 
     @Test

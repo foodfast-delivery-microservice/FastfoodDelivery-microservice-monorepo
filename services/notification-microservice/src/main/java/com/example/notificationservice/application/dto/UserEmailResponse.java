@@ -22,5 +22,8 @@ public class UserEmailResponse {
 
     @Email(message = "Email must be a valid email address")
     private String email;
+
+    @Builder.Default
+    private Boolean emailUndeliverable = false;
 }
 

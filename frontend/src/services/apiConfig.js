@@ -5,7 +5,7 @@
 
 // Sử dụng Gateway cho tất cả requests (Gateway đã config CORS)
 // Gateway sẽ route requests đến các microservices tương ứng
-const GATEWAY_URL = 'http://localhost:8080/api/v1'
+const GATEWAY_URL = 'http://localhost:8089/api/v1'
 
 const API_SERVICES = {
     USER: GATEWAY_URL,

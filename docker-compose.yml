@@ -13,13 +13,11 @@ services:
     ports:
       - "3306:3306"
     environment:
-      MYSQL_ROOT_PASSWORD: 1234
+      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD}
       MYSQL_DATABASE: userservice
-    #      MYSQL_USER: root
-    #      MYSQL_PASSWORD: password
     volumes:
       - mysql-data:/var/lib/mysql
-      - ./mysql-init:/docker-entrypoint-initdb.d # Chạy script tạo các DB
+      - ./mysql-init:/docker-entrypoint-initdb.d
     healthcheck:
       test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
       timeout: 20s
@@ -33,15 +31,15 @@ services:
       - "5672:5672"
       - "15672:15672"
     environment:
-      RABBITMQ_DEFAULT_USER: guest
-      RABBITMQ_DEFAULT_PASS: guest
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:-guest}
 
   # 4. API Gateway
   gateway-service:
     build: ./services/gateway-service
     container_name: gateway-service
     ports:
-      - "8080:8080"
+      - "8089:8080"
     environment:
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://registry-service:8761/eureka/
       APP_JWT_SECRETKEY: ${APP_JWT_SECRETKEY}
@@ -57,8 +55,8 @@ services:
       - "8081:8081"
     environment:
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql-db:3306/userservice
-      SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: 1234
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:-root}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD}
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://registry-service:8761/eureka/
       SPRING_RABBITMQ_HOST: rabbitmq-broker
       APP_JWT_SECRETKEY: ${APP_JWT_SECRETKEY}
@@ -79,8 +77,8 @@ services:
       - "8082:8082"
     environment:
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql-db:3306/productmicroservice
-      SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: 1234
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:-root}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD}
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://registry-service:8761/eureka/
       APP_JWT_SECRETKEY: ${APP_JWT_SECRETKEY}
       SPRING_RABBITMQ_HOST: rabbitmq-broker
@@ -100,8 +98,8 @@ services:
       - "8083:8083"
     environment:
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql-db:3306/orderservice
-      SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: 1234
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:-root}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD}
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://registry-service:8761/eureka/
       SPRING_RABBITMQ_HOST: rabbitmq-broker
     depends_on:
@@ -120,8 +118,8 @@ services:
       - "8084:8084"
     environment:
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql-db:3306/paymentservice
-      SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: 1234
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:-root}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD}
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://registry-service:8761/eureka/
       SPRING_RABBITMQ_HOST: rabbitmq-broker
     depends_on:
@@ -139,8 +137,8 @@ services:
       - "8085:8085"
     environment:
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql-db:3306/droneservice
-      SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: 1234
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:-root}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD}
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://registry-service:8761/eureka/
       SPRING_RABBITMQ_HOST: rabbitmq-broker
     depends_on:
@@ -158,6 +156,9 @@ services:
     ports:
       - "8086:8086"
     environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-db:3306/notificationservice
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:-root}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD}
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://registry-service:8761/eureka/
       SPRING_RABBITMQ_HOST: rabbitmq-broker
       MAIL_USERNAME: ${MAIL_USERNAME}
@@ -165,9 +166,12 @@ services:
       DATABASE_URL: jdbc:mysql://mysql-db:3306/notificationservice
       DATABASE_USERNAME: root
       DATABASE_PASSWORD: 1234
+      APP_JWT_SECRETKEY: ${APP_JWT_SECRETKEY}
     depends_on:
       registry-service:
         condition: service_started
+      mysql-db:
+        condition: service_healthy
       rabbitmq-broker:
         condition: service_started
       mysql-db:

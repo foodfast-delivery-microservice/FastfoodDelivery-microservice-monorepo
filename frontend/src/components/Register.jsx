@@ -45,13 +45,17 @@ function Register() {
         phone: phonenumber.trim() || null,
         address: address.trim() || null,
       });
+      // TẠM THỜI BỎ QUA LUỒNG OTP:
+      // setRegisteredEmail(email.trim());
+      // setStep("otp");
+      // message.success(
+      //   "Đăng ký thành công! Vui lòng kiểm tra email để lấy mã OTP và nhập vào bên dưới để xác thực.",
+      //   3
+      // );
 
-      setRegisteredEmail(email.trim());
-      setStep("otp");
-      message.success(
-        "Đăng ký thành công! Vui lòng kiểm tra email để lấy mã OTP và nhập vào bên dưới để xác thực.",
-        3
-      );
+      // Chuyển hướng thẳng về trang chủ
+      message.success("Đăng ký thành công! Bạn đã có thể bắt đầu sử dụng dịch vụ.", 3);
+      navigate("/");
     } catch (err) {
       console.error("Register Error:", err);
       const status = err?.response?.status;
@@ -198,7 +202,7 @@ function Register() {
           </div>
 
           <p className="register-info">
-            Sau khi đăng ký, chúng tôi sẽ gửi <strong>mã OTP</strong> về email để bạn xác thực tài khoản.
+            Đăng ký tài khoản để trải nghiệm các dịch vụ của chúng tôi.
           </p>
 
           {error && <p className="error-message">{error}</p>}

@@ -75,6 +75,11 @@ public class UserUseCaseConfig {
     }
 
     @Bean
+    public UpdateEmailDeliverabilityUseCase updateEmailDeliverabilityUseCase() {
+        return new UpdateEmailDeliverabilityUseCase(userRepository);
+    }
+
+    @Bean
     public UpdateRestaurantUseCase updateRestaurantUseCaseBean() {
         return new UpdateRestaurantUseCase(restaurantRepository);
     }

@@ -18,6 +18,7 @@ import java.time.Instant;
 @Table(name = "email_notifications", indexes = {
         @Index(name = "idx_status", columnList = "status"),
         @Index(name = "idx_recipient", columnList = "recipient"),
+        @Index(name = "idx_user_id", columnList = "user_id"),
         @Index(name = "idx_event_id", columnList = "event_id"),
         @Index(name = "idx_status_retry", columnList = "status, last_retry_at")
 })
@@ -30,6 +31,9 @@ public class EmailNotificationJpaEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Column(name = "user_id")
+    private Long userId;
 
     @Column(nullable = false, length = 50)
     @Enumerated(EnumType.STRING)
@@ -66,7 +70,7 @@ public class EmailNotificationJpaEntity {
     private String eventId;
 
     @Lob
-    @Column(name = "payload_json")
+    @Column(name = "payload_json", columnDefinition = "LONGTEXT")
     private String payloadJson;
 
     @PrePersist

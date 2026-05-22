@@ -3,6 +3,7 @@ package com.example.userservice.infrastructure.config;
 import com.example.userservice.application.usecases.auth.LoginUseCase;
 import com.example.userservice.application.usecases.auth.RegisterUseCase;
 import com.example.userservice.application.service.EmailOtpService;
+import com.example.userservice.application.service.EmailDomainValidator;
 import com.example.userservice.domain.port.PasswordEncoderPort;
 import com.example.userservice.domain.port.TokenGeneratorPort;
 import com.example.userservice.domain.repository.RestaurantRepository;
@@ -19,9 +20,11 @@ public class AuthUseCaseconfig {
             com.example.userservice.domain.repository.OutboxEventRepository outboxEventRepository,
             com.example.userservice.application.service.EventPayloadSerializer eventPayloadSerializer,
             EmailOtpService emailOtpService,
+            com.example.userservice.application.service.DisposableEmailValidator disposableEmailValidator,
+            EmailDomainValidator emailDomainValidator,
             @org.springframework.beans.factory.annotation.Value("${app.admin.secret:super_secret_admin_123}") String adminSecretKey) {
         return new RegisterUseCase(userRepository, restaurantRepository, passwordEncoderPort, outboxEventRepository,
-                eventPayloadSerializer, emailOtpService, adminSecretKey);
+                eventPayloadSerializer, emailOtpService, disposableEmailValidator, emailDomainValidator, adminSecretKey);
     }
 
     @Bean

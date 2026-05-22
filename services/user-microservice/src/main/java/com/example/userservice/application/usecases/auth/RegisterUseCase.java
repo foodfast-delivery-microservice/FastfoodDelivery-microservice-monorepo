@@ -1,5 +1,6 @@
 package com.example.userservice.application.usecases.auth;
 
+import com.example.userservice.domain.exception.DisposableEmailNotAllowedException;
 import com.example.userservice.domain.exception.EmailAlreadyExistException;
 import com.example.userservice.domain.exception.InvalidRoleException;
 import com.example.userservice.domain.exception.UsernameAlreadyExistException;
@@ -10,6 +11,8 @@ import com.example.userservice.domain.repository.RestaurantRepository;
 import com.example.userservice.domain.repository.UserRepository;
 import com.example.userservice.application.DTOs.auth.RegisterRequest;
 import com.example.userservice.application.DTOs.user.CreateUserResponse;
+import com.example.userservice.domain.exception.InvalidEmailDomainException;
+import com.example.userservice.application.service.EmailDomainValidator;
 
 public class RegisterUseCase {
 
@@ -19,6 +22,8 @@ public class RegisterUseCase {
     private final com.example.userservice.domain.repository.OutboxEventRepository outboxEventRepository;
     private final com.example.userservice.application.service.EventPayloadSerializer eventPayloadSerializer;
     private final com.example.userservice.application.service.EmailOtpService emailOtpService;
+    private final com.example.userservice.application.service.DisposableEmailValidator disposableEmailValidator;
+    private final EmailDomainValidator emailDomainValidator;
 
     private final String adminSecretKey;
 
@@ -27,6 +32,8 @@ public class RegisterUseCase {
             com.example.userservice.domain.repository.OutboxEventRepository outboxEventRepository,
             com.example.userservice.application.service.EventPayloadSerializer eventPayloadSerializer,
             com.example.userservice.application.service.EmailOtpService emailOtpService,
+            com.example.userservice.application.service.DisposableEmailValidator disposableEmailValidator,
+            EmailDomainValidator emailDomainValidator,
             String adminSecretKey) {
         this.userRepository = userRepository;
         this.restaurantRepository = restaurantRepository;
@@ -34,6 +41,8 @@ public class RegisterUseCase {
         this.outboxEventRepository = outboxEventRepository;
         this.eventPayloadSerializer = eventPayloadSerializer;
         this.emailOtpService = emailOtpService;
+        this.disposableEmailValidator = disposableEmailValidator;
+        this.emailDomainValidator = emailDomainValidator;
         this.adminSecretKey = adminSecretKey;
     }
 
@@ -44,6 +53,12 @@ public class RegisterUseCase {
         }
         if (userRepository.existsByEmail(registerRequest.getEmail())) {
             throw new EmailAlreadyExistException(registerRequest.getEmail());
+        }
+        if (disposableEmailValidator.isDisposable(registerRequest.getEmail())) {
+            throw new DisposableEmailNotAllowedException(registerRequest.getEmail());
+        }
+        if (!emailDomainValidator.isValidDomain(registerRequest.getEmail())) {
+            throw new InvalidEmailDomainException(registerRequest.getEmail());
         }
 
         User.UserRole role = resolveRole(registerRequest.getRole(), registerRequest.getAdminSecret());
@@ -56,7 +71,7 @@ public class RegisterUseCase {
         user.setRole(role);
         user.setApproved(approved);
         user.setActive(true);
-        user.setEmailVerified(false);
+        user.setEmailVerified(true); // Auto-verify email temporarily
 
         // Map Profile Fields
         user.setFullName(registerRequest.getFullName());
@@ -74,7 +89,7 @@ public class RegisterUseCase {
 
         // -- CREATE OUTBOX EVENT FOR RELIABLE EVENT PUBLISHING --
         createUserRegisteredOutboxEvent(saved);
-        emailOtpService.generateForSignup(saved);
+        // emailOtpService.generateForSignup(saved); // Temporarily disabled OTP generation
 
         // Automatically create restaurant for MERCHANT users
         if (role == User.UserRole.MERCHANT && saved.getRestaurantName() != null

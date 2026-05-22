@@ -103,7 +103,7 @@ function Login() {
       }
 
       if (!err.response) {
-        msg = "Không thể kết nối server. Kiểm tra Gateway (localhost:8080) đã chạy chưa hoặc lỗi mạng.";
+        msg = "Không thể kết nối server. Kiểm tra Gateway (localhost:8089) đã chạy chưa hoặc lỗi mạng.";
       }
       setError(msg);
       message.error(msg);
@@ -148,9 +148,12 @@ function Login() {
           </button>
         </form>
 
-        <p className="register-link">
-          Chưa có tài khoản? <Link to="/register">Đăng ký ngay</Link>
-        </p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '15px', fontSize: '14px' }}>
+          <p className="register-link" style={{ margin: 0 }}>
+            Chưa có tài khoản? <Link to="/register">Đăng ký ngay</Link>
+          </p>
+          <Link to="/forgot-password" style={{ color: '#ea580c', fontWeight: 'bold' }}>Quên mật khẩu?</Link>
+        </div>
       </div>
     </div>
   );

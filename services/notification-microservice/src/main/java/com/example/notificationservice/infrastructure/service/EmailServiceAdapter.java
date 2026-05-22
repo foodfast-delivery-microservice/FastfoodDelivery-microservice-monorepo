@@ -2,9 +2,11 @@ package com.example.notificationservice.infrastructure.service;
 
 import com.example.notificationservice.application.dto.OrderConfirmedEventDto;
 import com.example.notificationservice.application.dto.PaymentEventDto;
+import com.example.notificationservice.application.dto.UserEmailResponse;
 import com.example.notificationservice.domain.entities.EmailNotification;
 import com.example.notificationservice.domain.entities.Notification;
 import com.example.notificationservice.domain.port.EmailSenderPort;
+import com.example.notificationservice.domain.port.UserServicePort;
 import com.example.notificationservice.domain.repository.EmailNotificationRepository;
 import com.example.notificationservice.domain.valueobjects.EmailStatus;
 import com.example.notificationservice.infrastructure.template.EmailTemplateEngine;
@@ -41,41 +43,45 @@ public class EmailServiceAdapter implements EmailSenderPort {
     private final MeterRegistry meterRegistry;
     private final EmailSubjectService emailSubjectService;
     private final ObjectMapper objectMapper;
+    private final UserServicePort userServicePort;
 
     @Value("${spring.mail.from:noreply@fastfooddelivery.com}")
     private String fromEmail;
+
+    @Value("${app.email.skip-undeliverable.enabled:true}")
+    private boolean skipUndeliverableEnabled;
 
     private static final DateTimeFormatter DATE_TIME_FORMATTER =
             DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss").withZone(ZoneId.systemDefault());
 
     @Override
-    public void sendPaymentSuccessEmail(PaymentEventDto event, String email) {
+    public void sendPaymentSuccessEmail(PaymentEventDto event, String email, Long userId) {
         log.info("Sending payment success email to: {} for orderId: {}", email, event.getOrderId());
         Map<String, Object> templateVariables = buildTemplateVariables(event, true);
         String subject = emailSubjectService.getPaymentSuccessSubject(event.getOrderId());
         String eventId = "payment-" + event.getPaymentId() + "-order-" + event.getOrderId();
         sendEmail(email, subject, "payment-success", templateVariables, "payment success",
-                com.example.notificationservice.domain.valueobjects.NotificationType.PAYMENT_SUCCESS, eventId);
+                com.example.notificationservice.domain.valueobjects.NotificationType.PAYMENT_SUCCESS, eventId, userId);
     }
 
     @Override
-    public void sendPaymentFailedEmail(PaymentEventDto event, String email) {
+    public void sendPaymentFailedEmail(PaymentEventDto event, String email, Long userId) {
         log.info("Sending payment failed email to: {} for orderId: {}", email, event.getOrderId());
         Map<String, Object> templateVariables = buildTemplateVariables(event, false);
         String subject = emailSubjectService.getPaymentFailedSubject(event.getOrderId());
         String eventId = "payment-" + event.getPaymentId() + "-order-" + event.getOrderId();
         sendEmail(email, subject, "payment-failure", templateVariables, "payment failed",
-                com.example.notificationservice.domain.valueobjects.NotificationType.PAYMENT_FAILED, eventId);
+                com.example.notificationservice.domain.valueobjects.NotificationType.PAYMENT_FAILED, eventId, userId);
     }
 
     @Override
-    public void sendPaymentRefundedEmail(PaymentEventDto event, String email) {
+    public void sendPaymentRefundedEmail(PaymentEventDto event, String email, Long userId) {
         log.info("Sending payment refunded email to: {} for orderId: {}", email, event.getOrderId());
         Map<String, Object> templateVariables = buildRefundedTemplateVariables(event);
         String subject = emailSubjectService.getPaymentRefundedSubject(event.getOrderId());
         String eventId = "payment-" + event.getPaymentId() + "-order-" + event.getOrderId();
         sendEmail(email, subject, "payment-refunded", templateVariables, "payment refunded",
-                com.example.notificationservice.domain.valueobjects.NotificationType.PAYMENT_REFUNDED, eventId);
+                com.example.notificationservice.domain.valueobjects.NotificationType.PAYMENT_REFUNDED, eventId, userId);
     }
 
     private Map<String, Object> buildTemplateVariables(PaymentEventDto event, boolean isSuccess) {
@@ -111,14 +117,14 @@ public class EmailServiceAdapter implements EmailSenderPort {
     }
 
     @Override
-    public void sendOrderConfirmedEmail(OrderConfirmedEventDto event, String email) {
-        log.info("Sending order confirmed email to: {} for orderId: {}", email, event.getOrderId());
+    public void sendOrderConfirmedEmail(OrderConfirmedEventDto event, String email, Long userId) {
+        log.info("Sending order confirmed email to: {}", email);
         Map<String, Object> templateVariables = buildOrderConfirmedTemplateVariables(event);
         String orderCode = event.getOrderCode() != null ? event.getOrderCode() : String.valueOf(event.getOrderId());
         String subject = emailSubjectService.getOrderConfirmedSubject(orderCode);
         String eventId = "order-" + event.getOrderId();
         sendEmail(email, subject, "order-confirmed", templateVariables, "order confirmed",
-                com.example.notificationservice.domain.valueobjects.NotificationType.ORDER_CONFIRMED, eventId);
+                com.example.notificationservice.domain.valueobjects.NotificationType.ORDER_CONFIRMED, eventId, userId);
     }
 
     private Map<String, Object> buildOrderConfirmedTemplateVariables(OrderConfirmedEventDto event) {
@@ -148,8 +154,15 @@ public class EmailServiceAdapter implements EmailSenderPort {
             throw new IllegalStateException("Notification is invalid and cannot be sent");
         }
 
-        log.info("Sending generic notification email: type={}, recipient={}, template={}",
-                notification.getType(), notification.getRecipient(), notification.getTemplate());
+        log.info("Sending generic notification email: type={}, recipient={}, template={}, userId={}",
+                notification.getType(), notification.getRecipient(), notification.getTemplate(), notification.getUserId());
+
+        // Check if email should be skipped due to undeliverability
+        if (skipUndeliverableEnabled && shouldSkipEmail(notification.getRecipient().getValue(), notification.getUserId())) {
+            log.info("Skipping generic notification to undeliverable recipient: {}", notification.getRecipient());
+            incrementEmailCounter("skip", "undeliverable");
+            return;
+        }
 
         // Create email notification record
         String payloadJson = null;
@@ -170,6 +183,7 @@ public class EmailServiceAdapter implements EmailSenderPort {
                 .status(EmailStatus.PENDING)
                 .eventId(extractEventId(notification))
                 .payloadJson(payloadJson)
+                .userId(notification.getUserId())
                 .build();
         emailRecord = emailNotificationRepository.save(emailRecord);
 
@@ -240,10 +254,40 @@ public class EmailServiceAdapter implements EmailSenderPort {
     private void sendEmail(String to, String subject, String templateName,
                            Map<String, Object> templateVariables, String emailType,
                            com.example.notificationservice.domain.valueobjects.NotificationType notificationType,
-                           String eventId) {
+                           String eventId, Long userId) {
         EmailNotification emailRecord = null;
         try {
+            // Check if email should be skipped due to undeliverability
+            if (skipUndeliverableEnabled && shouldSkipEmail(to, userId)) {
+                log.info("Skipping email to undeliverable recipient: {}", to);
+
+                // Create skipped record for audit trail
+                emailRecord = EmailNotification.builder()
+                        .type(notificationType)
+                        .recipient(to)
+                        .subject(subject)
+                        .template(templateName)
+                        .status(EmailStatus.SKIPPED)
+                        .eventId(eventId)
+                        .userId(userId)
+                        .build();
+                emailNotificationRepository.save(emailRecord);
+
+                // Metrics
+                incrementEmailCounter("skipped", notificationType.name());
+                return;
+            }
+
             // Create email notification record
+            String payloadJson = null;
+            if (templateVariables != null) {
+                try {
+                    payloadJson = objectMapper.writeValueAsString(templateVariables);
+                } catch (Exception e) {
+                    log.warn("Failed to serialize template variables for persistence: eventId={}", eventId, e);
+                }
+            }
+
             emailRecord = EmailNotification.builder()
                     .type(notificationType)
                     .recipient(to)
@@ -251,6 +295,8 @@ public class EmailServiceAdapter implements EmailSenderPort {
                     .template(templateName)
                     .status(EmailStatus.PENDING)
                     .eventId(eventId)
+                    .payloadJson(payloadJson)
+                    .userId(userId)
                     .build();
             emailRecord = emailNotificationRepository.save(emailRecord);
 
@@ -292,7 +338,7 @@ public class EmailServiceAdapter implements EmailSenderPort {
     private void sendEmail(String to, String subject, String templateName,
                            Map<String, Object> templateVariables, String emailType) {
         sendEmail(to, subject, templateName, templateVariables, emailType,
-                com.example.notificationservice.domain.valueobjects.NotificationType.GENERIC, null);
+                com.example.notificationservice.domain.valueobjects.NotificationType.GENERIC, null, null);
     }
 
     private void handleEmailFailure(EmailNotification emailRecord, Exception e,
@@ -326,5 +372,104 @@ public class EmailServiceAdapter implements EmailSenderPort {
                 .tag("type", type)
                 .register(meterRegistry)
                 .increment();
+    }
+
+    /**
+     * Check if email should be skipped due to undeliverability.
+     * Uses provided userId or tries to extract it from email.
+     * Falls back to allowing send if user lookup fails.
+     */
+    private boolean shouldSkipEmail(String email, Long userId) {
+        if (email == null || email.isEmpty()) {
+            return false;
+        }
+
+        try {
+            // Use provided userId or fallback to extraction
+            Long effectiveUserId = (userId != null) ? userId : extractUserIdFromEmail(email);
+
+            if (effectiveUserId == null) {
+                log.debug("No userId provided and could not extract from email: {}, allowing send", email);
+                incrementEmailCounter("fallback_allow", "unknown");
+                return false;
+            }
+
+            // Check user deliverability status
+            UserEmailResponse userEmail = userServicePort.getUserEmailById(effectiveUserId);
+            if (userEmail == null) {
+                log.warn("User {} not found when checking deliverability, allowing send as fallback", effectiveUserId);
+                incrementEmailCounter("fallback_allow", "user_not_found");
+                return false;
+            }
+
+            if (Boolean.TRUE.equals(userEmail.getEmailUndeliverable())) {
+                log.info("User {} email marked as undeliverable, skipping send", effectiveUserId);
+                incrementEmailCounter("skip", "undeliverable");
+                return true;
+            }
+
+            return false;
+
+        } catch (Exception e) {
+            log.error("Error checking email deliverability for {}, allowing send as fallback", email, e);
+            incrementEmailCounter("fallback_allow", "error");
+            return false;
+        }
+    }
+
+    /**
+     * Extract userId from email address.
+     * Implementation: Looks for metadata in data map if possible, 
+     * but here we just keep it as fallback null.
+     */
+    private Long extractUserIdFromEmail(String email) {
+        return null;
+    }
+
+    @Override
+    public void sendEmailRecord(EmailNotification emailRecord) {
+        if (emailRecord == null) {
+            throw new IllegalArgumentException("Email record cannot be null");
+        }
+
+        log.info("Sending/Resending email record: id={}, recipient={}, template={}", 
+                emailRecord.getId(), emailRecord.getRecipient(), emailRecord.getTemplate());
+
+        try {
+            Map<String, Object> templateVariables = new HashMap<>();
+            if (emailRecord.getPayloadJson() != null && !emailRecord.getPayloadJson().isBlank()) {
+                try {
+                    templateVariables = objectMapper.readValue(emailRecord.getPayloadJson(), Map.class);
+                } catch (Exception e) {
+                    log.warn("Failed to deserialize payloadJson for email resend: id={}", emailRecord.getId(), e);
+                }
+            }
+
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+            helper.setFrom(fromEmail);
+            helper.setTo(emailRecord.getRecipient().getValue());
+            helper.setSubject(emailRecord.getSubject());
+
+            String htmlContent = templateEngine.render(emailRecord.getTemplate(), templateVariables);
+            helper.setText(htmlContent, true);
+
+            mailSender.send(message);
+
+            // Update status
+            emailRecord.markAsSent();
+            emailNotificationRepository.save(emailRecord);
+
+            // Metrics
+            incrementEmailCounter("sent", emailRecord.getType().name());
+
+            log.info("Email record sent/resent successfully: id={}", emailRecord.getId());
+
+        } catch (Exception e) {
+            handleEmailFailure(emailRecord, e, "resend", 
+                    emailRecord.getRecipient().getValue(), emailRecord.getType());
+            throw new RuntimeException("Failed to resend email", e);
+        }
     }
 }

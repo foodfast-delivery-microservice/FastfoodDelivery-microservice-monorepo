@@ -12,7 +12,8 @@ import com.example.userservice.application.DTOs.auth.RegisterRequest;
 import com.example.userservice.application.DTOs.auth.ChangeEmailRequest;
 import com.example.userservice.application.DTOs.auth.ResendEmailOtpRequest;
 import com.example.userservice.application.DTOs.auth.VerifyEmailOtpRequest;
-
+import com.example.userservice.application.DTOs.auth.ForgotPasswordRequest;
+import com.example.userservice.application.DTOs.auth.ResetPasswordRequest;
 import com.example.userservice.application.DTOs.user.CreateUserResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -32,7 +33,20 @@ public class AuthController {
     private final ResendEmailOtpUseCase resendEmailOtpUseCase;
     private final VerifyEmailOtpUseCase verifyEmailOtpUseCase;
 
+    private final com.example.userservice.application.usecases.auth.ForgotPasswordUseCase forgotPasswordUseCase;
+    private final com.example.userservice.application.usecases.auth.ResetPasswordUseCase resetPasswordUseCase;
 
+    @PostMapping("/forgot-password")
+    public ResponseEntity<ApiResponse<Void>> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        forgotPasswordUseCase.execute(request);
+        return ResponseEntity.ok(new ApiResponse<>(HttpStatus.OK, "If email exists, a reset link has been sent.", null, null));
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<ApiResponse<Void>> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        resetPasswordUseCase.execute(request);
+        return ResponseEntity.ok(new ApiResponse<>(HttpStatus.OK, "Password reset successfully", null, null));
+    }
 
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<CreateUserResponse>> register (@Valid @RequestBody RegisterRequest registerRequest) {

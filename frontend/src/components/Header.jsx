@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { FaUserCircle } from "react-icons/fa";
 import { useAuth } from "../context/AuthContext";
+import NotificationBell from "./NotificationBell";
 import http from "../services/http";
 import "./Header.css";
 
@@ -126,6 +127,9 @@ function Header({ cartCount }) {
         <Link to="/Cart" className="cart-button">
           Giỏ hàng ({cartCount > 0 ? cartCount : 0})
         </Link>
+
+        {/* NOTIFICATION BELL */}
+        {currentUser && <NotificationBell />}
 
         {/* USER MENU */}
         <div className="user-actions">

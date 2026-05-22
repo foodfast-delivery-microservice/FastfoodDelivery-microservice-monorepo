@@ -6,13 +6,13 @@ import com.example.notificationservice.domain.entities.Notification;
 
 public interface EmailSenderPort {
 
-    void sendPaymentSuccessEmail(PaymentEventDto event, String email);
+    void sendPaymentSuccessEmail(PaymentEventDto event, String email, Long userId);
 
-    void sendPaymentFailedEmail(PaymentEventDto event, String email);
+    void sendPaymentFailedEmail(PaymentEventDto event, String email, Long userId);
 
-    void sendPaymentRefundedEmail(PaymentEventDto event, String email);
+    void sendPaymentRefundedEmail(PaymentEventDto event, String email, Long userId);
 
-    void sendOrderConfirmedEmail(OrderConfirmedEventDto event, String email);
+    void sendOrderConfirmedEmail(OrderConfirmedEventDto event, String email, Long userId);
 
     /**
      * Sends a generic notification email.
@@ -21,5 +21,12 @@ public interface EmailSenderPort {
      * @throws RuntimeException if email sending fails
      */
     void sendGenericNotification(Notification notification);
+
+    /**
+     * Sends a persisted EmailNotification record.
+     *
+     * @param emailRecord the email record to send
+     */
+    void sendEmailRecord(com.example.notificationservice.domain.entities.EmailNotification emailRecord);
 }
 

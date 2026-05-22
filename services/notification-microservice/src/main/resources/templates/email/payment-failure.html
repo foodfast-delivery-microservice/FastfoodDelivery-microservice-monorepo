@@ -4,187 +4,92 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Thanh toán thất bại</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            margin: 0;
-            padding: 0;
-            background-color: #f4f4f4;
-        }
-
-        .container {
-            max-width: 600px;
-            margin: 0 auto;
-            background-color: #ffffff;
-        }
-
-        .header {
-            background-color: #dc3545;
-            color: #ffffff;
-            padding: 30px 20px;
-            text-align: center;
-        }
-
-        .header h1 {
-            margin: 0;
-            font-size: 24px;
-        }
-
-        .content {
-            padding: 30px 20px;
-        }
-
-        .error-icon {
-            text-align: center;
-            font-size: 48px;
-            color: #dc3545;
-            margin: 20px 0;
-        }
-
-        .message {
-            text-align: center;
-            font-size: 18px;
-            color: #dc3545;
-            font-weight: bold;
-            margin-bottom: 30px;
-        }
-
-        .details {
-            background-color: #f8f9fa;
-            border-radius: 8px;
-            padding: 20px;
-            margin: 20px 0;
-        }
-
-        .detail-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 10px 0;
-            border-bottom: 1px solid #e0e0e0;
-        }
-
-        .detail-row:last-child {
-            border-bottom: none;
-        }
-
-        .detail-label {
-            font-weight: bold;
-            color: #666;
-        }
-
-        .detail-value {
-            color: #333;
-        }
-
-        .amount {
-            font-size: 24px;
-            font-weight: bold;
-            color: #333;
-        }
-
-        .reason-box {
-            background-color: #fff3cd;
-            border-left: 4px solid #ffc107;
-            padding: 15px;
-            margin: 20px 0;
-            border-radius: 4px;
-        }
-
-        .reason-box strong {
-            color: #856404;
-        }
-
-        .reason-text {
-            color: #856404;
-            margin-top: 10px;
-        }
-
-        .help-text {
-            background-color: #e7f3ff;
-            border-left: 4px solid #007bff;
-            padding: 15px;
-            margin: 20px 0;
-            border-radius: 4px;
-        }
-
-        .help-text p {
-            margin: 5px 0;
-            color: #004085;
-        }
-
-        .button {
-            display: block;
-            width: 100%;
-            max-width: 300px;
-            margin: 30px auto;
-            padding: 15px 30px;
-            background-color: #007bff;
-            color: #ffffff;
-            text-decoration: none;
-            border-radius: 5px;
-            text-align: center;
-            font-weight: bold;
-        }
-
-        .button:hover {
-            background-color: #0056b3;
-        }
-
-        .footer {
-            background-color: #f8f9fa;
-            padding: 20px;
-            text-align: center;
-            font-size: 12px;
-            color: #666;
-        }
-    </style>
 </head>
-<body>
-<div class="container">
-    <div class="header">
-        <h1>Thanh toán thất bại</h1>
-    </div>
-    <div class="content">
-        <div class="error-icon">✗</div>
-        <div class="message">Rất tiếc, thanh toán của bạn không thành công</div>
-
-        <div class="details">
-            <div class="detail-row">
-                <span class="detail-label">Mã đơn hàng:</span>
-                <span class="detail-value" th:text="${orderId}">#12345</span>
-            </div>
-            <div class="detail-row">
-                <span class="detail-label">Số tiền:</span>
-                <span class="detail-value amount" th:text="${amount}">0 VNĐ</span>
-            </div>
-            <div class="detail-row">
-                <span class="detail-label">Thời gian:</span>
-                <span class="detail-value" th:text="${paymentTime}">01/01/2024 10:00:00</span>
-            </div>
-        </div>
-
-        <div class="reason-box">
-            <strong>Lý do thất bại:</strong>
-            <div class="reason-text" th:text="${failureReason}">Không xác định</div>
-        </div>
-
-        <div class="help-text">
-            <p><strong>Bạn có thể thử lại bằng cách:</strong></p>
-            <p>1. Kiểm tra lại thông tin thẻ/tài khoản</p>
-            <p>2. Đảm bảo số dư tài khoản đủ để thanh toán</p>
-            <p>3. Liên hệ ngân hàng nếu vấn đề vẫn tiếp tục</p>
-            <p>4. Thử lại thanh toán cho đơn hàng này</p>
-        </div>
-
-        <a href="#" class="button" th:href="'http://localhost:3000/orders/' + ${orderId} + '/payment'">Thử lại thanh
-            toán</a>
-    </div>
-    <div class="footer">
-        <p>Nếu bạn cần hỗ trợ, vui lòng liên hệ với chúng tôi qua email hỗ trợ.</p>
-        <p>&copy; 2024 FastFood Delivery. Tất cả quyền được bảo lưu.</p>
-    </div>
-</div>
+<body style="font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; color: #1e293b; margin: 0; padding: 40px 20px; line-height: 1.6;">
+    <table cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03); overflow: hidden;">
+        <!-- Header -->
+        <tr>
+            <td style="background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%); padding: 40px 20px; text-align: center;">
+                <div style="background-color: rgba(255, 255, 255, 0.2); width: 64px; height: 64px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 16px; line-height: 64px; text-align: center; color: white; font-size: 32px; font-weight: bold; margin: 0 auto 16px auto;">✗</div>
+                <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -0.025em;">Thanh Toán Không Thành Công</h1>
+                <p style="color: #ffedd5; margin: 8px 0 0 0; font-size: 14px; font-weight: 500;">Rất tiếc, đã xảy ra lỗi trong quá trình xử lý giao dịch</p>
+            </td>
+        </tr>
+        
+        <!-- Main Content -->
+        <tr>
+            <td style="padding: 40px 30px;">
+                <p style="font-size: 15px; color: #475569; margin-top: 0; margin-bottom: 24px;">Chúng tôi xin thông báo giao dịch thanh toán cho đơn hàng của bạn đã bị từ chối hoặc bị lỗi từ phía cổng thanh toán/ngân hàng liên kết.</p>
+                
+                <!-- Payment details table -->
+                <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; margin-bottom: 24px;">
+                    <tr>
+                        <td style="padding: 16px 20px; border-bottom: 1px solid #e2e8f0;">
+                            <table cellpadding="0" cellspacing="0" border="0" width="100%">
+                                <tr>
+                                    <td style="font-size: 14px; font-weight: 600; color: #64748b;">Mã đơn hàng:</td>
+                                    <td align="right" th:text="${orderId}" style="font-size: 14px; font-weight: 700; color: #0f172a;">#12345</td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 16px 20px; border-bottom: 1px solid #e2e8f0;">
+                            <table cellpadding="0" cellspacing="0" border="0" width="100%">
+                                <tr>
+                                    <td style="font-size: 14px; font-weight: 600; color: #64748b;">Số tiền giao dịch:</td>
+                                    <td align="right" th:text="${amount}" style="font-size: 15px; font-weight: 700; color: #0f172a;">0 VNĐ</td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 16px 20px;">
+                            <table cellpadding="0" cellspacing="0" border="0" width="100%">
+                                <tr>
+                                    <td style="font-size: 14px; font-weight: 600; color: #64748b;">Thời gian lỗi:</td>
+                                    <td align="right" th:text="${paymentTime}" style="font-size: 14px; font-weight: 500; color: #334155;">01/01/2024 10:00:00</td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                </table>
+                
+                <!-- Failure Reason Box -->
+                <div style="background-color: #fff7ed; border-left: 4px solid #ea580c; border-radius: 4px; padding: 16px; margin-bottom: 24px;">
+                    <p style="font-size: 14px; font-weight: 700; color: #9a3412; margin: 0 0 4px 0;">Chi tiết lỗi từ ngân hàng:</p>
+                    <p th:text="${failureReason}" style="font-size: 13px; color: #c2410c; margin: 0;">Không xác định</p>
+                </div>
+                
+                <!-- Resolution Box -->
+                <div style="background-color: #eff6ff; border-left: 4px solid #3b82f6; border-radius: 4px; padding: 16px; margin-bottom: 30px;">
+                    <p style="font-size: 14px; font-weight: 700; color: #1e3a8a; margin: 0 0 6px 0;">Đề xuất hướng xử lý:</p>
+                    <p style="font-size: 13px; color: #2563eb; margin: 0 0 4px 0;">1. Kiểm tra lại thông tin số thẻ hoặc tài khoản thanh toán.</p>
+                    <p style="font-size: 13px; color: #2563eb; margin: 0 0 4px 0;">2. Đảm bảo số dư tài khoản/hạn mức tín dụng còn đủ cho giao dịch.</p>
+                    <p style="font-size: 13px; color: #2563eb; margin: 0 0 4px 0;">3. Liên hệ với ngân hàng phát hành nếu tài khoản bị khóa/hạn chế.</p>
+                    <p style="font-size: 13px; color: #2563eb; margin: 0;">4. Thực hiện thử lại thanh toán qua đường dẫn bên dưới.</p>
+                </div>
+                
+                <!-- CTA Button -->
+                <table cellpadding="0" cellspacing="0" border="0" width="100%">
+                    <tr>
+                        <td align="center">
+                            <a th:href="'http://localhost:3000/orders/' + ${orderId} + '/payment'" style="display: inline-block; background-color: #ea580c; color: #ffffff; font-size: 15px; font-weight: 700; text-decoration: none; padding: 14px 32px; border-radius: 10px; box-shadow: 0 4px 6px -1px rgba(234, 88, 12, 0.2); transition: background-color 0.2s;">
+                                Thử Lại Thanh Toán Ngay
+                            </a>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+        
+        <!-- Footer -->
+        <tr>
+            <td style="background-color: #f8fafc; padding: 24px 30px; border-top: 1px solid #f1f5f9; text-align: center;">
+                <p style="font-size: 11px; color: #cbd5e1; margin: 0;">Đơn hàng của bạn sẽ được lưu giữ tạm thời trong hệ thống chờ bạn hoàn tất thanh toán.</p>
+                <p style="font-size: 11px; color: #cbd5e1; margin-top: 6px; margin-bottom: 0;">&copy; 2026 FastFood Delivery. Mọi quyền được bảo lưu.</p>
+            </td>
+        </tr>
+    </table>
 </body>
 </html>

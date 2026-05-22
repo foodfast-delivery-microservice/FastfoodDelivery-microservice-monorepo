@@ -1,5 +1,6 @@
 package com.example.notificationservice.infrastructure.service;
 
+import com.example.notificationservice.application.dto.UpdateEmailDeliverabilityRequest;
 import com.example.notificationservice.application.dto.UserEmailResponse;
 import com.example.notificationservice.domain.port.UserServicePort;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -17,6 +18,7 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 public class UserServiceAdapter implements UserServicePort {
 
     private final WebClient userWebClient;
+    private final WebClient internalUserWebClient;
     private final ObjectMapper objectMapper;
 
     @Override
@@ -52,13 +54,15 @@ public class UserServiceAdapter implements UserServicePort {
             Long id = dataNode.has("id") ? dataNode.get("id").asLong() : userId;
             String fullName = dataNode.has("fullName") ? dataNode.get("fullName").asText() : null;
             String email = dataNode.has("email") ? dataNode.get("email").asText() : null;
+            Boolean emailUndeliverable = dataNode.has("emailUndeliverable") ? dataNode.get("emailUndeliverable").asBoolean() : false;
 
-            log.info("User email retrieved: userId={}, email={}", id, email);
+            log.info("User email retrieved: userId={}, email={}, undeliverable={}", id, email, emailUndeliverable);
 
             return UserEmailResponse.builder()
                     .id(id)
                     .fullName(fullName)
                     .email(email)
+                    .emailUndeliverable(emailUndeliverable)
                     .build();
 
         } catch (WebClientResponseException.NotFound ex) {
@@ -77,8 +81,45 @@ public class UserServiceAdapter implements UserServicePort {
      * Fallback method when circuit breaker is open or service is unavailable.
      * Returns null to allow graceful degradation.
      */
+    @Override
+    @CircuitBreaker(name = "userService", fallbackMethod = "updateEmailDeliverabilityFallback")
+    public boolean updateEmailDeliverability(Long userId, boolean undeliverable, java.time.LocalDateTime bouncedAt, int bounceIncrement) {
+        try {
+            UpdateEmailDeliverabilityRequest request = UpdateEmailDeliverabilityRequest.builder()
+                    .undeliverable(undeliverable)
+                    .bouncedAt(bouncedAt)
+                    .bounceIncrement(bounceIncrement)
+                    .build();
+
+            String responseJson = internalUserWebClient.patch()
+                    .uri("/{id}/deliverability", userId)
+                    .bodyValue(request)
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .block();
+
+            if (responseJson == null) {
+                return false;
+            }
+
+            JsonNode rootNode = objectMapper.readTree(responseJson);
+            JsonNode statusNode = rootNode.get("status");
+            return statusNode != null && "success".equalsIgnoreCase(statusNode.asText());
+        } catch (Exception e) {
+            log.error("Failed to update email deliverability for userId={}", userId, e);
+            return false;
+        }
+    }
+
     private UserEmailResponse getUserEmailFallback(Long userId, Exception ex) {
         log.warn("Circuit breaker open or service unavailable for userId: {}. Using fallback.", userId, ex);
         return null;
+    }
+
+    private boolean updateEmailDeliverabilityFallback(Long userId, boolean undeliverable,
+                                                      java.time.LocalDateTime bouncedAt, int bounceIncrement,
+                                                      Exception ex) {
+        log.warn("Circuit breaker open when updating deliverability for userId={}", userId, ex);
+        return false;
     }
 }

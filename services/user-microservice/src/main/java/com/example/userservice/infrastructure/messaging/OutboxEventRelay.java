@@ -97,12 +97,13 @@ public class OutboxEventRelay {
                         java.util.Map<String, Object> notificationData = new java.util.HashMap<>();
                         notificationData.put("name", userEvent.getFullName());
                         notificationData.put("username", userEvent.getUsername());
-                        notificationData.put("loginUrl", "http://localhost:3000/login"); // Should be externalized
+                        notificationData.put("loginUrl", "http://localhost:5173/login"); // Should be externalized
 
                         // Create Notification Payload
                         java.util.Map<String, Object> notificationEvent = new java.util.HashMap<>();
                         notificationEvent.put("eventType", "USER_REGISTERED");
                         notificationEvent.put("recipient", userEvent.getEmail());
+                        notificationEvent.put("userId", userEvent.getUserId());
                         notificationEvent.put("template", "welcome-email");
                         notificationEvent.put("data", notificationData);
 
@@ -133,12 +134,38 @@ public class OutboxEventRelay {
                         java.util.Map<String, Object> notificationEvent = new java.util.HashMap<>();
                         notificationEvent.put("eventType", "EMAIL_VERIFICATION_OTP");
                         notificationEvent.put("recipient", otpEvent.getEmail());
+                        notificationEvent.put("userId", otpEvent.getUserId());
                         notificationEvent.put("template", "email-verification-otp");
                         notificationEvent.put("data", data);
 
                         payloadToSend = notificationEvent;
                     } catch (Exception ex) {
                         log.error("Failed to deserialize/map EmailVerificationOtpRequested payload for event id={}", event.getId(), ex);
+                        payloadToSend = event.getPayload();
+                    }
+                } else if ("UserForgotPasswordEvent".equals(event.getType())) {
+                    exchange = "notification.exchange";
+                    routingKey = "notification.user.forgot.password";
+
+                    try {
+                        com.example.userservice.application.DTOs.event.UserForgotPasswordEvent forgotPwdEvent = objectMapper.readValue(
+                                event.getPayload(),
+                                com.example.userservice.application.DTOs.event.UserForgotPasswordEvent.class
+                        );
+
+                        java.util.Map<String, Object> data = new java.util.HashMap<>();
+                        // Make sure your frontend has a route like /reset-password?token=...
+                        data.put("resetLink", "http://localhost:5173/reset-password?token=" + forgotPwdEvent.getResetToken());
+
+                        java.util.Map<String, Object> notificationEvent = new java.util.HashMap<>();
+                        notificationEvent.put("eventType", "USER_FORGOT_PASSWORD");
+                        notificationEvent.put("recipient", forgotPwdEvent.getEmail());
+                        notificationEvent.put("template", "forgot-password");
+                        notificationEvent.put("data", data);
+
+                        payloadToSend = notificationEvent;
+                    } catch (Exception ex) {
+                        log.error("Failed to deserialize/map UserForgotPasswordEvent payload for event id={}", event.getId(), ex);
                         payloadToSend = event.getPayload();
                     }
                 } else {

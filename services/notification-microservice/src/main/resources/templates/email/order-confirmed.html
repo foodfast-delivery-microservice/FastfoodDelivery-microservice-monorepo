@@ -4,158 +4,74 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Đơn hàng đã được xác nhận</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            margin: 0;
-            padding: 0;
-            background-color: #f4f4f4;
-        }
-
-        .container {
-            max-width: 600px;
-            margin: 0 auto;
-            background-color: #ffffff;
-        }
-
-        .header {
-            background-color: #17a2b8;
-            color: #ffffff;
-            padding: 30px 20px;
-            text-align: center;
-        }
-
-        .header h1 {
-            margin: 0;
-            font-size: 24px;
-        }
-
-        .content {
-            padding: 30px 20px;
-        }
-
-        .success-icon {
-            text-align: center;
-            font-size: 48px;
-            color: #17a2b8;
-            margin: 20px 0;
-        }
-
-        .message {
-            text-align: center;
-            font-size: 18px;
-            color: #17a2b8;
-            font-weight: bold;
-            margin-bottom: 30px;
-        }
-
-        .details {
-            background-color: #f8f9fa;
-            border-radius: 8px;
-            padding: 20px;
-            margin: 20px 0;
-        }
-
-        .detail-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 10px 0;
-            border-bottom: 1px solid #e0e0e0;
-        }
-
-        .detail-row:last-child {
-            border-bottom: none;
-        }
-
-        .detail-label {
-            font-weight: bold;
-            color: #666;
-        }
-
-        .detail-value {
-            color: #333;
-        }
-
-        .amount {
-            font-size: 24px;
-            font-weight: bold;
-            color: #17a2b8;
-        }
-
-        .info-box {
-            background-color: #e7f3ff;
-            border-left: 4px solid #17a2b8;
-            padding: 15px;
-            margin: 20px 0;
-            border-radius: 4px;
-        }
-
-        .info-box p {
-            margin: 5px 0;
-            color: #333;
-        }
-
-        .button {
-            display: block;
-            width: 100%;
-            max-width: 300px;
-            margin: 30px auto;
-            padding: 15px 30px;
-            background-color: #007bff;
-            color: #ffffff;
-            text-decoration: none;
-            border-radius: 5px;
-            text-align: center;
-            font-weight: bold;
-        }
-
-        .button:hover {
-            background-color: #0056b3;
-        }
-
-        .footer {
-            background-color: #f8f9fa;
-            padding: 20px;
-            text-align: center;
-            font-size: 12px;
-            color: #666;
-        }
-    </style>
 </head>
-<body>
-<div class="container">
-    <div class="header">
-        <h1>Đơn hàng đã được xác nhận</h1>
-    </div>
-    <div class="content">
-        <div class="success-icon">✓</div>
-        <div class="message">Merchant đã xác nhận đơn hàng của bạn!</div>
-
-        <div class="details">
-            <div class="detail-row">
-                <span class="detail-label">Mã đơn hàng:</span>
-                <span class="detail-value" th:text="${orderCode}">#ORD12345</span>
-            </div>
-            <div class="detail-row">
-                <span class="detail-label">Thời gian xác nhận:</span>
-                <span class="detail-value" th:text="${timestamp}">23/01/2026 10:00:00</span>
-            </div>
-        </div>
-
-        <div class="info-box">
-            <p><strong>Bước tiếp theo:</strong></p>
-            <p>Vui lòng thanh toán đơn hàng để merchant có thể bắt đầu chuẩn bị đơn hàng của bạn.</p>
-            <p>Bạn sẽ nhận được email thông báo khi thanh toán thành công.</p>
-        </div>
-
-        <a href="#" class="button" th:href="'http://localhost:3000/orders/' + ${orderId}">Xem đơn hàng</a>
-    </div>
-    <div class="footer">
-        <p>Nếu bạn có bất kỳ câu hỏi nào, vui lòng liên hệ với chúng tôi qua email hỗ trợ.</p>
-        <p>&copy; 2024 FastFood Delivery. Tất cả quyền được bảo lưu.</p>
-    </div>
-</div>
+<body style="font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; color: #1e293b; margin: 0; padding: 40px 20px; line-height: 1.6;">
+    <table cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03); overflow: hidden;">
+        <!-- Header -->
+        <tr>
+            <td style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 40px 20px; text-align: center;">
+                <div style="background-color: rgba(255, 255, 255, 0.2); width: 64px; height: 64px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 16px; line-height: 64px; text-align: center; color: white; font-size: 32px; font-weight: bold; margin: 0 auto 16px auto;">✓</div>
+                <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -0.025em;">Đơn Hàng Được Xác Nhận</h1>
+                <p style="color: #e6fdf5; margin: 8px 0 0 0; font-size: 14px; font-weight: 500;">Cửa hàng đã sẵn sàng phục vụ bạn!</p>
+            </td>
+        </tr>
+        
+        <!-- Main Content -->
+        <tr>
+            <td style="padding: 40px 30px;">
+                <p style="font-size: 16px; font-weight: 600; color: #0f172a; margin-top: 0; margin-bottom: 20px; text-align: center;">Merchant đã chính thức xác nhận đơn hàng của bạn!</p>
+                
+                <!-- Order details table -->
+                <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; margin-bottom: 30px;">
+                    <tr>
+                        <td style="padding: 16px 20px; border-bottom: 1px solid #e2e8f0;">
+                            <table cellpadding="0" cellspacing="0" border="0" width="100%">
+                                <tr>
+                                    <td style="font-size: 14px; font-weight: 600; color: #64748b;">Mã đơn hàng:</td>
+                                    <td align="right" th:text="${orderCode}" style="font-size: 14px; font-weight: 700; color: #0f172a;">#ORD12345</td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 16px 20px;">
+                            <table cellpadding="0" cellspacing="0" border="0" width="100%">
+                                <tr>
+                                    <td style="font-size: 14px; font-weight: 600; color: #64748b;">Thời gian xác nhận:</td>
+                                    <td align="right" th:text="${timestamp}" style="font-size: 14px; font-weight: 500; color: #334155;">23/01/2026 10:00:00</td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                </table>
+                
+                <!-- Next Steps Info Box -->
+                <div style="background-color: #eff6ff; border-left: 4px solid #3b82f6; border-radius: 4px; padding: 20px; margin-bottom: 30px;">
+                    <p style="font-size: 14px; font-weight: 700; color: #1e3a8a; margin: 0 0 8px 0;">Các bước tiếp theo:</p>
+                    <p style="font-size: 13px; color: #2563eb; margin: 0 0 6px 0; line-height: 1.5;">• Vui lòng tiến hành thanh toán đơn hàng này để cửa hàng có thể bắt đầu chuẩn bị và đóng gói món ăn của bạn.</p>
+                    <p style="font-size: 13px; color: #2563eb; margin: 0; line-height: 1.5;">• Bạn sẽ nhận được một email xác nhận tự động khác ngay khi giao dịch thanh toán thành công.</p>
+                </div>
+                
+                <!-- CTA Button -->
+                <table cellpadding="0" cellspacing="0" border="0" width="100%">
+                    <tr>
+                        <td align="center">
+                            <a th:href="'http://localhost:3000/orders/' + ${orderId}" style="display: inline-block; background-color: #10b981; color: #ffffff; font-size: 15px; font-weight: 700; text-decoration: none; padding: 14px 32px; border-radius: 10px; box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.2); transition: background-color 0.2s;">
+                                Xem Chi Tiết Đơn Hàng
+                            </a>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+        
+        <!-- Footer -->
+        <tr>
+            <td style="background-color: #f8fafc; padding: 24px 30px; border-top: 1px solid #f1f5f9; text-align: center;">
+                <p style="font-size: 11px; color: #cbd5e1; margin: 0;">Mọi thắc mắc về đơn hàng, vui lòng liên hệ bộ phận hỗ trợ khách hàng qua email hoặc hotline.</p>
+                <p style="font-size: 11px; color: #cbd5e1; margin-top: 6px; margin-bottom: 0;">&copy; 2026 FastFood Delivery. Mọi quyền được bảo lưu.</p>
+            </td>
+        </tr>
+    </table>
 </body>
 </html>
