@@ -108,22 +108,20 @@ class GetMerchantPaymentStatisticsUseCaseTest {
     }
 
     @Test
-    @DisplayName("Should use default date range when dates are null")
-    void testExecute_WithNullDates_ShouldUseDefaultRange() {
+    @DisplayName("Should return lifetime statistics when dates are null")
+    void testExecute_WithNullDates_ShouldReturnLifetimeStatistics() {
         // Given
-        when(paymentRepository.countByMerchantIdAndStatusAndCreatedAtBetween(
-                anyLong(), any(Payment.Status.class), any(LocalDateTime.class), any(LocalDateTime.class)))
+        when(paymentRepository.countByMerchantIdAndStatus(anyLong(), any(Payment.Status.class)))
                 .thenReturn(0L);
-        when(paymentRepository.sumAmountByMerchantIdAndStatusAndCreatedAtBetween(
-                anyLong(), any(Payment.Status.class), any(LocalDateTime.class), any(LocalDateTime.class)))
+        when(paymentRepository.sumAmountByMerchantIdAndStatus(anyLong(), any(Payment.Status.class)))
                 .thenReturn(BigDecimal.ZERO);
 
         // When
         useCase.execute(merchantId, null, null);
 
         // Then
-        verify(paymentRepository, atLeastOnce()).countByMerchantIdAndStatusAndCreatedAtBetween(
-                eq(merchantId), any(Payment.Status.class), any(LocalDateTime.class), any(LocalDateTime.class));
+        verify(paymentRepository, atLeastOnce()).countByMerchantIdAndStatus(
+                eq(merchantId), any(Payment.Status.class));
     }
 
     @Test
