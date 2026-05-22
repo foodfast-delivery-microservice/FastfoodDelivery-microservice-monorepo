@@ -27,6 +27,11 @@ public class RegisterUseCase {
 
     private final String adminSecretKey;
 
+    public RegisterUseCase(UserRepository userRepository, RestaurantRepository restaurantRepository,
+            PasswordEncoderPort passwordEncoderPort,
+            com.example.userservice.domain.repository.OutboxEventRepository outboxEventRepository,
+            com.example.userservice.application.service.EventPayloadSerializer eventPayloadSerializer,
+            com.example.userservice.application.service.EmailOtpService emailOtpService,
             com.example.userservice.application.service.DisposableEmailValidator disposableEmailValidator,
             EmailDomainValidator emailDomainValidator,
             String adminSecretKey) {
