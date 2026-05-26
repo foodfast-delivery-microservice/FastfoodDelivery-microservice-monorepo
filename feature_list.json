@@ -1,0 +1,88 @@
+{
+  "project_name": "FastFood Delivery Microservice Platform",
+  "version": "1.0.0",
+  "domain_areas": [
+    {
+      "name": "Authentication & Identity Management",
+      "microservice": "user-microservice",
+      "features": [
+        "User registration with role choices (CUSTOMER, MERCHANT, ADMIN)",
+        "JWT Authentication (Login/Logout, Token Refresh, Access token lifespan: 25h)",
+        "Profile management and shipping address books",
+        "Merchant onboarding & Admin approval workflow"
+      ]
+    },
+    {
+      "name": "Product & Stock Inventory Catalog",
+      "microservice": "product-microservice",
+      "features": [
+        "Category CRUD management",
+        "Product CRUD (scoped to merchant store ownership)",
+        "Stock inventory tracking and threshold alerts",
+        "Synchronous REST-based product and pricing validation during order checkout",
+        "Idempotent stock deduction and restoration via RabbitMQ events"
+      ]
+    },
+    {
+      "name": "Order Lifecycle Management",
+      "microservice": "order-microservice",
+      "features": [
+        "Order checkout validation (combining customer role, address and active products)",
+        "Idempotency token creation to prevent double checkout submissions",
+        "State machine transitions: PENDING -> PAID -> SHIPPING -> DELIVERED (or CANCELLED/REFUNDED)",
+        "Transaction outbox logging for Event-Driven updates",
+        "User personal order history & Merchant store-specific order inbox"
+      ]
+    },
+    {
+      "name": "Payment Gateway Simulation & Refunds",
+      "microservice": "payment-microservice",
+      "features": [
+        "Secure checkout credit card billing mock pipeline",
+        "Transaction success/failure status propagation via RabbitMQ events",
+        "Outbox-backed refund handling for cancelled orders",
+        "Transactional audit logger for payment history charts"
+      ]
+    },
+    {
+      "name": "Automated Drone Routing & Logistics",
+      "microservice": "drone-microservice",
+      "features": [
+        "Drone registry, payload capacity, and battery tracking",
+        "Automated flight path calculation (coordinate-to-coordinate routing)",
+        "Dynamic delivery assignment for PAID orders",
+        "Real-time coordinate progression simulation"
+      ]
+    },
+    {
+      "name": "Async Notifications",
+      "microservice": "notification-microservice",
+      "features": [
+        "Event-driven email dispatch for order confirmations",
+        "Real-time SMS alerts simulation for payment failures",
+        "SMTP mail template engine"
+      ]
+    },
+    {
+      "name": "Merchant Dashboard Web UI",
+      "microservice": "frontend",
+      "features": [
+        "Merchant-specific KPI metrics (Total sales, today's order count)",
+        "Interactive sales charts using Chart.js/Recharts",
+        "Product catalog workspace (Add/Edit/Delete products, toggle active status)",
+        "Fulfillment control room (receive, accept, assign and dispatch orders)"
+      ]
+    },
+    {
+      "name": "Admin System Dashboard Console",
+      "microservice": "frontend",
+      "features": [
+        "System-wide KPIs aggregation (Total revenue, total users, active merchants, order conversion rate)",
+        "Global order monitoring feed with live search & filters",
+        "Pending merchant application review queue",
+        "Global user control panel & permission management",
+        "System alerts center (Eureka disconnects, transaction failures)"
+      ]
+    }
+  ]
+}
