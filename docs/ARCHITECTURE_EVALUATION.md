@@ -1,8 +1,28 @@
 # 📊 Đánh Giá Kiến Trúc 5 Main Services
 
+## Evaluation Context
+
+| Field | Value |
+| :--- | :--- |
+| **Snapshot Date** | 2026-05-24 |
+| **Scope** | `user-microservice`, `product-microservice`, `order-microservice`, `payment-microservice`, `drone-microservice` |
+| **Out of Scope** | `gateway-service`, `registry-service`, `notification-microservice`, frontend UI implementation |
+| **Evaluation Lens** | Clean Architecture, DDD modeling, event-driven reliability, resilience, schema management |
+| **Related Docs** | [`ARCHITECTURE.md`](../ARCHITECTURE.md), [`BA_UNIFIED_SWIMLANE_SPEC.md`](BA_UNIFIED_SWIMLANE_SPEC.md) |
+
+## Scoring Rubric
+
+| Score | Meaning | Architecture Signal |
+| :--- | :--- | :--- |
+| 5 | Excellent | Domain model independent from frameworks; ports/adapters clear; events and persistence reliable. |
+| 4 | Good | Clean layering mostly respected; minor consistency or migration gaps remain. |
+| 3 | Mixed | Layering exists but framework/persistence concerns leak into domain or naming is inconsistent. |
+| 2 | Weak | Business logic, persistence, and transport concerns are tightly coupled. |
+| 1 | Critical | Hard to test, hard to evolve, and unsafe for event-driven workflows. |
+
 ## Tổng Quan
 
-Dự án sử dụng **Clean Architecture** với các layer rõ ràng: Domain, Application, Infrastructure, và Interfaces. Dưới đây là đánh giá chi tiết cho từng service.
+Dự án sử dụng **Clean Architecture** với các layer rõ ràng: Domain, Application, Infrastructure, và Interfaces. Dưới đây là đánh giá chi tiết cho từng service. Một số nhận định cũ đã được điều chỉnh theo snapshot hiện tại: ví dụ User Service hiện đã có `infrastructure/persistence/entity/*JpaEntity.java`, nên vấn đề không còn là “JPA nằm trực tiếp trong domain” mà là cần kiểm soát nhất quán giữa domain model, persistence entity, mapper và repository adapter.
 
 ---
 
@@ -226,55 +246,56 @@ Dự án sử dụng **Clean Architecture** với các layer rõ ràng: Domain, 
 
 | Service | Clean Arch | Domain Model | Value Objects | Repository Pattern | Event-Driven | Resilience |
 |---------|-----------|--------------|---------------|-------------------|--------------|------------|
-| **User** | ⭐⭐⭐ | ⚠️ JPA in domain | ❌ | ⚠️ | ✅ | ⚠️ |
-| **Product** | ⭐⭐⭐ | ⚠️ JPA in domain | ❌ | ⚠️ | ✅ | ⚠️ |
+| **User** | ⭐⭐⭐⭐ | ✅ JPA isolated in infrastructure | ⚠️ Partial | ✅ | ✅ | ⚠️ |
+| **Product** | ⭐⭐⭐ | ⚠️ Needs boundary verification | ❌ | ⚠️ | ✅ | ⚠️ |
 | **Order** | ⭐⭐⭐⭐⭐ | ✅ Pure domain | ✅ Excellent | ✅ Perfect | ✅ | ✅ |
-| **Payment** | ⭐⭐⭐⭐ | ⚠️ JPA in domain | ⚠️ | ✅ | ✅ | ✅ |
+| **Payment** | ⭐⭐⭐⭐ | ✅ JPA isolated in infrastructure | ⚠️ | ✅ | ✅ | ✅ |
 | **Drone** | ⭐⭐⭐⭐⭐ | ✅ Pure domain | ✅ Excellent | ✅ | ✅ | ⚠️ |
 
 ---
 
-## 🎯 Khuyến Nghị Tổng Thể
+## 🎯 Roadmap & Refactoring Prioritization
 
-### 1. **Đồng Bộ Hóa Kiến Trúc**
+### Priority Matrix (Impact vs Effort)
 
-**Mục tiêu**: Tất cả services nên follow cùng một pattern như Order Service
+```mermaid
+quadrantChart
+    title "Architecture Refactoring Matrix"
+    x-axis "Low Effort" --> "High Effort"
+    y-axis "Low Impact" --> "High Impact"
+    quadrant-1 "Quick Wins"
+    quadrant-2 "Strategic Goals"
+    quadrant-3 "Low Priority"
+    quadrant-4 "Operational Cleanup"
+    
+    "Fix Package Typos": [0.1, 0.4]
+    "Sync Spring Boot Versions": [0.2, 0.3]
+    "Standardize DTOs Location": [0.3, 0.5]
+    "Standardize Product Persistence Boundary": [0.6, 0.9]
+    "Implement Drone Circuit Breakers": [0.4, 0.7]
+    "Add Flyway to Drone Svc": [0.3, 0.6]
+    "Value Object Migration (Money/ID)": [0.5, 0.8]
+```
 
-- ✅ Tách domain entities khỏi JPA annotations
-- ✅ Sử dụng mappers để convert giữa domain và persistence entities
-- ✅ Repository adapters trong infrastructure layer
+### Sequenced Implementation Path
 
-### 2. **Value Objects**
+| Phase | Focus | Key Action | Success Metric | Priority |
+| :--- | :--- | :--- | :--- | :--- |
+| **Phase 1: Hygiene** | Operational cleanup | Sửa typo (`infracstructor`, `lisener`), đồng bộ version Spring Boot | 0 build errors, 0 naming warnings | P0 |
+| **Phase 2: Integrity** | Persistence boundaries | Verify and standardize Domain Entity $\leftrightarrow$ JPA Entity separation in Product Service, and keep Payment/User aligned with the same mapper/repository pattern | Domain layer 0% framework dependencies | P0 |
+| **Phase 3: Reliability** | Resilience & Migration | Thêm Circuit Breakers cho Drone Svc, Setup Flyway cho Drone Svc | 100% services using Flyway | P1 |
+| **Phase 4: Sophistication**| DDD refinement | Migrate primitive types $\rightarrow$ Value Objects (Price, Email, Coordinates) | Reduced bug rate in domain logic | P2 |
 
-**Khuyến nghị**: Sử dụng value objects cho:
-- Money/Currency (như Order Service)
-- IDs (nếu cần validation)
-- Business-specific types (Email, Phone, Address)
+## 🔎 Evidence Register
 
-### 3. **Naming Conventions**
-
-- ✅ Đồng bộ: `usecase` vs `usecases`
-- ✅ Sửa typo: `infracstructor` → `infrastructure`, `lisener` → `listener`
-- ✅ DTOs location: nên đặt trong `interfaces/rest/dto`
-
-### 4. **Database Migrations**
-
-- ✅ Tất cả services nên dùng Flyway
-- ✅ Version control cho schema changes
-
-### 5. **Resilience Patterns**
-
-- ✅ Tất cả services nên có circuit breaker
-- ✅ Retry logic cho external calls
-- ✅ Timeout configuration
-
-### 6. **Documentation**
-
-- ✅ API documentation (OpenAPI/Swagger)
-- ✅ Architecture decision records (ADRs)
-- ✅ Domain model documentation
-
----
+| Finding | Current Evidence | Interpretation |
+| :--- | :--- | :--- |
+| User persistence is separated from domain | `services/user-microservice/src/main/java/com/example/userservice/infrastructure/persistence/entity/UserJpaEntity.java:14` | JPA concern is in infrastructure; earlier “JPA in domain” warning should be treated as resolved/needs regression guard. |
+| Payment persistence is separated from domain | `services/payment-microservice/src/main/java/com/example/paymentservice/infrastructure/persistence/entity/PaymentJpaEntity.java:17` | Payment has infrastructure JPA entity and mapper path; domain boundary is healthier than older notes suggest. |
+| Order domain is persistence-free | `services/order-microservice/src/main/java/com/example/order_service/domain/entities/Order.java:21` | Reference implementation for other services. |
+| Drone uses persistence adapters and JPA entities outside domain | `services/drone-microservice/src/main/java/com/example/droneservice/infrastructure/persistence/entity/DroneJpaEntity.java:17` | Confirms Clean Architecture separation in Drone Service. |
+| Use case package naming inconsistency exists | `services/drone-microservice/src/main/java/com/example/droneservice/application/usecases/mission/GetAllMissionsUseCase.java:1` | Naming consistency remains a cleanup target. |
+| Drone assignment is event-driven (listener exists) | `services/drone-microservice/src/main/java/com/example/droneservice/infrastructure/listener/OrderReadyListener.java:20` | Add explicit failure policy (retry/timeout/compensation) for assignment workflows. |
 
 ## 🏆 Best Practices Được Áp Dụng
 
@@ -293,9 +314,9 @@ Dự án sử dụng **Clean Architecture** với các layer rõ ràng: Domain, 
 
 **Order Service** và **Drone Service** là những ví dụ tốt nhất về Clean Architecture trong dự án này. Các service khác nên refactor để follow cùng pattern:
 
-1. **Priority High**: Tách JPA annotations khỏi domain models (User, Product, Payment)
-2. **Priority Medium**: Đồng bộ naming conventions và package structure
-3. **Priority Low**: Thêm value objects, improve documentation
+1. **Priority High**: Chuẩn hoá boundary Domain ↔ Infrastructure trong Product Service (vì hiện trạng cần verify rõ ràng, tránh leak JPA/persistence concern).
+2. **Priority Medium**: Đồng bộ naming conventions (`usecase`/`usecases`, typo packages) và package structure để giảm cognitive load và tăng consistency.
+3. **Priority Low**: Migrate value objects có ý nghĩa nghiệp vụ cao (Money/Price/Coordinates) và bổ sung docs/ADRs khi đã ổn định boundary.
 
 **Điểm số tổng thể**: ⭐⭐⭐⭐ (4/5)
 

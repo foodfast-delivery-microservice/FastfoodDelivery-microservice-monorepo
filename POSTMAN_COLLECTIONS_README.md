@@ -5,8 +5,8 @@
 ## 📦 Danh sách Collections
 
 ### 1. **Drone Service** (13 endpoints)
-**File**: `services/Drone-service/Drone-Service-Postman-Collection.json`
-**Port**: 8084
+**File**: `services/drone-microservice/Drone-Service-Postman-Collection.json`
+**Port**: 8085
 - 📂 Drone Management (6)
   - Create Drone
   - Get All Drones
@@ -51,7 +51,7 @@
 
 ### 3. **Order Service** (19 endpoints)
 **File**: `services/order-microservice/Order-Service-Postman-Collection.json`
-**Port**: 8082
+**Port**: 8083
 - 📂 Order Management (7)
   - Create Order
   - Get My Orders
@@ -79,7 +79,7 @@
 
 ### 4. **Product Service** (11 endpoints)
 **File**: `services/product-microservice/Product-Service-Postman-Collection.json`
-**Port**: 8083
+**Port**: 8082
 - 📂 Product Management (10)
   - Create Product
   - Get All Products
@@ -96,7 +96,7 @@
 
 ### 5. **Payment Service** (5 endpoints)
 **File**: `services/payment-microservice/Payment-Service-Postman-Collection.json`
-**Port**: 8085
+**Port**: 8084
 - 📂 Payment Processing (2)
   - Process Payment
   - Get Payment by Order ID

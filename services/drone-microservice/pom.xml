@@ -11,8 +11,8 @@
     <groupId>com.example</groupId>
     <artifactId>drone-service</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>Drone-service</name>
-    <description>Drone-service</description>
+    <name>drone-microservice</name>
+    <description>drone-microservice</description>
     <url/>
     <licenses>
         <license/>

@@ -39,7 +39,7 @@ git push origin develop
 ✅ product-microservice  
 ✅ order-microservice
 ✅ payment-microservice
-✅ Drone-service
+✅ drone-microservice
 ✅ gateway-service
 ✅ registry-service
 ✅ frontend (React)

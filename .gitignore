@@ -18,7 +18,7 @@ build/
 # Bỏ qua thư mục uploads (files được upload từ users)
 uploads/
 **/uploads/
-docs/
+docs/PLAN-*.md
 artifacts/
 **/node_modules
 
@@ -28,6 +28,8 @@ artifacts/
 .claude/
 .cursor/
 skills-lock.json
+.codegraph/
+.understand-anything/
 # Environment variables (credentials)
 .env
 .env.local

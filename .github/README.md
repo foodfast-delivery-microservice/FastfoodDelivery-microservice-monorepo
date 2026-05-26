@@ -75,7 +75,7 @@ Workflows tự động detect và build các services sau:
 2. **product-microservice** (Port 8082)
 3. **order-microservice** (Port 8083)
 4. **payment-microservice** (Port 8084)
-5. **Drone-service** (Port 8085)
+5. **drone-microservice** (Port 8085)
 6. **gateway-service** (Port 8080)
 7. **registry-service** (Port 8761)
 

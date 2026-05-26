@@ -1,7 +1,7 @@
 # FastFood Delivery - Microservice System
 
-**Version:** 1.0  
-**Last Updated:** November 2025
+**Version:** 1.1  
+**Last Updated:** May 2026
 
 ## 📋 Tổng Quan Hệ Thống
 
@@ -13,6 +13,15 @@ Hệ thống hỗ trợ 3 nhóm người dùng:
 - **👤 Khách hàng (Customer)**: Đặt món ăn, thanh toán, theo dõi đơn hàng
 - **🏪 Nhà hàng (Merchant)**: Quản lý menu, nhận đơn hàng, theo dõi doanh thu
 - **⚙️ Quản trị viên (Admin)**: Quản lý toàn bộ hệ thống, duyệt merchant, hỗ trợ users
+
+## 📚 Tài liệu chính
+
+- **Architecture Blueprint:** [`ARCHITECTURE.md`](./ARCHITECTURE.md)
+- **BA Unified Swimlane Spec:** [`docs/BA_UNIFIED_SWIMLANE_SPEC.md`](./docs/BA_UNIFIED_SWIMLANE_SPEC.md)
+- **Architecture Evaluation:** [`docs/ARCHITECTURE_EVALUATION.md`](./docs/ARCHITECTURE_EVALUATION.md)
+- **CI/CD Workflows:** [`.github/README.md`](./.github/README.md) + [Quick Reference](./.github/QUICK_REFERENCE.md)
+- **Deployment:** [`DEPLOYMENT_QUICK_REFERENCE.md`](./DEPLOYMENT_QUICK_REFERENCE.md)
+- **Postman Collections:** [`POSTMAN_COLLECTIONS_README.md`](./POSTMAN_COLLECTIONS_README.md)
 
 ## 🏗️ Kiến Trúc Hệ Thống
 
@@ -36,6 +45,8 @@ graph TB
         ProductSvc[Product Service<br/>Port 8082]
         OrderSvc[Order Service<br/>Port 8083]
         PaymentSvc[Payment Service<br/>Port 8084]
+        DroneSvc[Drone Service<br/>Port 8085]
+        NotificationSvc[Notification Service<br/>Port 8086]
     end
     
     React -->|HTTP/REST| Gateway
@@ -58,6 +69,8 @@ graph TB
     OrderSvc <-->|Events| RabbitMQ
     PaymentSvc <-->|Events| RabbitMQ
     ProductSvc <-->|Events| RabbitMQ
+    DroneSvc <-->|Events| RabbitMQ
+    NotificationSvc <-->|Events| RabbitMQ
     
     OrderSvc -.->|REST Call| UserSvc
     OrderSvc -.->|REST Call| ProductSvc
@@ -163,6 +176,29 @@ graph TB
 - **Events Published**: `PAYMENT_SUCCESS`, `PAYMENT_FAILED`, `OrderPaid`, `PaymentRefunded`
 - **Events Consumed**: `OrderCreated`, `OrderRefundRequest`
 
+### 7. Drone Service
+- **Port**: 8085
+- **Database**: `droneservice`
+- **Purpose**: Automated drone routing and logistics execution
+- **Key Features**:
+  - Drone registry and availability tracking
+  - Payload, battery, and distance-based assignment
+  - Delivery mission simulation and GPS progression
+  - Delivery failure escalation for refund workflows
+- **APIs**: `/api/v1/drones`
+- **Events Consumed / Produced**: dispatch-related order events, delivery completion/failure signals
+
+### 8. Notification Service
+- **Port**: 8086
+- **Database**: `notifications`
+- **Purpose**: Event-driven email/SMS/in-app notifications
+- **Key Features**:
+  - Payment success and failure notifications
+  - Delivery dispatch and completion notifications
+  - Webhook/in-app event persistence
+- **APIs**: `/api/v1/notifications`
+- **Events Consumed**: payment, order status, and refund-related events
+
 ## 🔄 Event-Driven Architecture
 
 The system uses **RabbitMQ** for asynchronous communication between services:
@@ -193,6 +229,18 @@ The system uses **RabbitMQ** for asynchronous communication between services:
    (Restores product stock)
    ```
 
+4. **Dispatch & Delivery Flow**
+   ```
+   Merchant/OrderService → Dispatch Request → DroneService
+   (Assigns available drone)
+
+   DroneService → DELIVERY_COMPLETE / DELIVERY_FAILED → OrderService
+   (Completes delivery or triggers refund workflow)
+
+   NotificationService → Customer / Merchant
+   (Sends dispatch and completion/failure updates)
+   ```
+
 ### Event Patterns
 - **Outbox Pattern**: Events stored in outbox tables before publishing
 - **Idempotency**: Services track processed events to avoid duplicate processing
@@ -207,6 +255,8 @@ Each microservice has its own database following the **Database per Service** pa
 - **productmicroservice**: Products, categories, stock
 - **orderservice**: Orders, order items, idempotency keys, outbox events
 - **paymentservice**: Payments, refunds, outbox events
+- **droneservice**: Drones, missions, logistics event records
+- **notifications**: Email/SMS/in-app notification history and webhook events
 
 ### Key Tables
 
@@ -226,6 +276,15 @@ Each microservice has its own database following the **Database per Service** pa
 #### Payment Service
 - `payments`: Payment records (id, order_id, user_id, amount, status, refund info)
 - `outbox_events_payment`: Event outbox
+
+#### Drone Service
+- `drones`: Drone registry, capacity, battery, and status
+- `drone_missions`: Assignment and delivery mission tracking
+
+#### Notification Service
+- `email_notifications`: Outbound email history
+- `in_app_notifications`: User-facing notification history
+- `webhook_events`: Webhook dispatch tracking
 
 ## 🌐 Frontend Architecture
 
@@ -307,6 +366,8 @@ frontend/
 - Product Service: http://localhost:8082/actuator/health
 - Order Service: http://localhost:8083/actuator/health
 - Payment Service: http://localhost:8084/actuator/health
+- Drone Service: http://localhost:8085/actuator/health
+- Notification Service: http://localhost:8086/actuator/health
 
 ## 🛠️ Development
 
@@ -344,6 +405,8 @@ frontend/
    cd services/product-microservice && mvn spring-boot:run &
    cd services/order-microservice && mvn spring-boot:run &
    cd services/payment-microservice && mvn spring-boot:run &
+   cd services/drone-microservice && mvn spring-boot:run &
+   cd services/notification-microservice && mvn spring-boot:run &
    ```
 
 6. **Start Frontend**
@@ -367,11 +430,7 @@ cd services/registry-service && mvn clean package
 
 ## 📖 Documentation
 
-- **[PRD.md](docs/PRD.md)**: Comprehensive Product Requirements Document with use cases, sequence diagrams, and API documentation
-- **[HUONG_DAN_DEPLOY.md](docs/HUONG_DAN_DEPLOY.md)**: Hướng dẫn deploy chi tiết cho 3 môi trường (Development, Staging, Production)
-- **[DEPLOYMENT.md](docs/DEPLOYMENT.md)**: Deployment guide (English)
-- **[DEPLOYMENT_QUICK_REFERENCE.md](DEPLOYMENT_QUICK_REFERENCE.md)**: Quick reference for production deployment
-- **[product-service-merchant.md](docs/product-service-merchant.md)**: Product Service merchant-specific documentation
+Xem danh sách tài liệu đầy đủ tại phần [📚 Tài liệu chính](#-tài-liệu-chính) ở đầu file.
 
 ## 🔐 Security
 
