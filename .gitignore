@@ -19,6 +19,7 @@ build/
 uploads/
 **/uploads/
 docs/PLAN-*.md
+docs/tooling/
 artifacts/
 **/node_modules
 
