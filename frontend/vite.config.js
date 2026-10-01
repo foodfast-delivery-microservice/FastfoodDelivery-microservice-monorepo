@@ -7,6 +7,9 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
 export default defineConfig({
+  base: process.env.VITE_DEMO_MODE === 'true'
+    ? '/FastfoodDelivery-microservice-monorepo/'
+    : '/',
   plugins: [react()],
   resolve: {
     alias: {},

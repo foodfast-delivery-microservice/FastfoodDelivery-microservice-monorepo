@@ -6,6 +6,7 @@ import { fetchRestaurants } from "../services/restaurants";
 import Product from "./Product";
 import Banner from "./Banner";
 import "./ProductList.css";
+import { assetUrl } from "../utils/assetUrl";
 
 function ProductList({ onAdd, defaultCategory = "All" }) {
     const { categoryKey } = useParams();
@@ -23,7 +24,7 @@ function ProductList({ onAdd, defaultCategory = "All" }) {
     const [priceRange, setPriceRange] = useState({ min: 0, max: 200000 });
 
     const productsPerPage = 6;
-    const bannerImages = ["/Images/1.png", "/Images/Banner2.png", "/Images/Banner3.png"];
+    const bannerImages = ["Images/1.webp", "Images/Banner2.png", "Images/Banner3.png"].map(assetUrl);
 
     // Load products
     useEffect(() => {

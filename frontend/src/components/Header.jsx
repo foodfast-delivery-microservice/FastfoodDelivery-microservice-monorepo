@@ -3,6 +3,8 @@ import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { FaUserCircle } from "react-icons/fa";
 import { useAuth } from "../context/AuthContext";
+import { demoCategories } from "../data/demoData";
+import { assetUrl } from "../utils/assetUrl";
 import NotificationBell from "./NotificationBell";
 import http from "../services/http";
 import "./Header.css";
@@ -15,6 +17,11 @@ function Header({ cartCount }) {
 
   // 🧷 Load categories từ API
   useEffect(() => {
+    if (import.meta.env.VITE_DEMO_MODE === "true") {
+      setCategories(demoCategories);
+      return;
+    }
+
     const loadCategories = async () => {
       try {
         // Fetch products to get categories
@@ -59,7 +66,7 @@ function Header({ cartCount }) {
       {/* LEFT - LOGO */}
       <div className="header-left">
         <Link to="/">
-          <img src="/Images/Logo.png" alt="MEOWCHICK Logo" />
+          <img src={assetUrl("Images/Logo.png")} alt="MEOWCHICK Logo" />
         </Link>
       </div>
 

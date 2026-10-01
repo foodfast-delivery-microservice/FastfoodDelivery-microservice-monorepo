@@ -1,4 +1,7 @@
 import { userHttp as http } from './http'
+import { demoRestaurants, demoProducts } from '../data/demoData'
+
+const IS_DEMO = import.meta.env.VITE_DEMO_MODE === 'true'
 
 // Helper để unwrap ApiResponse
 const unwrapData = (responseData) => {
@@ -11,6 +14,8 @@ const unwrapData = (responseData) => {
 }
 
 export const fetchRestaurants = async (params = {}) => {
+  if (IS_DEMO) return demoRestaurants
+
   const { data } = await http.get('/restaurants', { params })
   const unwrapped = unwrapData(data)
   // Backend trả về Page<RestaurantResponse>
@@ -22,6 +27,8 @@ export const fetchRestaurants = async (params = {}) => {
 }
 
 export const fetchRestaurantById = async (id) => {
+  if (IS_DEMO) return demoRestaurants.find((restaurant) => restaurant.id === id) || null
+
   const { data } = await http.get(`/restaurants/${id}`)
   return unwrapData(data)
 }
@@ -29,11 +36,15 @@ export const fetchRestaurantById = async (id) => {
 // Lấy restaurant theo merchantId (dùng cho trang chi tiết món)
 export const fetchRestaurantByMerchantId = async (merchantId) => {
   if (!merchantId) return null
+  if (IS_DEMO) return demoRestaurants.find((restaurant) => restaurant.merchantId === merchantId) || null
+
   const { data } = await http.get(`/restaurants/merchants/${merchantId}`)
   return unwrapData(data)
 }
 
 export const fetchRestaurantMenu = async (restaurantId, params = {}) => {
+  if (IS_DEMO) return demoProducts.filter((product) => product.restaurantId === restaurantId)
+
   // Lấy menu từ products service với merchantId
   // Dùng endpoint public /products/merchants/{merchantId} để guest có thể xem
 

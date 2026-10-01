@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Routes, Route, BrowserRouter, Navigate } from "react-router-dom";
+import { Routes, Route, BrowserRouter, HashRouter, Navigate } from "react-router-dom";
 import { useAuth } from "./context/AuthContext";
 import "leaflet/dist/leaflet.css";
 import "antd/dist/reset.css";
@@ -46,6 +46,8 @@ import DroneList from "./components/DroneList";
 
 /* ✅ Protected Routes */
 const SESSION_KEY = "app_session";
+const IS_DEMO_MODE = import.meta.env.VITE_DEMO_MODE === "true";
+const AppRouter = IS_DEMO_MODE ? HashRouter : BrowserRouter;
 
 function AdminRoute({ children }) {
   const { currentUser, loading } = useAuth();
@@ -182,7 +184,7 @@ function App() {
 
   return (
     <>
-      <BrowserRouter>
+      <AppRouter>
         <Routes>
           {/* USER */}
           <Route
@@ -287,7 +289,7 @@ function App() {
             <Route path="drones" element={<DroneList />} />
           </Route>
         </Routes>
-      </BrowserRouter>
+      </AppRouter>
 
       <Modal
         title="Giỏ hàng chứa món từ nhà hàng khác"

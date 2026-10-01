@@ -50,6 +50,10 @@ const instances = [userHttp, productHttp, orderHttp, paymentHttp, droneHttp, gat
 instances.forEach(instance => {
   instance.interceptors.request.use(
     (config) => {
+      if (import.meta.env.VITE_DEMO_MODE === 'true') {
+        throw new Error('API đang tắt trong bản demo giao diện.');
+      }
+
       try {
         const session = localStorage.getItem('app_session')
         if (session) {

@@ -3,6 +3,7 @@ import { fetchRestaurants } from '../services/restaurants';
 import RestaurantCard from './RestaurantCard';
 import Banner from './Banner';
 import './RestaurantList.css'; // We'll create this CSS next
+import { assetUrl } from '../utils/assetUrl';
 
 const RestaurantList = () => {
     const [restaurants, setRestaurants] = useState([]);
@@ -10,7 +11,7 @@ const RestaurantList = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('All');
 
-    const bannerImages = ["/Images/1.png", "/Images/Banner2.png", "/Images/Banner3.png"];
+    const bannerImages = ["Images/1.webp", "Images/Banner2.png", "Images/Banner3.png"].map(assetUrl);
 
     // Categories matching backend Restaurant.category enum
     const categories = [

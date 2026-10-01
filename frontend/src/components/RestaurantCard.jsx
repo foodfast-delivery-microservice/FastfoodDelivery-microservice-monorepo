@@ -1,12 +1,10 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import './RestaurantCard.css'; // We'll create this CSS next
+import { assetUrl, resolveImageUrl } from '../utils/assetUrl';
 
 const buildImageUrl = (src) => {
-    if (!src) return null;
-    if (src.startsWith?.("http")) return src;
-    const base = "http://localhost:8089";
-    return src.startsWith("/") ? `${base}${src}` : `${base}/${src}`;
+    return resolveImageUrl(src);
 };
 
 const RestaurantCard = ({ restaurant }) => {
@@ -14,7 +12,7 @@ const RestaurantCard = ({ restaurant }) => {
         buildImageUrl(restaurant.imageUrl) ||
         buildImageUrl(restaurant.image) ||
         buildImageUrl(restaurant.img) ||
-        '/Images/Logo.png';
+        assetUrl('Images/Logo.png');
 
     return (
         <Link to={`/restaurant/${restaurant.id}`} className="restaurant-card-link">
@@ -24,7 +22,7 @@ const RestaurantCard = ({ restaurant }) => {
                         src={displayImage}
                         alt={restaurant.name}
                         className="restaurant-image"
-                        onError={(e) => { e.target.src = '/Images/Logo.png'; }}
+                        onError={(e) => { e.target.src = assetUrl('Images/Logo.png'); }}
                     />
                     {restaurant.discount && (
                         <div className="restaurant-discount-badge">

@@ -20,6 +20,13 @@ export function AuthProvider({ children }) {
   };
 
   useEffect(() => {
+    if (import.meta.env.VITE_DEMO_MODE === "true") {
+      localStorage.removeItem("app_session");
+      setCurrentUser(null);
+      setLoading(false);
+      return;
+    }
+
     const checkUser = async () => {
       console.log("🟡 [Auth] Bắt đầu kiểm tra user...");
       try {

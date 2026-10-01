@@ -2,6 +2,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import './ProductCard.css';
+import { assetUrl, resolveImageUrl } from "../utils/assetUrl";
 
 function Product({ product, onAdd }) {
     if (!product) return null; // Tránh lỗi render khi dữ liệu chưa sẵn sàng
@@ -17,18 +18,13 @@ function Product({ product, onAdd }) {
         restaurantName,
     } = product;
 
-    const toAbsoluteUrl = (src) => {
-        if (!src) return null;
-        if (src.startsWith("http")) return src;
-        const base = "http://localhost:8089";
-        return src.startsWith("/") ? `${base}${src}` : `${base}/${src}`;
-    };
+    const toAbsoluteUrl = resolveImageUrl;
 
     const displayImage =
         toAbsoluteUrl(imageUrl) ||
         toAbsoluteUrl(image) ||
         toAbsoluteUrl(img) ||
-        "/Images/Logo.png";
+        assetUrl("Images/Logo.png");
 
     // Ưu tiên dùng restaurant -> restaurantName -> fallback
     const displayRestaurant = restaurant || restaurantName || "Không rõ nhà hàng";

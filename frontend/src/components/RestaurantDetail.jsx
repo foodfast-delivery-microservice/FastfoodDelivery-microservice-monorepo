@@ -3,13 +3,9 @@ import { useParams } from 'react-router-dom';
 import { fetchRestaurantById, fetchRestaurantMenu } from '../services/restaurants';
 import Product from './Product';
 import './RestaurantDetail.css'; // We'll create this CSS next
+import { assetUrl, resolveImageUrl } from '../utils/assetUrl';
 
-const toAbsoluteUrl = (src) => {
-  if (!src) return null;
-  if (src.startsWith?.("http")) return src;
-  const base = "http://localhost:8089";
-  return src.startsWith("/") ? `${base}${src}` : `${base}/${src}`;
-};
+const toAbsoluteUrl = resolveImageUrl;
 
 const RestaurantDetail = ({ onAdd }) => {
   const { id } = useParams();
@@ -62,10 +58,10 @@ const RestaurantDetail = ({ onAdd }) => {
                 toAbsoluteUrl(restaurant.imageUrl) ||
                 toAbsoluteUrl(restaurant.image) ||
                 toAbsoluteUrl(restaurant.img) ||
-                '/Images/Logo.png'
+                assetUrl('Images/Logo.png')
               }
               alt={restaurant.name}
-              onError={(e) => { e.target.src = '/Images/Logo.png'; }}
+              onError={(e) => { e.target.src = assetUrl('Images/Logo.png'); }}
             />
           </div>
           <div className="header-info">
