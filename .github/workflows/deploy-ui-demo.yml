@@ -2,7 +2,7 @@ name: Deploy static UI demo to GitHub Pages
 
 on:
   push:
-    branches: [main, develop]
+    branches: [develop]
     paths:
       - 'frontend/**'
       - '.github/workflows/deploy-ui-demo.yml'
